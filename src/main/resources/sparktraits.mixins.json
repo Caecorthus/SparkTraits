@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.caecorthus.sparktraits.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "GameFunctionsMixin",
+    "GameWorldComponentAccessor",
+    "ImpostorItemEntityMixin",
+    "EntityCollisionMixin",
+    "LivingEntityCollisionMixin",
+    "MurderGameModeMixin",
+    "NoellesRolesPacketMixin",
+    "PlayerShopComponentMixin",
+    "PlayerMoodComponentMixin",
+    "PlayerEntityMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

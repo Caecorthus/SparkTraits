@@ -1,0 +1,11 @@
+{
+  "gui.sparktraits.traits": "Traits",
+  "trait.sparktraits.last_stand.name": "Last Stand",
+  "trait.sparktraits.last_stand.description": "A belief keeps you alive.",
+  "trait.sparktraits.conscience.name": "Conscience",
+  "trait.sparktraits.conscience.description": "Your conscience still knows who deserves to live.",
+  "trait.sparktraits.impostor.name": "Impostor",
+  "trait.sparktraits.impostor.description": "You know which side the truth belongs to.",
+  "announcement.goal.sparktraits.conscience": "Use your abilities to help the innocents survive!",
+  "death_reason.sparktraits.self_realization": "self realization"
+}

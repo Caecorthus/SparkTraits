@@ -1,0 +1,11 @@
+{
+  "gui.sparktraits.traits": "天赋",
+  "trait.sparktraits.last_stand.name": "背水一战",
+  "trait.sparktraits.last_stand.description": "有什么信念支撑你继续活下去。",
+  "trait.sparktraits.conscience.name": "善良",
+  "trait.sparktraits.conscience.description": "你的良知仍然知道谁值得活下去。",
+  "trait.sparktraits.impostor.name": "内鬼",
+  "trait.sparktraits.impostor.description": "你知道真相属于哪一边。",
+  "announcement.goal.sparktraits.conscience": "用你的能力帮助好人活下去！",
+  "death_reason.sparktraits.self_realization": "自我了解"
+}

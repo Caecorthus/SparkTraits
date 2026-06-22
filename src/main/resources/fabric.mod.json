@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "sparktraits",
+  "version": "${version}",
+  "name": "SparkTraits",
+  "description": "Passive trait mechanics for Spark Wathe.",
+  "authors": [
+    "Caecorthus"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.caecorthus.sparktraits.SparkTraits"
+    ],
+    "client": [
+      "dev.caecorthus.sparktraits.client.SparkTraitsClient"
+    ],
+    "cardinal-components": [
+      "dev.caecorthus.sparktraits.component.SparkTraitsComponents"
+    ]
+  },
+  "custom": {
+    "cardinal-components": [
+      "sparktraits:traits",
+      "sparktraits:world"
+    ]
+  },
+  "mixins": [
+    "sparktraits.mixins.json",
+    {
+      "config": "sparktraits.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}",
+    "java": ">=21",
+    "wathe": "${wathe_version}",
+    "noellesroles": "*",
+    "cardinal-components-base": ">=${cca_version}",
+    "cardinal-components-entity": ">=${cca_version}",
+    "cardinal-components-world": ">=${cca_version}"
+  }
+}

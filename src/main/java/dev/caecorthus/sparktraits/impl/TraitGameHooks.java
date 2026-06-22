@@ -1,0 +1,65 @@
+package dev.caecorthus.sparktraits.impl;
+
+import dev.caecorthus.sparktraits.api.TraitRemovalReason;
+import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.doctor4t.wathe.api.event.KillPlayer;
+import dev.doctor4t.wathe.api.event.ResetPlayer;
+import dev.doctor4t.wathe.cca.GameWorldComponent;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+
+import java.util.ArrayList;
+import java.util.UUID;
+
+public final class TraitGameHooks {
+    private TraitGameHooks() {
+    }
+
+    public static void register() {
+        EffectiveTraitService.register();
+        ResetPlayer.EVENT.register(player -> {
+            LastStandService.clearPlayer(player);
+            TraitPlayerComponent.KEY.get(player).clearActiveTraits(TraitRemovalReason.RESET);
+        });
+
+        KillPlayer.BEFORE.register(LastStandService::beforeKill);
+
+        KillPlayer.AFTER.register((victim, killer, deathReason) -> {
+            TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(victim);
+            TraitWorldComponent.KEY.get(victim.getWorld()).snapshotDeathTraits(victim.getUuid(), playerTraits.getActiveTraitIds());
+            boolean lastStandStarted = LastStandService.tryStartAfterKill(victim, killer, deathReason);
+            EffectiveTraitService.handleAfterKill(victim, killer);
+            if (lastStandStarted) {
+                syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
+                return;
+            }
+            playerTraits.clearActiveTraits(TraitRemovalReason.DEATH);
+            syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
+        });
+
+        dev.doctor4t.wathe.api.event.GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
+            if (!(world instanceof ServerWorld serverWorld)) {
+                return;
+            }
+            LastStandService.clearRoundState(serverWorld);
+            clearActiveTraits(serverWorld, gameComponent);
+        });
+    }
+
+    private static void clearActiveTraits(ServerWorld world, GameWorldComponent gameComponent) {
+        for (UUID uuid : new ArrayList<>(gameComponent.getAllPlayers())) {
+            if (world.getPlayerByUuid(uuid) instanceof ServerPlayerEntity player) {
+                TraitPlayerComponent.KEY.get(player).clearActiveTraits(TraitRemovalReason.GAME_END);
+            }
+        }
+    }
+
+    private static void syncPlayerTraitsToNewSpectators(ServerWorld world, GameWorldComponent gameComponent) {
+        for (UUID uuid : gameComponent.getAllPlayers()) {
+            if (world.getPlayerByUuid(uuid) instanceof ServerPlayerEntity player) {
+                TraitPlayerComponent.KEY.sync(player);
+            }
+        }
+    }
+}

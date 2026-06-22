@@ -1,0 +1,111 @@
+plugins {
+    id 'fabric-loom' version '1.13-SNAPSHOT'
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        "sparktraits" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "Ladysnake Mods"
+        url = 'https://maven.ladysnake.org/releases'
+    }
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+        content {
+            includeGroup "maven.modrinth"
+        }
+    }
+    maven {
+        name = "Xander Maven"
+        url = "https://maven.isxander.dev/releases"
+    }
+    maven {
+        name = "Datasync"
+        url = "https://maven.uuid.gg/releases"
+    }
+    maven {
+        name = "Lucko"
+        url = "https://repo.lucko.me/"
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    modApi files("wathe-${project.wathe_version}.jar")
+    modImplementation files("noellesroles-1.7.5-h1.5.5-spark.jar")
+    modLocalRuntime "maven.modrinth:carpet:1.4.147"
+    modLocalRuntime "maven.modrinth:simple-voice-chat:fabric-1.21.1-2.5.36"
+    modImplementation "org.ladysnake.cardinal-components-api:cardinal-components-base:${project.cca_version}"
+    modImplementation "org.ladysnake.cardinal-components-api:cardinal-components-entity:${project.cca_version}"
+    modImplementation "org.ladysnake.cardinal-components-api:cardinal-components-world:${project.cca_version}"
+    modRuntimeOnly "org.ladysnake.cardinal-components-api:cardinal-components-scoreboard:${project.cca_version}"
+    modRuntimeOnly "maven.modrinth:midnightlib:${project.midnightlib_version}"
+    modRuntimeOnly "dev.isxander:yet-another-config-lib:${project.yacl_version}"
+    modRuntimeOnly("dev.doctor4t:ratatouille:${project.ratatouille_version}") {
+        exclude group: "dev.upcraft.datasync"
+    }
+    modRuntimeOnly "dev.upcraft.datasync:datasync-minecraft-1.21.1-fabric:0.10.2"
+    modRuntimeOnly "me.lucko:fabric-permissions-api:0.3.1"
+
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", project.minecraft_version
+    inputs.property "loader_version", project.loader_version
+    inputs.property "wathe_version", project.wathe_version
+    inputs.property "cca_version", project.cca_version
+
+    filteringCharset "UTF-8"
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+                "minecraft_version": project.minecraft_version,
+                "loader_version": project.loader_version,
+                "wathe_version": project.wathe_version,
+                "cca_version": project.cca_version
+    }
+}
+
+def targetJavaVersion = 21
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    it.options.release.set(targetJavaVersion)
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+    withSourcesJar()
+}
