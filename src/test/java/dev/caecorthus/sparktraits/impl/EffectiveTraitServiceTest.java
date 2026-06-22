@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl;
 
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
+import dev.doctor4t.wathe.game.GameConstants;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.Test;
@@ -133,9 +134,23 @@ class EffectiveTraitServiceTest {
 
     @Test
     void conscienceInstinctCanHighlightLastStandHiddenTargets() {
-        assertTrue(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, false, false, 1.0, true, false));
-        assertTrue(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, false, false, 1.0, false, true));
-        assertTrue(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, true, false, 1.0, false, false));
+        assertTrue(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, false, false, 1.0, true, false, false));
+        assertTrue(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, false, false, 1.0, false, true, false));
+        assertTrue(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, true, false, 1.0, false, false, false));
+    }
+
+    @Test
+    void conscienceInstinctSkipsProjectingSpiritTargets() {
+        assertFalse(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, true, false, 1.0, false, false, true));
+    }
+
+    @Test
+    void conscienceKillPunishmentIgnoresAreaDamage() {
+        assertTrue(EffectiveTraitService.shouldPunishConscienceKill(true, GameConstants.DeathReasons.GUN));
+        assertFalse(EffectiveTraitService.shouldPunishConscienceKill(true, GameConstants.DeathReasons.GRENADE));
+        assertFalse(EffectiveTraitService.shouldPunishConscienceKill(true, GameConstants.DeathReasons.POISON, Noellesroles.POISON_SOURCE_GAS_BOMB));
+        assertTrue(EffectiveTraitService.shouldPunishConscienceKill(true, GameConstants.DeathReasons.POISON, Noellesroles.POISON_SOURCE_NEEDLE));
+        assertFalse(EffectiveTraitService.shouldPunishConscienceKill(false, GameConstants.DeathReasons.GUN));
     }
 
     @Test

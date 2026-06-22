@@ -18,9 +18,12 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
+import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Central effective-team rules for alignment-flipping traits.
@@ -33,6 +36,7 @@ public final class EffectiveTraitService {
     public static final double CONSCIENCE_INSTINCT_RANGE_SQUARED = 100.0;
     public static final int TASK_MONEY_REWARD = 50;
     public static final Identifier SELF_REALIZATION = SparkTraits.id("self_realization");
+    private static final Map<UUID, Identifier> poisonSources = new HashMap<>();
 
     private EffectiveTraitService() {
     }
@@ -89,11 +93,19 @@ public final class EffectiveTraitService {
             return false;
         }
         TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
-        return shouldHideFromKillerInstinct(traits.isLastStandPending(), traits.isKillerInstinctHidden());
+        return shouldHideFromKillerInstinct(traits.isLastStandPending(), traits.isKillerInstinctHidden(), isSpiritProjecting(player));
     }
 
     public static boolean shouldHideFromKillerInstinct(boolean lastStandPending, boolean killerInstinctHidden) {
-        return lastStandPending || killerInstinctHidden;
+        return shouldHideFromKillerInstinct(lastStandPending, killerInstinctHidden, false);
+    }
+
+    public static boolean shouldHideFromKillerInstinct(boolean lastStandPending, boolean killerInstinctHidden, boolean spiritProjecting) {
+        return lastStandPending || killerInstinctHidden || spiritProjecting;
+    }
+
+    public static boolean isSpiritProjecting(PlayerEntity player) {
+        return player != null && SpiritPlayerComponent.KEY.get(player).isProjecting();
     }
 
     public static boolean shouldConscienceInstinctHighlightTarget(
@@ -102,10 +114,12 @@ public final class EffectiveTraitService {
             boolean targetSpectatingOrCreative,
             double targetDistanceSquared,
             boolean lastStandPending,
-            boolean killerInstinctHidden
+            boolean killerInstinctHidden,
+            boolean spiritProjecting
     ) {
         return instinctEnabled
                 && !targetSpectatingOrCreative
+                && !spiritProjecting
                 && targetDistanceSquared <= CONSCIENCE_INSTINCT_RANGE_SQUARED
                 && (targetPlayingAndAlive || lastStandPending || killerInstinctHidden);
     }
@@ -293,7 +307,27 @@ public final class EffectiveTraitService {
         return victimRole != null && !isEffectiveCivilian(victimRole, victimTraits);
     }
 
-    public static void handleAfterKill(ServerPlayerEntity victim, ServerPlayerEntity killer) {
+    public static boolean shouldPunishConscienceKill(boolean victimIsEffectiveCivilian, Identifier deathReason) {
+        return shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, null);
+    }
+
+    public static boolean shouldPunishConscienceKill(boolean victimIsEffectiveCivilian, Identifier deathReason, Identifier poisonSource) {
+        return victimIsEffectiveCivilian && !isAreaDamageDeathReason(deathReason, poisonSource);
+    }
+
+    public static void rememberPoisonSource(PlayerEntity player, Identifier poisonSource) {
+        if (player != null && poisonSource != null) {
+            poisonSources.put(player.getUuid(), poisonSource);
+        }
+    }
+
+    private static boolean isAreaDamageDeathReason(Identifier deathReason, Identifier poisonSource) {
+        return GameConstants.DeathReasons.GRENADE.equals(deathReason)
+                || (GameConstants.DeathReasons.POISON.equals(deathReason)
+                && Noellesroles.POISON_SOURCE_GAS_BOMB.equals(poisonSource));
+    }
+
+    public static void handleAfterKill(ServerPlayerEntity victim, ServerPlayerEntity killer, Identifier deathReason) {
         if (victim == null || killer == null || victim.getUuid().equals(killer.getUuid())) {
             return;
         }
@@ -301,8 +335,9 @@ public final class EffectiveTraitService {
         Role victimRole = game.getRole(victim);
         Collection<Identifier> victimTraits = TraitPlayerComponent.KEY.get(victim).getActiveTraitIds();
         boolean victimIsEffectiveCivilian = isEffectiveCivilian(victimRole, victimTraits);
+        Identifier poisonSource = poisonSources.remove(victim.getUuid());
         if (hasConscience(killer)) {
-            if (victimIsEffectiveCivilian && GameFunctions.isPlayerPlayingAndAlive(killer)) {
+            if (shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, poisonSource) && GameFunctions.isPlayerPlayingAndAlive(killer)) {
                 GameFunctions.killPlayer(killer, true, null, GameConstants.DeathReasons.SHOT_INNOCENT, true);
             } else if (shouldRewardConscienceKill(victimRole, victimTraits)) {
                 PlayerShopComponent.KEY.get(killer).addToBalance(GameConstants.MONEY_PER_KILL);

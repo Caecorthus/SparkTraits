@@ -29,7 +29,7 @@ public final class TraitGameHooks {
             TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(victim);
             TraitWorldComponent.KEY.get(victim.getWorld()).snapshotDeathTraits(victim.getUuid(), playerTraits.getActiveTraitIds());
             boolean lastStandStarted = LastStandService.tryStartAfterKill(victim, killer, deathReason);
-            EffectiveTraitService.handleAfterKill(victim, killer);
+            EffectiveTraitService.handleAfterKill(victim, killer, deathReason);
             if (lastStandStarted) {
                 syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
                 return;

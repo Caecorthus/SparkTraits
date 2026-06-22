@@ -13,6 +13,7 @@
     "NoellesRolesPacketMixin",
     "PlayerShopComponentMixin",
     "PlayerMoodComponentMixin",
+    "PlayerPoisonComponentMixin",
     "PlayerEntityMixin"
   ],
   "injectors": {

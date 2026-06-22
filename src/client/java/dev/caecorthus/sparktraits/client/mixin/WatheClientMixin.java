@@ -40,7 +40,8 @@ public abstract class WatheClientMixin {
                         GameFunctions.isPlayerSpectatingOrCreative(playerTarget),
                         viewer.squaredDistanceTo(playerTarget),
                         targetTraits.isLastStandPending(),
-                        targetTraits.isKillerInstinctHidden()
+                        targetTraits.isKillerInstinctHidden(),
+                        EffectiveTraitService.isSpiritProjecting(playerTarget)
                 );
                 cir.setReturnValue(shouldHighlight ? EffectiveTraitService.CONSCIENCE_COLOR : -1);
             } else {
@@ -53,6 +54,10 @@ public abstract class WatheClientMixin {
             return;
         }
         if (!EffectiveTraitService.isEffectiveKiller(viewer, GameWorldComponent.KEY.get(viewer.getWorld()))) {
+            return;
+        }
+        if (EffectiveTraitService.isHiddenFromKillerInstinct(playerTarget)) {
+            cir.setReturnValue(-1);
             return;
         }
         if (EffectiveTraitService.isImpostorVisibleToInstinct(playerTarget)) {
