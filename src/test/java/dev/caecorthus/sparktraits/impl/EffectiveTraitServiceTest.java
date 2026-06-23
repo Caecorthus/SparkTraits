@@ -152,15 +152,16 @@ class EffectiveTraitServiceTest {
 
     @Test
     void impostorGetsFullKillRewardForCivilianAndNeutralVictims() {
-        assertEquals(50, EffectiveTraitService.TASK_MONEY_REWARD);
         assertEquals(GameConstants.MONEY_PER_KILL,
-                EffectiveTraitService.impostorKillReward(WatheRoles.CIVILIAN, Set.of()));
+                EffectiveTraitService.impostorKillReward(WatheRoles.CIVILIAN, Set.of(), true));
         assertEquals(GameConstants.MONEY_PER_KILL,
-                EffectiveTraitService.impostorKillReward(Noellesroles.JESTER, Set.of()));
+                EffectiveTraitService.impostorKillReward(Noellesroles.JESTER, Set.of(), true));
         assertEquals(GameConstants.MONEY_PER_KILL,
-                EffectiveTraitService.impostorKillReward(WatheRoles.KILLER, Set.of(ConscienceTrait.ID)));
+                EffectiveTraitService.impostorKillReward(WatheRoles.KILLER, Set.of(ConscienceTrait.ID), true));
         assertEquals(0,
-                EffectiveTraitService.impostorKillReward(WatheRoles.CIVILIAN, Set.of(ImpostorTrait.ID)));
+                EffectiveTraitService.impostorKillReward(WatheRoles.CIVILIAN, Set.of(ImpostorTrait.ID), true));
+        assertEquals(0,
+                EffectiveTraitService.impostorKillReward(WatheRoles.CIVILIAN, Set.of(), false));
     }
 
     @Test

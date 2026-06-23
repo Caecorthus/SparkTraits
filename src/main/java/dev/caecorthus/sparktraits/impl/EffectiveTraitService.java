@@ -12,6 +12,7 @@ import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerShopComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
+import dev.doctor4t.wathe.util.ShopUtils;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -504,8 +505,8 @@ public final class EffectiveTraitService {
                 && !isEffectiveKiller(victimRole, victimTraits);
     }
 
-    public static int impostorKillReward(Role victimRole, Collection<Identifier> victimTraits) {
-        return shouldRewardImpostorKill(victimRole, victimTraits) ? GameConstants.MONEY_PER_KILL : 0;
+    public static int impostorKillReward(Role victimRole, Collection<Identifier> victimTraits, boolean canAccessShop) {
+        return canAccessShop && shouldRewardImpostorKill(victimRole, victimTraits) ? GameConstants.MONEY_PER_KILL : 0;
     }
 
     /**
@@ -555,7 +556,7 @@ public final class EffectiveTraitService {
                 }
             }
         } else if (hasImpostor(killer)) {
-            int reward = impostorKillReward(victimRole, victimTraits);
+            int reward = impostorKillReward(victimRole, victimTraits, ShopUtils.canAccessShop(killer));
             if (reward > 0) {
                 PlayerShopComponent.KEY.get(killer).addToBalance(reward);
             }
