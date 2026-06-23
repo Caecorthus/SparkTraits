@@ -1,10 +1,11 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
-import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.ConscienceSerialKillerService;
 import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.caecorthus.sparktraits.impl.TraitAssignmentService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.cca.ScoreboardRoleSelectorComponent;
 import dev.doctor4t.wathe.game.gamemode.MurderGameMode;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -14,7 +15,10 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Mixin(value = MurderGameMode.class, remap = false)
 public abstract class MurderGameModeMixin {
@@ -30,10 +34,26 @@ public abstract class MurderGameModeMixin {
             List<ServerPlayerEntity> players,
             GameWorldComponent gameComponent
     ) {
+        Set<UUID> lockedRolePlayers = sparktraits$snapshotLockedRolePlayers(world);
         int publicKillerCount = sparktraits$assignRolesAndGetKillerCount(world, players, gameComponent);
         LastStandService.clearRoundState(world);
         TraitWorldComponent.KEY.get(world).clearRoundState();
-        return TraitAssignmentService.assignForMurderGameBeforeWelcome(world, gameComponent, players, publicKillerCount);
+        return TraitAssignmentService.assignForMurderGameBeforeWelcome(
+                world,
+                gameComponent,
+                players,
+                publicKillerCount,
+                lockedRolePlayers
+        );
+    }
+
+    private Set<UUID> sparktraits$snapshotLockedRolePlayers(ServerWorld world) {
+        ScoreboardRoleSelectorComponent selector = ScoreboardRoleSelectorComponent.KEY.get(world.getScoreboard());
+        Set<UUID> lockedRolePlayers = new LinkedHashSet<>();
+        for (List<UUID> forcedPlayers : selector.forcedRoles.values()) {
+            lockedRolePlayers.addAll(forcedPlayers);
+        }
+        return lockedRolePlayers;
     }
 
     @Invoker("assignRolesAndGetKillerCount")
@@ -53,6 +73,10 @@ public abstract class MurderGameModeMixin {
             )
     )
     private boolean sparktraits$passiveMoneyOnlyForRealKillers(GameWorldComponent gameComponent, PlayerEntity player) {
-        return gameComponent.canUseKillerFeatures(player) && !EffectiveTraitService.hasConscience(player);
+        if (!gameComponent.canUseKillerFeatures(player)) {
+            return false;
+        }
+        return !ConscienceSerialKillerService.isConscienceSerialKiller(player, gameComponent)
+                || ConscienceSerialKillerService.shouldReceivePassiveMoney(gameComponent, player);
     }
 }

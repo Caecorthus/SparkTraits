@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.impl.LastStandService;
+import dev.caecorthus.sparktraits.impl.SilencedKillerRestrictionService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -9,8 +10,18 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.assassin.AssassinPlayerComponent;
+import org.agmas.noellesroles.packet.AbilityC2SPacket;
 import org.agmas.noellesroles.packet.AssassinGuessRoleC2SPacket;
+import org.agmas.noellesroles.packet.DetectiveInvestigateC2SPacket;
+import org.agmas.noellesroles.packet.MorphC2SPacket;
+import org.agmas.noellesroles.packet.MorphCorpseToggleC2SPacket;
+import org.agmas.noellesroles.packet.PartyAnimalBuzzC2SPacket;
+import org.agmas.noellesroles.packet.ReporterMarkC2SPacket;
+import org.agmas.noellesroles.packet.SilencerSilenceC2SPacket;
+import org.agmas.noellesroles.packet.SpiritProjectC2SPacket;
 import org.agmas.noellesroles.packet.SwapperC2SPacket;
+import org.agmas.noellesroles.packet.TaotieSwallowC2SPacket;
+import org.agmas.noellesroles.packet.VultureEatC2SPacket;
 import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,9 +30,32 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = Noellesroles.class, remap = false)
 public abstract class NoellesRolesPacketMixin {
+    @Inject(method = "lambda$registerPackets$30", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void sparktraits$blockSilencedMorph(MorphC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
+        sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
+    @Inject(method = "lambda$registerPackets$31", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void sparktraits$blockSilencedMorphCorpseToggle(MorphCorpseToggleC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
+        sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
+    @Inject(method = "lambda$registerPackets$33", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void sparktraits$blockSilencedVultureEat(VultureEatC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
+        sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
+    @Inject(method = "lambda$registerPackets$35", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void sparktraits$blockSilencedSharedAbility(AbilityC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
+        sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
     @Inject(method = "lambda$registerPackets$36", at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockLastStandAssassination(AssassinGuessRoleC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         ServerPlayerEntity assassin = context.player();
+        if (sparktraits$blockSilencedKillerAbility(assassin, ci)) {
+            return;
+        }
         ServerWorld world = assassin.getServerWorld();
         GameWorldComponent gameWorldComponent = GameWorldComponent.KEY.get(world);
 
@@ -52,6 +86,9 @@ public abstract class NoellesRolesPacketMixin {
     @Inject(method = "lambda$registerPackets$34", at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockLastStandSwap(SwapperC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         ServerPlayerEntity swapper = context.player();
+        if (sparktraits$blockSilencedKillerAbility(swapper, ci)) {
+            return;
+        }
         ServerWorld world = swapper.getServerWorld();
         GameWorldComponent gameWorldComponent = GameWorldComponent.KEY.get(world);
 
@@ -78,5 +115,43 @@ public abstract class NoellesRolesPacketMixin {
             LastStandService.notifyCannotSwap(swapper);
             ci.cancel();
         }
+    }
+
+    @Inject(method = "lambda$registerPackets$37", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void sparktraits$blockSilencedReporterMark(ReporterMarkC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
+        sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
+    @Inject(method = "lambda$registerPackets$38", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void sparktraits$blockSilencedDetectiveInvestigate(DetectiveInvestigateC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
+        sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
+    @Inject(method = "lambda$registerPackets$39", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void sparktraits$blockSilencedTaotieSwallow(TaotieSwallowC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
+        sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
+    @Inject(method = "lambda$registerPackets$40", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void sparktraits$blockSilencedSilencerSilence(SilencerSilenceC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
+        sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
+    @Inject(method = "lambda$registerPackets$41", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void sparktraits$blockSilencedPartyAnimalBuzz(PartyAnimalBuzzC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
+        sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
+    @Inject(method = "lambda$registerPackets$42", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void sparktraits$blockSilencedSpiritProject(SpiritProjectC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
+        sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
+    private static boolean sparktraits$blockSilencedKillerAbility(ServerPlayerEntity player, CallbackInfo ci) {
+        if (!SilencedKillerRestrictionService.denyActiveAbilityIfRestricted(player)) {
+            return false;
+        }
+        ci.cancel();
+        return true;
     }
 }

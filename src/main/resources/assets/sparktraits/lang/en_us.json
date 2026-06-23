@@ -7,5 +7,8 @@
   "trait.sparktraits.impostor.name": "Impostor",
   "trait.sparktraits.impostor.description": "You know which side the truth belongs to.",
   "announcement.goal.sparktraits.conscience": "Use your abilities to help the innocents survive!",
+  "announcement.goal.sparktraits.impostor": "Use your identity to secure victory for the killer team.",
+  "message.sparktraits.silenced_killer.ability": "You are silenced and cannot use abilities.",
+  "shop.error.sparktraits.silenced_killer": "You are silenced and cannot buy items.",
   "death_reason.sparktraits.self_realization": "self realization"
 }

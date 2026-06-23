@@ -8,6 +8,7 @@ import dev.caecorthus.sparktraits.api.TraitSelectionContext;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.doctor4t.wathe.api.Role;
+import dev.doctor4t.wathe.api.RoleSelectionContext;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.RoleAssigned;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -21,6 +22,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
 /** Builds round trait plans before Wathe sends welcome information.
@@ -44,6 +46,17 @@ public final class TraitAssignmentService {
             List<ServerPlayerEntity> players,
             int publicKillerCount
     ) {
+        return assignForMurderGameBeforeWelcome(world, gameComponent, players, publicKillerCount, Set.of());
+    }
+
+    public static int assignForMurderGameBeforeWelcome(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            List<ServerPlayerEntity> players,
+            int publicKillerCount,
+            Set<UUID> lockedRolePlayers
+    ) {
+        Set<UUID> protectedLockedRolePlayers = lockedRolePlayers == null ? Set.of() : lockedRolePlayers;
         TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(world);
         Random random = new Random(world.getRandom().nextLong());
         List<PlayerPlan> plans = new ArrayList<>();
@@ -72,7 +85,7 @@ public final class TraitAssignmentService {
             forceConscienceOntoEligibleKiller(gameComponent, traitWorld, plans, random);
         }
 
-        addExtraKillersForConscience(world, gameComponent, players, plans, publicKillerCount);
+        addExtraKillersForConscience(world, gameComponent, players, plans, publicKillerCount, protectedLockedRolePlayers, random);
 
         traitWorld.clearRoundState();
         for (PlayerPlan plan : plans) {
@@ -82,6 +95,7 @@ public final class TraitAssignmentService {
             playerTraits.setActiveTraits(plan.traits(), reason);
             traitWorld.snapshotRoundTraits(plan.player().getUuid(), playerTraits.getActiveTraitIds());
         }
+        ConscienceSerialKillerService.normalizeTargets(world, gameComponent, players);
         return EffectiveTraitService.publicKillerCount(gameComponent, players);
     }
 
@@ -151,46 +165,165 @@ public final class TraitAssignmentService {
             GameWorldComponent gameComponent,
             List<ServerPlayerEntity> players,
             List<PlayerPlan> plans,
-            int publicKillerCount
+            int publicKillerCount,
+            Set<UUID> lockedRolePlayers,
+            Random random
     ) {
         int originalKillerCount = EffectiveTraitService.originalKillerCount(gameComponent);
         int conscienceCount = countTrait(plans, ConscienceTrait.ID);
         int extraKillers = EffectiveTraitService.requiredExtraKillersForConscience(publicKillerCount, originalKillerCount, conscienceCount);
+        RoleSelectionContext selectionContext = createRoleSelectionContext(world, gameComponent, players);
 
         for (int i = 0; i < extraKillers; i++) {
-            PlayerPlan extraKiller = chooseExtraKiller(gameComponent, plans);
+            PlayerPlan extraKiller = chooseExtraKiller(gameComponent, plans, lockedRolePlayers);
             if (extraKiller == null) {
                 SparkTraits.LOGGER.warn("Could not add an extra killer for Conscience compensation.");
                 return;
             }
+            Role compensationRole = chooseConscienceCompensationKillerRole(gameComponent, selectionContext, random);
+            if (compensationRole == null) {
+                SparkTraits.LOGGER.warn("Could not add an extra killer for Conscience compensation because no enabled killer role is available.");
+                return;
+            }
             extraKiller.clearRandomTraits();
-            gameComponent.addRole(extraKiller.player(), WatheRoles.KILLER);
-            RoleAssigned.EVENT.invoker().assignRole(extraKiller.player(), WatheRoles.KILLER);
+            gameComponent.addRole(extraKiller.player(), compensationRole);
+            RoleAssigned.EVENT.invoker().assignRole(extraKiller.player(), compensationRole);
             TraitPlayerComponent.KEY.get(extraKiller.player()).sync();
             gameComponent.sync();
         }
     }
 
-    private static PlayerPlan chooseExtraKiller(GameWorldComponent gameComponent, List<PlayerPlan> plans) {
+    private static PlayerPlan chooseExtraKiller(
+            GameWorldComponent gameComponent,
+            List<PlayerPlan> plans,
+            Set<UUID> lockedRolePlayers
+    ) {
         for (PlayerPlan plan : plans) {
-            if (canBecomeExtraKiller(gameComponent, plan) && plan.isUnlocked()) {
+            if (canBecomeExtraKiller(gameComponent, plan, lockedRolePlayers)
+                    && gameComponent.isRole(plan.player(), WatheRoles.CIVILIAN)
+                    && plan.isUnlocked()) {
                 return plan;
             }
         }
         for (PlayerPlan plan : plans) {
-            if (canBecomeExtraKiller(gameComponent, plan) && !plan.hasLocks()) {
+            if (canBecomeExtraKiller(gameComponent, plan, lockedRolePlayers)
+                    && gameComponent.isRole(plan.player(), WatheRoles.CIVILIAN)
+                    && !plan.hasLocks()) {
+                return plan;
+            }
+        }
+        for (PlayerPlan plan : plans) {
+            if (canBecomeExtraKiller(gameComponent, plan, lockedRolePlayers) && plan.isUnlocked()) {
+                return plan;
+            }
+        }
+        for (PlayerPlan plan : plans) {
+            if (canBecomeExtraKiller(gameComponent, plan, lockedRolePlayers) && !plan.hasLocks()) {
                 return plan;
             }
         }
         return null;
     }
 
-    private static boolean canBecomeExtraKiller(GameWorldComponent gameComponent, PlayerPlan plan) {
+    private static boolean canBecomeExtraKiller(
+            GameWorldComponent gameComponent,
+            PlayerPlan plan,
+            Set<UUID> lockedRolePlayers
+    ) {
         Role role = gameComponent.getRole(plan.player());
+        return canUseAsConscienceCompensationTarget(
+                role,
+                plan.traits(),
+                lockedRolePlayers.contains(plan.player().getUuid())
+        );
+    }
+
+    static boolean canUseAsConscienceCompensationTarget(
+            Role role,
+            Collection<Identifier> traits,
+            boolean roleLocked
+    ) {
         return role != null
-                && !role.canUseKiller()
-                && !plan.traits().contains(ImpostorTrait.ID)
-                && !plan.traits().contains(ConscienceTrait.ID);
+                && !roleLocked
+                && EffectiveTraitService.isOriginalCivilian(role)
+                && role != WatheRoles.VIGILANTE
+                && role != WatheRoles.VETERAN
+                && !traits.contains(ImpostorTrait.ID)
+                && !traits.contains(ConscienceTrait.ID);
+    }
+
+    private static Role chooseConscienceCompensationKillerRole(
+            GameWorldComponent gameComponent,
+            RoleSelectionContext selectionContext,
+            Random random
+    ) {
+        Role basicKillerFallback = null;
+        List<Role> specialKillerCandidates = new ArrayList<>();
+        for (Role role : WatheRoles.ROLES) {
+            if (!canUseAsConscienceCompensationKiller(
+                    role,
+                    gameComponent.isRoleEnabled(role),
+                    !gameComponent.getAllWithRole(role).isEmpty(),
+                    role.shouldAppear(selectionContext)
+            )) {
+                continue;
+            }
+            if (role == WatheRoles.KILLER) {
+                basicKillerFallback = role;
+                continue;
+            }
+            specialKillerCandidates.add(role);
+        }
+        return pickShuffledConscienceCompensationKillerRole(specialKillerCandidates, basicKillerFallback, random);
+    }
+
+    static Role pickShuffledConscienceCompensationKillerRole(
+            List<Role> specialKillerCandidates,
+            Role basicKillerFallback,
+            Random random
+    ) {
+        if (!specialKillerCandidates.isEmpty()) {
+            Collections.shuffle(specialKillerCandidates, random);
+            return specialKillerCandidates.getFirst();
+        }
+        return basicKillerFallback;
+    }
+
+    static boolean canUseAsConscienceCompensationKiller(
+            Role role,
+            boolean roleEnabled,
+            boolean alreadyAssigned,
+            boolean shouldAppear
+    ) {
+        return role != null
+                && role.canUseKiller()
+                && roleEnabled
+                && shouldAppear
+                && (role == WatheRoles.KILLER || (!WatheRoles.VANILLA_ROLES.contains(role) && !alreadyAssigned));
+    }
+
+    private static RoleSelectionContext createRoleSelectionContext(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            List<ServerPlayerEntity> players
+    ) {
+        int totalPlayerCount = players.size();
+        return new RoleSelectionContext(
+                world,
+                gameComponent,
+                Collections.unmodifiableList(players),
+                totalPlayerCount,
+                targetRoleCount(totalPlayerCount, gameComponent.getKillerDividend()),
+                targetRoleCount(totalPlayerCount, gameComponent.getNeutralDividend()),
+                targetRoleCount(totalPlayerCount, gameComponent.getVigilanteDividend())
+        );
+    }
+
+    private static int targetRoleCount(int playerCount, int dividend) {
+        if (dividend <= 0) {
+            return 0;
+        }
+        return (int) Math.floor((double) playerCount / dividend);
     }
 
     private static boolean containsTrait(List<PlayerPlan> plans, Identifier traitId) {

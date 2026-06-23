@@ -1,11 +1,14 @@
 {
   "gui.sparktraits.traits": "天赋",
   "trait.sparktraits.last_stand.name": "背水一战",
-  "trait.sparktraits.last_stand.description": "有什么信念支撑你继续活下去。",
+  "trait.sparktraits.last_stand.description": "信念让你撑过最后一刻。",
   "trait.sparktraits.conscience.name": "善良",
-  "trait.sparktraits.conscience.description": "你的良知仍然知道谁值得活下去。",
+  "trait.sparktraits.conscience.description": "你的良知仍知道谁值得活下去。",
   "trait.sparktraits.impostor.name": "内鬼",
   "trait.sparktraits.impostor.description": "你知道真相属于哪一边。",
-  "announcement.goal.sparktraits.conscience": "用你的能力帮助好人活下去！",
-  "death_reason.sparktraits.self_realization": "自我了解"
+  "announcement.goal.sparktraits.conscience": "使用你的能力帮助好人生还！",
+  "announcement.goal.sparktraits.impostor": "运用你的身份为杀手阵营获取胜利",
+  "message.sparktraits.silenced_killer.ability": "你被静语，无法使用技能",
+  "shop.error.sparktraits.silenced_killer": "你被静语，无法购买物品",
+  "death_reason.sparktraits.self_realization": "自我觉悟"
 }

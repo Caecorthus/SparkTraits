@@ -13,9 +13,6 @@ public interface GameWorldComponentAccessor {
     @Accessor("deadPlayers")
     HashSet<UUID> sparktraits$getDeadPlayers();
 
-    @Accessor("preventGunPickup")
-    HashSet<UUID> sparktraits$getPreventGunPickup();
-
     @Accessor("world")
     World sparktraits$getWorld();
 }

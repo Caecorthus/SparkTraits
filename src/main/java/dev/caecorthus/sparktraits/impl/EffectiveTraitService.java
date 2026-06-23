@@ -18,6 +18,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
+import org.agmas.noellesroles.morphling.MorphlingPlayerComponent;
 import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
 
 import java.util.Collection;
@@ -31,6 +32,7 @@ import java.util.UUID;
 public final class EffectiveTraitService {
     public static final int CONSCIENCE_COLOR = 0xFFDEF8;
     public static final int IMPOSTOR_COLOR = 0x7D0000;
+    public static final int KILLER_INSTINCT_COLOR = 0x990000;
     public static final int IMPOSTOR_INSTINCT_COLOR = 0x0013FF;
     public static final int CIVILIAN_INSTINCT_COLOR = 0x4EDD35;
     public static final double CONSCIENCE_INSTINCT_RANGE_SQUARED = 100.0;
@@ -57,9 +59,16 @@ public final class EffectiveTraitService {
         });
         ShouldShowCohort.EVENT.register((viewer, target) -> {
             GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
+            Collection<Identifier> viewerTraits = TraitPlayerComponent.KEY.get(viewer).getActiveTraitIds();
+            Boolean morphlingOverride = conscienceMorphlingCohortOverride(viewer, target, game, viewerTraits);
+            if (morphlingOverride != null) {
+                return morphlingOverride
+                        ? ShouldShowCohort.CohortResult.show(ShouldShowCohort.CohortResult.PRIORITY_HIGH)
+                        : ShouldShowCohort.CohortResult.hide();
+            }
             Boolean override = cohortOverride(
                     game.getRole(viewer),
-                    TraitPlayerComponent.KEY.get(viewer).getActiveTraitIds(),
+                    viewerTraits,
                     game.getRole(target),
                     instinctVisibleTraitIds(target)
             );
@@ -117,11 +126,149 @@ public final class EffectiveTraitService {
             boolean killerInstinctHidden,
             boolean spiritProjecting
     ) {
+        return shouldConscienceInstinctHighlightTarget(
+                instinctEnabled,
+                targetPlayingAndAlive,
+                targetSpectatingOrCreative,
+                targetDistanceSquared,
+                lastStandPending,
+                killerInstinctHidden,
+                spiritProjecting,
+                false
+        );
+    }
+
+    public static boolean shouldConscienceInstinctHighlightTarget(
+            boolean instinctEnabled,
+            boolean targetPlayingAndAlive,
+            boolean targetSpectatingOrCreative,
+            double targetDistanceSquared,
+            boolean lastStandPending,
+            boolean killerInstinctHidden,
+            boolean spiritProjecting,
+            boolean ignoreRangeLimit
+    ) {
         return instinctEnabled
                 && !targetSpectatingOrCreative
                 && !spiritProjecting
-                && targetDistanceSquared <= CONSCIENCE_INSTINCT_RANGE_SQUARED
+                && (ignoreRangeLimit || targetDistanceSquared <= CONSCIENCE_INSTINCT_RANGE_SQUARED)
                 && (targetPlayingAndAlive || lastStandPending || killerInstinctHidden);
+    }
+
+    /** Conscience Morphling copies only the disguise target's effective alignment.
+     *  善良变形者只复制伪装目标的有效阵营，不复制临时高亮或隐藏状态。 */
+    public static boolean shouldHideConscienceMorphlingFromInstinct(
+            boolean targetHasConscience,
+            boolean targetIsMorphling,
+            boolean targetCorpseMode
+    ) {
+        return targetHasConscience && targetIsMorphling && targetCorpseMode;
+    }
+
+    public static boolean shouldUseConscienceMorphlingDisguiseInstinct(
+            boolean targetHasConscience,
+            boolean targetIsMorphling,
+            boolean targetCorpseMode,
+            boolean targetMorphing,
+            boolean hasDisguise
+    ) {
+        return targetHasConscience && targetIsMorphling && !targetCorpseMode && targetMorphing && hasDisguise;
+    }
+
+    public static int effectiveKillerInstinctColor(Role targetRole, Collection<Identifier> targetTraits) {
+        return effectiveKillerInstinctColor(targetRole, hasConscience(targetTraits), hasImpostor(targetTraits));
+    }
+
+    public static int effectiveKillerInstinctColor(
+            Role targetRole,
+            boolean targetHasConscience,
+            boolean targetHasImpostor
+    ) {
+        if (targetHasImpostor) {
+            return IMPOSTOR_INSTINCT_COLOR;
+        }
+        if (targetHasConscience) {
+            return CIVILIAN_INSTINCT_COLOR;
+        }
+        return isOriginalKiller(targetRole) ? KILLER_INSTINCT_COLOR : CIVILIAN_INSTINCT_COLOR;
+    }
+
+    public static Boolean conscienceMorphlingCohortOverride(
+            Role viewerRole,
+            Collection<Identifier> viewerTraits,
+            boolean targetHasConscience,
+            boolean targetIsMorphling,
+            boolean targetCorpseMode,
+            boolean targetMorphing,
+            Role disguiseRole,
+            Collection<Identifier> disguiseTraits
+    ) {
+        return conscienceMorphlingCohortOverride(
+                viewerRole,
+                viewerTraits,
+                targetHasConscience,
+                targetIsMorphling,
+                targetCorpseMode,
+                targetMorphing,
+                disguiseRole,
+                hasConscience(disguiseTraits),
+                hasImpostor(disguiseTraits)
+        );
+    }
+
+    public static Boolean conscienceMorphlingCohortOverride(
+            Role viewerRole,
+            Collection<Identifier> viewerTraits,
+            boolean targetHasConscience,
+            boolean targetIsMorphling,
+            boolean targetCorpseMode,
+            boolean targetMorphing,
+            Role disguiseRole,
+            boolean disguiseHasConscience,
+            boolean disguiseHasImpostor
+    ) {
+        if (shouldHideConscienceMorphlingFromInstinct(targetHasConscience, targetIsMorphling, targetCorpseMode)) {
+            return Boolean.FALSE;
+        }
+        if (!shouldUseConscienceMorphlingDisguiseInstinct(
+                targetHasConscience,
+                targetIsMorphling,
+                targetCorpseMode,
+                targetMorphing,
+                disguiseRole != null
+        )) {
+            return null;
+        }
+        if (!isEffectiveKiller(viewerRole, viewerTraits)) {
+            return null;
+        }
+        return disguiseHasImpostor || (!disguiseHasConscience && isOriginalKiller(disguiseRole))
+                ? Boolean.TRUE
+                : Boolean.FALSE;
+    }
+
+    private static Boolean conscienceMorphlingCohortOverride(
+            PlayerEntity viewer,
+            PlayerEntity target,
+            GameWorldComponent game,
+            Collection<Identifier> viewerTraits
+    ) {
+        MorphlingPlayerComponent morphling = MorphlingPlayerComponent.KEY.get(target);
+        UUID disguise = morphling.disguise;
+        Role disguiseRole = disguise == null ? null : game.getRole(disguise);
+        PlayerEntity disguisePlayer = disguise == null ? null : target.getWorld().getPlayerByUuid(disguise);
+
+        return conscienceMorphlingCohortOverride(
+                game.getRole(viewer),
+                viewerTraits,
+                isConscienceVisibleToInstinct(target),
+                game.isRole(target, Noellesroles.MORPHLING),
+                morphling.corpseMode,
+                morphling.getMorphTicks() > 0,
+                disguiseRole,
+                disguisePlayer != null && isConscienceVisibleToInstinct(disguisePlayer),
+                disguisePlayer != null && isImpostorVisibleToInstinct(disguisePlayer)
+        );
     }
 
     private static Collection<Identifier> instinctVisibleTraitIds(PlayerEntity player) {
@@ -148,11 +295,26 @@ public final class EffectiveTraitService {
     }
 
     public static boolean canSelectConscience(Role role, GameWorldComponent gameComponent, Collection<Identifier> selectedTraits) {
-        return canSelectConscience(role, originalKillerCount(gameComponent), selectedTraits);
+        return canSelectConscience(
+                role,
+                originalKillerCount(gameComponent),
+                isRoleEnabled(gameComponent, role),
+                selectedTraits
+        );
     }
 
     public static boolean canSelectConscience(Role role, int originalKillerCount, Collection<Identifier> selectedTraits) {
+        return canSelectConscience(role, originalKillerCount, true, selectedTraits);
+    }
+
+    public static boolean canSelectConscience(
+            Role role,
+            int originalKillerCount,
+            boolean roleEnabled,
+            Collection<Identifier> selectedTraits
+    ) {
         return originalKillerCount >= 2
+                && roleEnabled
                 && isOriginalKiller(role)
                 && !hasImpostor(selectedTraits);
     }
@@ -165,6 +327,7 @@ public final class EffectiveTraitService {
         return originalKillerCount >= 2
                 && isOriginalCivilian(role)
                 && !isUndercover(role)
+                && !isImpostorBlockedRole(role)
                 && !selectedTraits.contains(LastStandTrait.ID)
                 && !hasConscience(selectedTraits);
     }
@@ -186,12 +349,25 @@ public final class EffectiveTraitService {
         return role != null && role.canUseKiller();
     }
 
+    private static boolean isRoleEnabled(GameWorldComponent gameComponent, Role role) {
+        return gameComponent != null && role != null && gameComponent.isRoleEnabled(role);
+    }
+
     public static boolean isOriginalCivilian(Role role) {
         return role != null && role.isInnocent();
     }
 
     public static boolean isUndercover(Role role) {
         return role != null && role.identifier().equals(Noellesroles.UNDERCOVER_ID);
+    }
+
+    /** Keeps high-agency innocent roles from being converted into Impostor.
+     *  防止强机制无辜者角色被转换成内鬼。 */
+    private static boolean isImpostorBlockedRole(Role role) {
+        return role != null
+                && (role == WatheRoles.VIGILANTE
+                || role == WatheRoles.VETERAN
+                || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID));
     }
 
     public static boolean countsAsPublicKiller(Role role, Collection<Identifier> traits) {
@@ -321,6 +497,14 @@ public final class EffectiveTraitService {
         return victimRole != null && !isEffectiveCivilian(victimRole, victimTraits);
     }
 
+    /**
+     * Keeps NoellesRoles Jester Moment tied to unflipped original innocents.
+     * 让 NoellesRoles 的小丑时刻只由未被内鬼翻阵营的原始好人触发。
+     */
+    public static boolean shouldTriggerJesterMoment(Role killerRole, Collection<Identifier> killerTraits) {
+        return isOriginalCivilian(killerRole) && !hasImpostor(killerTraits);
+    }
+
     public static boolean shouldPunishConscienceKill(boolean victimIsEffectiveCivilian, Identifier deathReason) {
         return shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, null);
     }
@@ -354,7 +538,10 @@ public final class EffectiveTraitService {
             if (shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, poisonSource) && GameFunctions.isPlayerPlayingAndAlive(killer)) {
                 GameFunctions.killPlayer(killer, true, null, GameConstants.DeathReasons.SHOT_INNOCENT, true);
             } else if (shouldRewardConscienceKill(victimRole, victimTraits)) {
-                PlayerShopComponent.KEY.get(killer).addToBalance(GameConstants.MONEY_PER_KILL);
+                int reward = ConscienceSerialKillerService.rewardForConscienceKill(killer, victim, true);
+                if (reward > 0) {
+                    PlayerShopComponent.KEY.get(killer).addToBalance(reward);
+                }
             }
         } else if (hasImpostor(killer) && victimIsEffectiveCivilian && ShopUtils.canAccessShop(killer)) {
             PlayerShopComponent.KEY.get(killer).addToBalance(TASK_MONEY_REWARD);

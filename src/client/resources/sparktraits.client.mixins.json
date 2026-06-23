@@ -4,9 +4,12 @@
   "package": "dev.caecorthus.sparktraits.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "AssassinScreenMixin",
+    "BeveragePlateBluePoisonParticleMixin",
     "LastStandHeldItemRendererMixin",
     "MoodRendererMixin",
     "RoundTextRendererMixin",
+    "TrimmedBedBluePoisonParticleMixin",
     "TraitInventoryScreenMixin",
     "TraitRoleNameRendererMixin",
     "WatheClientMixin"

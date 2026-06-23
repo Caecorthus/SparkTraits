@@ -1,0 +1,30 @@
+package dev.caecorthus.sparktraits.impl;
+
+import dev.doctor4t.wathe.api.WatheRoles;
+import org.junit.jupiter.api.Test;
+
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class ImpostorRevolverServiceTest {
+    @Test
+    void onlyImpostorsCanBuyRevolverFromShop() {
+        assertTrue(ImpostorRevolverService.shouldAddRevolverToShop(
+                WatheRoles.CIVILIAN,
+                Set.of(ImpostorTrait.ID)
+        ));
+        assertFalse(ImpostorRevolverService.shouldAddRevolverToShop(
+                WatheRoles.CIVILIAN,
+                Set.of()
+        ));
+    }
+
+    @Test
+    void impostorRevolverCostsOneHundredFifty() {
+        assertEquals(150, ImpostorRevolverService.REVOLVER_PRICE);
+        assertEquals("sparktraits:impostor_revolver", ImpostorRevolverService.REVOLVER_SHOP_ID.toString());
+    }
+}

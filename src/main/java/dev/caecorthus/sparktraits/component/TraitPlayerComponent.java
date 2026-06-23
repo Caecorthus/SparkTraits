@@ -6,8 +6,12 @@ import dev.caecorthus.sparktraits.api.TraitAssignmentReason;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.caecorthus.sparktraits.api.TraitRemovalReason;
 import dev.caecorthus.sparktraits.api.event.TraitEvents;
+import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.ConscienceTrait;
+import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.ImpostorTrait;
+import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -19,20 +23,23 @@ import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
+import org.agmas.noellesroles.Noellesroles;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
 import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
+import org.ladysnake.cca.api.v3.component.tick.ServerTickingComponent;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Stores per-player trait state.
  * 保存玩家的天赋状态：当前局生效、下局锁定、以及未来可扩展的揭示状态。
  */
-public class TraitPlayerComponent implements AutoSyncedComponent {
+public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingComponent {
     public static final ComponentKey<TraitPlayerComponent> KEY = ComponentRegistry.getOrCreate(SparkTraits.id("traits"), TraitPlayerComponent.class);
     public static final int MAX_TRAITS = 3;
 
@@ -48,6 +55,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
     // Client-visible Last Stand pending flag for rendering and collision checks.
     // 用于客户端渲染与碰撞判断的背水一战等待复活标记。
     private boolean lastStandPending;
+    private int consciencePoisonTicks = -1;
+    private UUID consciencePoisoner;
+    private Identifier serialKillerMurdererRole;
 
     public TraitPlayerComponent(PlayerEntity player) {
         this.player = player;
@@ -94,9 +104,46 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
         return activeTraits.contains(ImpostorTrait.ID) || impostorInstinctVisible;
     }
 
+    public Identifier getSerialKillerMurdererRole() {
+        return serialKillerMurdererRole;
+    }
+
+    public int getConsciencePoisonTicks() {
+        return consciencePoisonTicks;
+    }
+
+    public boolean hasConsciencePoison() {
+        return consciencePoisonTicks > 0;
+    }
+
+    public UUID getConsciencePoisoner() {
+        return consciencePoisoner;
+    }
+
+    public void setConsciencePoisonTicks(int ticks, UUID poisoner) {
+        int normalizedTicks = ticks > 0 ? ticks : -1;
+        if (this.consciencePoisonTicks != normalizedTicks
+                || (this.consciencePoisoner == null ? poisoner != null : !this.consciencePoisoner.equals(poisoner))) {
+            this.consciencePoisonTicks = normalizedTicks;
+            this.consciencePoisoner = normalizedTicks > 0 ? poisoner : null;
+            sync();
+        }
+    }
+
+    public void clearConsciencePoison() {
+        setConsciencePoisonTicks(-1, null);
+    }
+
     public void setLastStandPending(boolean lastStandPending) {
         if (this.lastStandPending != lastStandPending) {
             this.lastStandPending = lastStandPending;
+            sync();
+        }
+    }
+
+    public void setSerialKillerMurdererRole(Identifier serialKillerMurdererRole) {
+        if (this.serialKillerMurdererRole == null ? serialKillerMurdererRole != null : !this.serialKillerMurdererRole.equals(serialKillerMurdererRole)) {
+            this.serialKillerMurdererRole = serialKillerMurdererRole;
             sync();
         }
     }
@@ -155,7 +202,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
 
     public void clearActiveTraits(TraitRemovalReason reason) {
         if (activeTraits.isEmpty() && revealedTraits.isEmpty() && !killerInstinctHidden && !lastStandPending
-                && !conscienceInstinctVisible && !impostorInstinctVisible) {
+                && consciencePoisonTicks <= 0
+                && !conscienceInstinctVisible && !impostorInstinctVisible && serialKillerMurdererRole == null) {
             return;
         }
         if (player instanceof ServerPlayerEntity serverPlayer) {
@@ -173,6 +221,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
         conscienceInstinctVisible = false;
         impostorInstinctVisible = false;
         lastStandPending = false;
+        consciencePoisonTicks = -1;
+        consciencePoisoner = null;
+        serialKillerMurdererRole = null;
         sync();
     }
 
@@ -201,6 +252,35 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
     }
 
     @Override
+    public void serverTick() {
+        if (consciencePoisonTicks <= 0) {
+            return;
+        }
+        consciencePoisonTicks--;
+        if (consciencePoisonTicks > 0) {
+            return;
+        }
+
+        UUID poisoner = consciencePoisoner;
+        consciencePoisonTicks = -1;
+        consciencePoisoner = null;
+        sync();
+
+        if (!(player instanceof ServerPlayerEntity serverPlayer)) {
+            return;
+        }
+        GameWorldComponent gameComponent = GameWorldComponent.KEY.get(player.getWorld());
+        if (EffectiveTraitService.isEffectiveCivilian(gameComponent.getRole(player), activeTraits)) {
+            return;
+        }
+        ServerPlayerEntity killer = null;
+        if (poisoner != null && player.getWorld().getPlayerByUuid(poisoner) instanceof ServerPlayerEntity serverPoisoner) {
+            killer = serverPoisoner;
+        }
+        GameFunctions.killPlayer(serverPlayer, true, killer, GameConstants.DeathReasons.POISON);
+    }
+
+    @Override
     public void writeSyncPacket(RegistryByteBuf buf, ServerPlayerEntity recipient) {
         boolean owner = recipient == player;
         boolean spectator = GameFunctions.isPlayerSpectatingOrCreative(recipient);
@@ -214,6 +294,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
         buf.writeBoolean(lastStandPending);
         buf.writeBoolean(activeTraits.contains(ConscienceTrait.ID));
         buf.writeBoolean(activeTraits.contains(ImpostorTrait.ID));
+        buf.writeVarInt(visibleConsciencePoisonTicks(recipient, spectator));
+        writeOptionalIdentifier(buf, owner ? serialKillerMurdererRole : null);
     }
 
     @Override
@@ -225,6 +307,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
         lastStandPending = buf.readBoolean();
         conscienceInstinctVisible = buf.readBoolean();
         impostorInstinctVisible = buf.readBoolean();
+        consciencePoisonTicks = buf.readVarInt();
+        if (consciencePoisonTicks <= 0) {
+            consciencePoisonTicks = -1;
+        }
+        serialKillerMurdererRole = readOptionalIdentifier(buf);
     }
 
     @Override
@@ -232,6 +319,15 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
         tag.put("ActiveTraits", toNbt(activeTraits));
         tag.put("PendingTraits", toNbt(pendingTraits));
         tag.put("RevealedTraits", toNbt(revealedTraits));
+        if (serialKillerMurdererRole != null) {
+            tag.putString("SerialKillerMurdererRole", serialKillerMurdererRole.toString());
+        }
+        if (consciencePoisonTicks > 0) {
+            tag.putInt("ConsciencePoisonTicks", consciencePoisonTicks);
+            if (consciencePoisoner != null) {
+                tag.putUuid("ConsciencePoisoner", consciencePoisoner);
+            }
+        }
     }
 
     @Override
@@ -243,9 +339,19 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
         conscienceInstinctVisible = false;
         impostorInstinctVisible = false;
         lastStandPending = false;
+        consciencePoisonTicks = -1;
+        consciencePoisoner = null;
+        serialKillerMurdererRole = null;
         fromNbt(tag.getList("ActiveTraits", NbtElement.STRING_TYPE), activeTraits);
         fromNbt(tag.getList("PendingTraits", NbtElement.STRING_TYPE), pendingTraits);
         fromNbt(tag.getList("RevealedTraits", NbtElement.STRING_TYPE), revealedTraits);
+        if (tag.contains("SerialKillerMurdererRole", NbtElement.STRING_TYPE)) {
+            serialKillerMurdererRole = Identifier.tryParse(tag.getString("SerialKillerMurdererRole"));
+        }
+        if (tag.contains("ConsciencePoisonTicks")) {
+            consciencePoisonTicks = tag.getInt("ConsciencePoisonTicks");
+            consciencePoisoner = tag.containsUuid("ConsciencePoisoner") ? tag.getUuid("ConsciencePoisoner") : null;
+        }
     }
 
     private static NbtList toNbt(Collection<Identifier> ids) {
@@ -279,6 +385,16 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
         return Set.of();
     }
 
+    private int visibleConsciencePoisonTicks(ServerPlayerEntity recipient, boolean spectator) {
+        GameWorldComponent gameComponent = GameWorldComponent.KEY.get(recipient.getWorld());
+        boolean canSeeBluePoison = ConsciencePoisonerService.shouldShowHiddenBluePoisonParticles(
+                ConsciencePoisonerService.isConsciencePoisoner(recipient, gameComponent),
+                gameComponent.isRole(recipient, Noellesroles.TOXICOLOGIST),
+                spectator
+        );
+        return canSeeBluePoison ? consciencePoisonTicks : -1;
+    }
+
     private static void writeIdentifierSet(RegistryByteBuf buf, Collection<Identifier> ids) {
         buf.writeVarInt(ids.size());
         for (Identifier id : ids) {
@@ -295,5 +411,19 @@ public class TraitPlayerComponent implements AutoSyncedComponent {
                 ids.add(id);
             }
         }
+    }
+
+    private static void writeOptionalIdentifier(RegistryByteBuf buf, Identifier id) {
+        buf.writeBoolean(id != null);
+        if (id != null) {
+            buf.writeString(id.toString());
+        }
+    }
+
+    private static Identifier readOptionalIdentifier(RegistryByteBuf buf) {
+        if (!buf.readBoolean()) {
+            return null;
+        }
+        return Identifier.tryParse(buf.readString());
     }
 }

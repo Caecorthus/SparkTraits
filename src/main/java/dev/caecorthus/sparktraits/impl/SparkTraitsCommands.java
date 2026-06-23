@@ -130,9 +130,9 @@ public final class SparkTraitsCommands {
         for (ServerPlayerEntity player : players) {
             TraitPlayerComponent component = TraitPlayerComponent.KEY.get(player);
             if (action == PlayerTraitAction.ADD) {
-                AddResult result = canAddPending(component, trait);
-                if (result != AddResult.OK) {
-                    source.sendFeedback(() -> Text.literal("Skipped " + player.getGameProfile().getName() + ": " + result.message), false);
+                AddResult result = canAddPending(source, player, component, trait);
+                if (!result.ok()) {
+                    source.sendFeedback(() -> Text.literal("Skipped " + player.getGameProfile().getName() + ": " + result.message()), false);
                     continue;
                 }
                 if (component.addPendingTrait(trait.id())) {
@@ -167,16 +167,27 @@ public final class SparkTraitsCommands {
         return traitId.toString();
     }
 
-    private static AddResult canAddPending(TraitPlayerComponent component, Trait trait) {
+    private static AddResult canAddPending(ServerCommandSource source, ServerPlayerEntity player, TraitPlayerComponent component, Trait trait) {
         Collection<Identifier> pending = component.getPendingTraitIds();
         if (pending.contains(trait.id())) {
-            return AddResult.ALREADY_PRESENT;
+            return AddResult.failure("trait is already pending");
         }
         if (pending.size() >= TraitPlayerComponent.MAX_TRAITS) {
-            return AddResult.FULL;
+            return AddResult.failure("pending trait slots are full");
         }
         if (!TraitRules.isCompatibleWithAll(trait, pending)) {
-            return AddResult.INCOMPATIBLE;
+            return AddResult.failure("trait is incompatible with another pending trait");
+        }
+        TraitLockValidationService.RoleConflict conflict = TraitLockValidationService.findAudienceConflict(
+                trait,
+                TraitLockValidationService.forcedRoleFor(source, player)
+        );
+        if (conflict != null) {
+            return AddResult.failure(TraitLockValidationService.addTraitRoleConflictMessage(trait, conflict.role()));
+        }
+        ServerPlayerEntity uniqueOwner = TraitLockValidationService.findOtherPendingUniqueTraitOwner(source.getServer(), player, trait);
+        if (uniqueOwner != null) {
+            return AddResult.failure(TraitLockValidationService.lockUniqueTraitConflictMessage(uniqueOwner, trait));
         }
         return AddResult.OK;
     }
@@ -217,16 +228,11 @@ public final class SparkTraitsCommands {
         }
     }
 
-    private enum AddResult {
-        OK("ok"),
-        FULL("pending trait slots are full"),
-        ALREADY_PRESENT("trait is already pending"),
-        INCOMPATIBLE("trait is incompatible with another pending trait");
+    private record AddResult(boolean ok, String message) {
+        private static final AddResult OK = new AddResult(true, "ok");
 
-        private final String message;
-
-        AddResult(String message) {
-            this.message = message;
+        private static AddResult failure(String message) {
+            return new AddResult(false, message);
         }
     }
 }

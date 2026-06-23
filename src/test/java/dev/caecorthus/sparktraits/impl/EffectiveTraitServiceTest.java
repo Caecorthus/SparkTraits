@@ -29,6 +29,12 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void conscienceRequiresTheOriginalKillerRoleToBeEnabled() {
+        assertFalse(EffectiveTraitService.canSelectConscience(WatheRoles.KILLER, 2, false, Set.of()));
+        assertTrue(EffectiveTraitService.canSelectConscience(WatheRoles.KILLER, 2, true, Set.of()));
+    }
+
+    @Test
     void impostorConflictsWithLastStandDuringSelection() {
         assertFalse(EffectiveTraitService.canSelectImpostor(WatheRoles.CIVILIAN, 2, Set.of(LastStandTrait.ID)));
     }
@@ -36,6 +42,13 @@ class EffectiveTraitServiceTest {
     @Test
     void undercoverCanNeverSelectImpostor() {
         assertFalse(EffectiveTraitService.canSelectImpostor(Noellesroles.UNDERCOVER, 2, Set.of()));
+    }
+
+    @Test
+    void protectedInnocentRolesCanNeverSelectImpostor() {
+        assertFalse(EffectiveTraitService.canSelectImpostor(Noellesroles.SURVIVAL_MASTER, 2, Set.of()));
+        assertFalse(EffectiveTraitService.canSelectImpostor(WatheRoles.VIGILANTE, 2, Set.of()));
+        assertFalse(EffectiveTraitService.canSelectImpostor(WatheRoles.VETERAN, 2, Set.of()));
     }
 
     @Test
@@ -138,6 +151,13 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void impostorDoesNotTriggerJesterMomentOrShotJesterPunishment() {
+        assertTrue(EffectiveTraitService.shouldTriggerJesterMoment(WatheRoles.CIVILIAN, Set.of()));
+        assertFalse(EffectiveTraitService.shouldTriggerJesterMoment(WatheRoles.CIVILIAN, Set.of(ImpostorTrait.ID)));
+        assertFalse(EffectiveTraitService.shouldTriggerJesterMoment(WatheRoles.KILLER, Set.of()));
+    }
+
+    @Test
     void effectiveMoodTypeOverridesOriginalRoleMood() {
         assertEquals(Role.MoodType.REAL, EffectiveTraitService.effectiveMoodType(WatheRoles.KILLER, Set.of(ConscienceTrait.ID)));
         assertEquals(Role.MoodType.FAKE, EffectiveTraitService.effectiveMoodType(WatheRoles.CIVILIAN, Set.of(ImpostorTrait.ID)));
@@ -152,8 +172,112 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void conscienceBomberBombHolderIgnoresInstinctRangeLimit() {
+        assertTrue(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, true, false, 400.0, false, false, false, true));
+        assertFalse(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, true, false, 400.0, false, false, false, false));
+    }
+
+    @Test
     void conscienceInstinctSkipsProjectingSpiritTargets() {
         assertFalse(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, true, false, 1.0, false, false, true));
+        assertFalse(EffectiveTraitService.shouldConscienceInstinctHighlightTarget(true, true, false, 400.0, false, false, true, true));
+    }
+
+    @Test
+    void conscienceMorphlingCorpseModeHidesFromInstinct() {
+        assertTrue(EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(true, true, true));
+        assertFalse(EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(true, true, false));
+        assertFalse(EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(true, false, true));
+        assertFalse(EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(false, true, true));
+    }
+
+    @Test
+    void conscienceMorphlingDisguiseUsesEffectiveAlignmentInstinctColors() {
+        assertEquals(
+                EffectiveTraitService.KILLER_INSTINCT_COLOR,
+                EffectiveTraitService.effectiveKillerInstinctColor(WatheRoles.KILLER, Set.of())
+        );
+        assertEquals(
+                EffectiveTraitService.CIVILIAN_INSTINCT_COLOR,
+                EffectiveTraitService.effectiveKillerInstinctColor(WatheRoles.KILLER, Set.of(ConscienceTrait.ID))
+        );
+        assertEquals(
+                EffectiveTraitService.IMPOSTOR_INSTINCT_COLOR,
+                EffectiveTraitService.effectiveKillerInstinctColor(WatheRoles.CIVILIAN, Set.of(ImpostorTrait.ID))
+        );
+        assertEquals(
+                EffectiveTraitService.CIVILIAN_INSTINCT_COLOR,
+                EffectiveTraitService.effectiveKillerInstinctColor(WatheRoles.CIVILIAN, Set.of())
+        );
+    }
+
+    @Test
+    void conscienceMorphlingCohortFollowsDisguiseEffectiveAlignment() {
+        assertEquals(
+                Boolean.TRUE,
+                EffectiveTraitService.conscienceMorphlingCohortOverride(
+                        WatheRoles.KILLER,
+                        Set.of(),
+                        true,
+                        true,
+                        false,
+                        true,
+                        WatheRoles.KILLER,
+                        Set.of()
+                )
+        );
+        assertEquals(
+                Boolean.TRUE,
+                EffectiveTraitService.conscienceMorphlingCohortOverride(
+                        WatheRoles.KILLER,
+                        Set.of(),
+                        true,
+                        true,
+                        false,
+                        true,
+                        WatheRoles.CIVILIAN,
+                        Set.of(ImpostorTrait.ID)
+                )
+        );
+        assertEquals(
+                Boolean.FALSE,
+                EffectiveTraitService.conscienceMorphlingCohortOverride(
+                        WatheRoles.KILLER,
+                        Set.of(),
+                        true,
+                        true,
+                        false,
+                        true,
+                        WatheRoles.KILLER,
+                        Set.of(ConscienceTrait.ID)
+                )
+        );
+        assertEquals(
+                Boolean.FALSE,
+                EffectiveTraitService.conscienceMorphlingCohortOverride(
+                        WatheRoles.KILLER,
+                        Set.of(),
+                        true,
+                        true,
+                        true,
+                        true,
+                        WatheRoles.KILLER,
+                        Set.of()
+                )
+        );
+        assertEquals(
+                null,
+                EffectiveTraitService.conscienceMorphlingCohortOverride(
+                        WatheRoles.KILLER,
+                        Set.of(),
+                        true,
+                        true,
+                        false,
+                        false,
+                        WatheRoles.KILLER,
+                        Set.of()
+                )
+        );
     }
 
     @Test
@@ -169,5 +293,22 @@ class EffectiveTraitServiceTest {
     void conscienceCompensationKeepsPublicKillerCountStable() {
         assertEquals(1, EffectiveTraitService.requiredExtraKillersForConscience(3, 3, 1));
         assertEquals(0, EffectiveTraitService.requiredExtraKillersForConscience(3, 4, 1));
+    }
+
+    @Test
+    void transferredConscienceTimedBombsAreNonLethal() {
+        assertTrue(ConscienceBombService.shouldTrackPlacedTimedBomb(true));
+        assertFalse(ConscienceBombService.shouldTrackPlacedTimedBomb(false));
+        assertTrue(ConscienceBombService.shouldTrackTransferredTimedBomb(false, true));
+        assertTrue(ConscienceBombService.shouldTrackTransferredTimedBomb(true, false));
+        assertFalse(ConscienceBombService.shouldTrackTransferredTimedBomb(false, false));
+        assertTrue(ConscienceBombService.shouldCancelTransferredTimedBombDeath(true));
+        assertFalse(ConscienceBombService.shouldCancelTransferredTimedBombDeath(false));
+    }
+
+    @Test
+    void conscienceBombRevealRadiusIsEightBlocks() {
+        assertTrue(ConscienceBombService.isWithinRevealRadius(64.0));
+        assertFalse(ConscienceBombService.isWithinRevealRadius(64.01));
     }
 }

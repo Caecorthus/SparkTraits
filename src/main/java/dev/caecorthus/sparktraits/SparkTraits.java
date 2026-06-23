@@ -1,8 +1,10 @@
 package dev.caecorthus.sparktraits;
 
+import dev.caecorthus.sparktraits.component.SparkTraitsDataComponentTypes;
 import dev.caecorthus.sparktraits.impl.SparkTraitsCommands;
 import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.caecorthus.sparktraits.impl.SparkTraitsBuiltInTraits;
+import dev.caecorthus.sparktraits.impl.SparkTraitsParticles;
 import dev.caecorthus.sparktraits.impl.TraitGameHooks;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.util.Identifier;
@@ -19,6 +21,8 @@ public class SparkTraits implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        SparkTraitsDataComponentTypes.init();
+        SparkTraitsParticles.register();
         SparkTraitsBuiltInTraits.register();
         LastStandService.register();
         TraitGameHooks.register();

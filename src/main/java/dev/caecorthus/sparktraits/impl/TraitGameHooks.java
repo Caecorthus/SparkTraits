@@ -18,7 +18,13 @@ public final class TraitGameHooks {
 
     public static void register() {
         EffectiveTraitService.register();
+        ImpostorRevolverService.register();
+        ConscienceSerialKillerService.register();
+        ConsciencePoisonerService.register();
+        SilencedKillerRestrictionService.register();
         ResetPlayer.EVENT.register(player -> {
+            ConscienceBombService.clearTimedBomb(player);
+            ConscienceSerialKillerService.clearPlayer(player);
             LastStandService.clearPlayer(player);
             TraitPlayerComponent.KEY.get(player).clearActiveTraits(TraitRemovalReason.RESET);
         });
@@ -34,7 +40,9 @@ public final class TraitGameHooks {
                 syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
                 return;
             }
+            ConscienceSerialKillerService.handleAfterKill(victim, killer, deathReason);
             playerTraits.clearActiveTraits(TraitRemovalReason.DEATH);
+            ConscienceSerialKillerService.clearPlayer(victim);
             syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
         });
 
@@ -42,6 +50,8 @@ public final class TraitGameHooks {
             if (!(world instanceof ServerWorld serverWorld)) {
                 return;
             }
+            ConscienceBombService.clearAll();
+            ConscienceSerialKillerService.clearAll();
             LastStandService.clearRoundState(serverWorld);
             clearActiveTraits(serverWorld, gameComponent);
         });

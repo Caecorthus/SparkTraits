@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
+import dev.caecorthus.sparktraits.client.ConscienceSerialKillerHud;
 import dev.caecorthus.sparktraits.client.TraitClientTexts;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
@@ -42,6 +43,8 @@ public abstract class TraitRoleNameRendererMixin {
 
     @Inject(method = "renderHud", at = @At("TAIL"))
     private static void sparktraits$renderTraitTags(TextRenderer renderer, ClientPlayerEntity player, DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
+        ConscienceSerialKillerHud.render(renderer, player, context);
+
         if (player.getWorld().getLightLevel(LightType.BLOCK, BlockPos.ofFloored(player.getEyePos())) < 3
                 && player.getWorld().getLightLevel(LightType.SKY, BlockPos.ofFloored(player.getEyePos())) < 10) {
             return;
