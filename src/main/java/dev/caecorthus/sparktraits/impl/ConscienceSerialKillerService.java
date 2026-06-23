@@ -75,6 +75,23 @@ public final class ConscienceSerialKillerService {
         return conscienceSerialKiller && protectedTargetAlive;
     }
 
+    /** Gates Wathe's passive killer income while preserving the Conscience Serial Killer exception.
+     *  控制 Wathe 杀手随时间加钱：善良普通杀手不拿，善良连环杀手仅在保护目标存活时拿。 */
+    public static boolean shouldReceiveKillerPassiveMoney(
+            boolean canUseKillerFeatures,
+            boolean hasConscience,
+            boolean conscienceSerialKiller,
+            boolean protectedTargetAlive
+    ) {
+        if (!canUseKillerFeatures) {
+            return false;
+        }
+        if (!hasConscience) {
+            return true;
+        }
+        return shouldReceivePassiveMoney(conscienceSerialKiller, protectedTargetAlive);
+    }
+
     /** Keeps NoellesRoles target instinct as an always-visible Serial Killer outline.
      *  保留 NoellesRoles 目标本能：无距离限制，并使用连环杀手边框色。 */
     public static boolean shouldUseSerialKillerTargetHighlight(boolean conscienceSerialKiller, boolean currentTarget) {
@@ -122,6 +139,20 @@ public final class ConscienceSerialKillerService {
             return false;
         }
         return shouldReceivePassiveMoney(true, hasLivingProtectedTarget(gameComponent, player));
+    }
+
+    public static boolean shouldReceiveKillerPassiveMoney(GameWorldComponent gameComponent, PlayerEntity player) {
+        if (gameComponent == null || player == null || !gameComponent.canUseKillerFeatures(player)) {
+            return false;
+        }
+        boolean conscienceSerialKiller = isConscienceSerialKiller(player, gameComponent);
+        boolean protectedTargetAlive = conscienceSerialKiller && hasLivingProtectedTarget(gameComponent, player);
+        return shouldReceiveKillerPassiveMoney(
+                true,
+                EffectiveTraitService.hasConscience(player),
+                conscienceSerialKiller,
+                protectedTargetAlive
+        );
     }
 
     public static boolean hasLivingProtectedTarget(GameWorldComponent gameComponent, PlayerEntity player) {

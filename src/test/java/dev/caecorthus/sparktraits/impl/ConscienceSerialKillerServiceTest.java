@@ -137,6 +137,15 @@ class ConscienceSerialKillerServiceTest {
     }
 
     @Test
+    void killerPassiveMoneyKeepsConscienceSerialKillerExclusive() {
+        assertTrue(ConscienceSerialKillerService.shouldReceiveKillerPassiveMoney(true, false, false, false));
+        assertFalse(ConscienceSerialKillerService.shouldReceiveKillerPassiveMoney(false, false, false, true));
+        assertFalse(ConscienceSerialKillerService.shouldReceiveKillerPassiveMoney(true, true, false, true));
+        assertFalse(ConscienceSerialKillerService.shouldReceiveKillerPassiveMoney(true, true, true, false));
+        assertTrue(ConscienceSerialKillerService.shouldReceiveKillerPassiveMoney(true, true, true, true));
+    }
+
+    @Test
     void protectedTargetKeepsSerialKillerInstinctHighlight() {
         assertTrue(ConscienceSerialKillerService.shouldUseSerialKillerTargetHighlight(true, true));
         assertFalse(ConscienceSerialKillerService.shouldUseSerialKillerTargetHighlight(true, false));

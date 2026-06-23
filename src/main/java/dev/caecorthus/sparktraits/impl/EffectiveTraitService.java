@@ -497,6 +497,18 @@ public final class EffectiveTraitService {
         return victimRole != null && !isEffectiveCivilian(victimRole, victimTraits);
     }
 
+    /** Rewards Impostors for killing public non-killers, including neutral roles.
+     *  内鬼击杀公开非杀手时获得击杀奖励，包含好人与中立角色。 */
+    public static boolean shouldRewardImpostorKill(Role victimRole, Collection<Identifier> victimTraits) {
+        return victimRole != null
+                && victimRole != WatheRoles.NO_ROLE
+                && !isEffectiveKiller(victimRole, victimTraits);
+    }
+
+    public static int impostorKillReward(Role victimRole, Collection<Identifier> victimTraits, boolean canAccessShop) {
+        return canAccessShop && shouldRewardImpostorKill(victimRole, victimTraits) ? GameConstants.MONEY_PER_KILL : 0;
+    }
+
     /**
      * Keeps NoellesRoles Jester Moment tied to unflipped original innocents.
      * 让 NoellesRoles 的小丑时刻只由未被内鬼翻阵营的原始好人触发。
@@ -543,8 +555,11 @@ public final class EffectiveTraitService {
                     PlayerShopComponent.KEY.get(killer).addToBalance(reward);
                 }
             }
-        } else if (hasImpostor(killer) && victimIsEffectiveCivilian && ShopUtils.canAccessShop(killer)) {
-            PlayerShopComponent.KEY.get(killer).addToBalance(TASK_MONEY_REWARD);
+        } else if (hasImpostor(killer)) {
+            int reward = impostorKillReward(victimRole, victimTraits, ShopUtils.canAccessShop(killer));
+            if (reward > 0) {
+                PlayerShopComponent.KEY.get(killer).addToBalance(reward);
+            }
         }
     }
 

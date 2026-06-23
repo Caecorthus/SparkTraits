@@ -73,10 +73,6 @@ public abstract class MurderGameModeMixin {
             )
     )
     private boolean sparktraits$passiveMoneyOnlyForRealKillers(GameWorldComponent gameComponent, PlayerEntity player) {
-        if (!gameComponent.canUseKillerFeatures(player)) {
-            return false;
-        }
-        return !ConscienceSerialKillerService.isConscienceSerialKiller(player, gameComponent)
-                || ConscienceSerialKillerService.shouldReceivePassiveMoney(gameComponent, player);
+        return ConscienceSerialKillerService.shouldReceiveKillerPassiveMoney(gameComponent, player);
     }
 }
