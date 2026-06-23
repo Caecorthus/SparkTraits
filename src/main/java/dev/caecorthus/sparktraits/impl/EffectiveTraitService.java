@@ -279,6 +279,20 @@ public final class EffectiveTraitService {
         return isOriginalCivilian(role);
     }
 
+    /** Resolves round-end winner membership through effective alignment.
+     *  通过有效阵营判断回合结束时玩家是否属于胜利方。 */
+    public static boolean didEffectiveTeamWin(
+            GameFunctions.WinStatus winStatus,
+            Role role,
+            Collection<Identifier> traits
+    ) {
+        return switch (winStatus) {
+            case KILLERS -> isEffectiveKiller(role, traits);
+            case PASSENGERS, TIME -> isEffectiveCivilian(role, traits);
+            default -> false;
+        };
+    }
+
     public static Role.MoodType effectiveMoodType(PlayerEntity player, Role role) {
         if (hasConscience(player)) {
             return Role.MoodType.REAL;

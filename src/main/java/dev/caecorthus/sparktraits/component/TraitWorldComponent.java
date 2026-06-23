@@ -34,6 +34,9 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     private final World world;
     private final LinkedHashSet<Identifier> disabledTraits = new LinkedHashSet<>();
     private final LinkedHashSet<Identifier> usedUniqueTraits = new LinkedHashSet<>();
+    // Server-side round snapshot used when round-end data is built after a player leaves.
+    // 服务端本局天赋快照，用于玩家离线后仍能正确生成回合结束数据。
+    private final Map<UUID, List<Identifier>> roundTraitSnapshots = new HashMap<>();
     private final Map<UUID, List<Identifier>> deathTraitSnapshots = new HashMap<>();
 
     public TraitWorldComponent(World world) {
@@ -68,8 +71,17 @@ public class TraitWorldComponent implements AutoSyncedComponent {
 
     public void clearRoundState() {
         usedUniqueTraits.clear();
+        roundTraitSnapshots.clear();
         deathTraitSnapshots.clear();
         sync();
+    }
+
+    public void snapshotRoundTraits(UUID playerUuid, Collection<Identifier> traitIds) {
+        roundTraitSnapshots.put(playerUuid, List.copyOf(traitIds));
+    }
+
+    public List<Identifier> getRoundTraitSnapshot(UUID playerUuid) {
+        return roundTraitSnapshots.getOrDefault(playerUuid, List.of());
     }
 
     public void snapshotDeathTraits(UUID playerUuid, Collection<Identifier> traitIds) {

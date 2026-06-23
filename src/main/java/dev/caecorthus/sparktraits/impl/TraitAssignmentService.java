@@ -78,7 +78,9 @@ public final class TraitAssignmentService {
         for (PlayerPlan plan : plans) {
             markUniqueTraits(traitWorld, plan.traits());
             TraitAssignmentReason reason = plan.hasLocks() ? TraitAssignmentReason.PENDING_LOCK : TraitAssignmentReason.RANDOM;
-            TraitPlayerComponent.KEY.get(plan.player()).setActiveTraits(plan.traits(), reason);
+            TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(plan.player());
+            playerTraits.setActiveTraits(plan.traits(), reason);
+            traitWorld.snapshotRoundTraits(plan.player().getUuid(), playerTraits.getActiveTraitIds());
         }
         return EffectiveTraitService.publicKillerCount(gameComponent, players);
     }

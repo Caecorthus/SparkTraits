@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.impl;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.game.GameConstants;
+import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,17 @@ class EffectiveTraitServiceTest {
         assertTrue(EffectiveTraitService.isEffectiveCivilian(WatheRoles.KILLER, conscience));
         assertTrue(EffectiveTraitService.isEffectiveKiller(WatheRoles.CIVILIAN, impostor));
         assertFalse(EffectiveTraitService.isEffectiveCivilian(WatheRoles.CIVILIAN, impostor));
+    }
+
+    @Test
+    void roundEndWinnersUseEffectiveTeams() {
+        Set<Identifier> conscience = Set.of(ConscienceTrait.ID);
+        Set<Identifier> impostor = Set.of(ImpostorTrait.ID);
+
+        assertTrue(EffectiveTraitService.didEffectiveTeamWin(GameFunctions.WinStatus.PASSENGERS, WatheRoles.KILLER, conscience));
+        assertFalse(EffectiveTraitService.didEffectiveTeamWin(GameFunctions.WinStatus.KILLERS, WatheRoles.KILLER, conscience));
+        assertTrue(EffectiveTraitService.didEffectiveTeamWin(GameFunctions.WinStatus.KILLERS, WatheRoles.CIVILIAN, impostor));
+        assertFalse(EffectiveTraitService.didEffectiveTeamWin(GameFunctions.WinStatus.PASSENGERS, WatheRoles.CIVILIAN, impostor));
     }
 
     @Test
