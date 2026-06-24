@@ -18,6 +18,7 @@ public final class TraitGameHooks {
 
     public static void register() {
         EffectiveTraitService.register();
+        GlobalTraitService.register();
         ImpostorRevolverService.register();
         ConscienceSerialKillerService.register();
         ConsciencePoisonerService.register();

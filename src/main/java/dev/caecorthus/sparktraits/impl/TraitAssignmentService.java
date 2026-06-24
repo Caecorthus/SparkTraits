@@ -136,6 +136,11 @@ public final class TraitAssignmentService {
             if (!trait.canApply(new TraitSelectionContext(world, gameComponent, player, role, accepted))) {
                 continue;
             }
+            LinkedHashSet<Identifier> tentative = new LinkedHashSet<>(accepted);
+            tentative.add(traitId);
+            if (!TraitRules.canApplyAll(world, gameComponent, player, role, tentative)) {
+                continue;
+            }
             accepted.add(traitId);
         }
         return List.copyOf(accepted);

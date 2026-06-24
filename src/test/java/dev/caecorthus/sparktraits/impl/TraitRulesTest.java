@@ -1,6 +1,8 @@
 package dev.caecorthus.sparktraits.impl;
 
 import dev.caecorthus.sparktraits.api.Trait;
+import dev.caecorthus.sparktraits.api.TraitRegistry;
+import dev.caecorthus.sparktraits.api.TraitSelectionContext;
 import net.minecraft.util.Identifier;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +32,22 @@ class TraitRulesTest {
         assertFalse(TraitRules.areIncompatible(first, second));
     }
 
+    @Test
+    void fullSetValidationRechecksPreviouslyAcceptedTraits() {
+        Identifier needsNoBlocker = Identifier.of("sparktraits_test", "needs_no_blocker");
+        Identifier blocker = Identifier.of("sparktraits_test", "blocker");
+        registerIfAbsent(trait(needsNoBlocker, Set.of(), context -> !context.hasSelectedTrait(blocker)));
+        registerIfAbsent(trait(blocker));
+
+        assertTrue(TraitRules.canApplyAll(null, null, null, null, Set.of(needsNoBlocker)));
+        assertFalse(TraitRules.canApplyAll(null, null, null, null, Set.of(needsNoBlocker, blocker)));
+    }
+
     private static Trait trait(Identifier id, Identifier... incompatibleTraits) {
+        return trait(id, Set.of(incompatibleTraits), context -> true);
+    }
+
+    private static Trait trait(Identifier id, Set<Identifier> incompatibleTraits, Rule rule) {
         return new Trait() {
             @Override
             public Identifier id() {
@@ -44,8 +61,23 @@ class TraitRulesTest {
 
             @Override
             public Set<Identifier> incompatibleTraits() {
-                return Set.of(incompatibleTraits);
+                return incompatibleTraits;
+            }
+
+            @Override
+            public boolean canApply(TraitSelectionContext context) {
+                return rule.canApply(context);
             }
         };
+    }
+
+    private static void registerIfAbsent(Trait trait) {
+        if (!TraitRegistry.contains(trait.id())) {
+            TraitRegistry.register(trait);
+        }
+    }
+
+    private interface Rule {
+        boolean canApply(TraitSelectionContext context);
     }
 }

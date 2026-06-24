@@ -86,6 +86,11 @@ public final class TraitSelector {
             if (!trait.canApply(context)) {
                 continue;
             }
+            LinkedHashSet<Identifier> tentative = new LinkedHashSet<>(selected);
+            tentative.add(trait.id());
+            if (!TraitRules.canApplyAll(world, gameComponent, player, role, tentative)) {
+                continue;
+            }
             candidates.add(trait);
         }
         return candidates;

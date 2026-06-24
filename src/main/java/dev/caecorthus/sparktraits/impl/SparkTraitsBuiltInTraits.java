@@ -14,5 +14,10 @@ public final class SparkTraitsBuiltInTraits {
         TraitRegistry.register(new LastStandTrait());
         TraitRegistry.register(new ConscienceTrait());
         TraitRegistry.register(new ImpostorTrait());
+        TraitRegistry.register(new CautiousTrait());
+        TraitRegistry.register(new TaskMasterTrait());
+        TraitRegistry.register(new FastHandsTrait());
+        TraitRegistry.register(new ChildishTrait());
+        TraitRegistry.register(new SteadyTrait());
     }
 }
