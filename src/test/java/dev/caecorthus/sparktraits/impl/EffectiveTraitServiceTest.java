@@ -257,10 +257,10 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
-    void survivalMasterSkipsImpostorInstinctWhenOutOfSight() {
-        assertTrue(EffectiveTraitService.shouldSkipSurvivalMasterInstinctTarget(Noellesroles.SURVIVAL_MASTER, false));
-        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterInstinctTarget(Noellesroles.SURVIVAL_MASTER, true));
-        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterInstinctTarget(WatheRoles.CIVILIAN, false));
+    void survivalMasterSkipsImpostorInstinct() {
+        assertTrue(EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(Noellesroles.SURVIVAL_MASTER, true));
+        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(Noellesroles.SURVIVAL_MASTER, false));
+        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(WatheRoles.CIVILIAN, true));
     }
 
     @Test
