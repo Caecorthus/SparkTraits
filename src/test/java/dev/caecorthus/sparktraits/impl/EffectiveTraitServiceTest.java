@@ -158,6 +158,15 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void partyAnimalTargetRewardIgnoresTargetAlignmentAndUndercoverRole() {
+        assertFalse(EffectiveTraitService.shouldBlockPartyAnimalTargetReward(WatheRoles.CIVILIAN, Set.of()));
+        assertFalse(EffectiveTraitService.shouldBlockPartyAnimalTargetReward(WatheRoles.KILLER, Set.of()));
+        assertFalse(EffectiveTraitService.shouldBlockPartyAnimalTargetReward(WatheRoles.KILLER, Set.of(ConscienceTrait.ID)));
+        assertFalse(EffectiveTraitService.shouldBlockPartyAnimalTargetReward(WatheRoles.CIVILIAN, Set.of(ImpostorTrait.ID)));
+        assertFalse(EffectiveTraitService.shouldBlockPartyAnimalTargetReward(Noellesroles.UNDERCOVER, Set.of()));
+    }
+
+    @Test
     void conscienceGetsKillRewardOnlyForNonCivilianVictims() {
         assertFalse(EffectiveTraitService.shouldRewardConscienceKill(WatheRoles.CIVILIAN, Set.of()));
         assertTrue(EffectiveTraitService.shouldRewardConscienceKill(WatheRoles.KILLER, Set.of()));

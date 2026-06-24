@@ -1,7 +1,10 @@
 package dev.caecorthus.sparktraits.mixin;
 
+import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.caecorthus.sparktraits.impl.SilencedKillerRestrictionService;
+import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -26,6 +29,7 @@ import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = Noellesroles.class, remap = false)
@@ -140,6 +144,41 @@ public abstract class NoellesRolesPacketMixin {
     @Inject(method = "lambda$registerPackets$41", at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedPartyAnimalBuzz(PartyAnimalBuzzC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         sparktraits$blockSilencedKillerAbility(context.player(), ci);
+    }
+
+    @Redirect(
+            method = "lambda$registerPackets$41",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;canUseKillerFeatures(Lnet/minecraft/entity/player/PlayerEntity;)Z"
+            ),
+            remap = false
+    )
+    private static boolean sparktraits$partyAnimalRewardIgnoresRawKillerTarget(GameWorldComponent gameComponent, PlayerEntity target) {
+        return EffectiveTraitService.shouldBlockPartyAnimalTargetReward(
+                gameComponent.getRole(target),
+                TraitPlayerComponent.KEY.get(target).getActiveTraitIds()
+        );
+    }
+
+    @Redirect(
+            method = "lambda$registerPackets$41",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;isRole(Lnet/minecraft/entity/player/PlayerEntity;Ldev/doctor4t/wathe/api/Role;)Z",
+                    ordinal = 1
+            ),
+            remap = false
+    )
+    private static boolean sparktraits$partyAnimalRewardIgnoresUndercoverTarget(
+            GameWorldComponent gameComponent,
+            PlayerEntity target,
+            Role role
+    ) {
+        return EffectiveTraitService.shouldBlockPartyAnimalTargetReward(
+                gameComponent.getRole(target),
+                TraitPlayerComponent.KEY.get(target).getActiveTraitIds()
+        );
     }
 
     @Inject(method = "lambda$registerPackets$42", at = @At("HEAD"), cancellable = true, remap = false)

@@ -648,6 +648,12 @@ public final class EffectiveTraitService {
                 || role.equals(Noellesroles.WAITER));
     }
 
+    /** Lets Party Animal reward any non-self target; NoellesRoles keeps self-buzz and repeat-level gates.
+     *  允许派对狂对任意非自己目标发放变声奖励；自变声和重复等级限制仍由 NoellesRoles 原逻辑处理。 */
+    public static boolean shouldBlockPartyAnimalTargetReward(Role targetRole, Collection<Identifier> targetTraits) {
+        return false;
+    }
+
     public static boolean shouldRewardConscienceKill(Role victimRole, Collection<Identifier> victimTraits) {
         return victimRole != null && !isEffectiveCivilian(victimRole, victimTraits);
     }
