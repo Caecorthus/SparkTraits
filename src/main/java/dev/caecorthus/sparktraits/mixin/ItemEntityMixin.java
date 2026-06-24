@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Blocks Impostors from bypassing their paid revolver route through ground pickups.
  * 阻止内鬼通过地面拾枪绕过付费购买左轮路径。
  */
-@Mixin(ItemEntity.class)
+@Mixin(value = ItemEntity.class, priority = 2000)
 public abstract class ItemEntityMixin {
     @Shadow
     public abstract ItemStack getStack();

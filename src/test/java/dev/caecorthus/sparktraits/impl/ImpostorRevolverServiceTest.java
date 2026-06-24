@@ -34,6 +34,18 @@ class ImpostorRevolverServiceTest {
                 WatheRoles.CIVILIAN,
                 Set.of(ImpostorTrait.ID)
         ));
+        assertTrue(ImpostorRevolverService.shouldBlockNonShopGunAcquisition(
+                Set.of(ImpostorTrait.ID),
+                true
+        ));
+        assertFalse(ImpostorRevolverService.shouldBlockNonShopGunAcquisition(
+                Set.of(),
+                true
+        ));
+        assertFalse(ImpostorRevolverService.shouldBlockNonShopGunAcquisition(
+                Set.of(ImpostorTrait.ID),
+                false
+        ));
         assertTrue(ImpostorRevolverService.shouldBlockGroundGunPickup(
                 Set.of(ImpostorTrait.ID),
                 true

@@ -17,6 +17,7 @@
     "EntityCollisionMixin",
     "LivingEntityCollisionMixin",
     "ItemEntityMixin",
+    "PlayerInventoryMixin",
     "MurderGameModeMixin",
     "NoellesRolesJesterMomentMixin",
     "NoellesRolesSerialKillerRewardMixin",
@@ -29,6 +30,7 @@
     "PlayerEntityMixin",
     "SerialKillerPlayerComponentAccessor",
     "SerialKillerPlayerComponentMixin",
+    "ScreenHandlerMixin",
     "TrimmedBedBlockEntityMixin",
     "TrimmedBedBlockMixin",
     "VentHatchBlockMixin"

@@ -31,10 +31,16 @@ public final class ImpostorRevolverService {
         return traits != null && EffectiveTraitService.hasImpostor(traits);
     }
 
-    /** Keeps Impostors on the paid shop route for guns instead of ground pickups.
-     *  让内鬼只能通过付费商店路径获得枪械，不能通过地面拾取绕过。 */
-    public static boolean shouldBlockGroundGunPickup(Collection<Identifier> traits, boolean gunStack) {
+    /** Keeps Impostors on the paid shop route for guns instead of free inventory acquisition.
+     *  让内鬼只能通过付费商店路径获得枪械，不能通过免费入包绕过。 */
+    public static boolean shouldBlockNonShopGunAcquisition(Collection<Identifier> traits, boolean gunStack) {
         return gunStack && traits != null && EffectiveTraitService.hasImpostor(traits);
+    }
+
+    /** Keeps the older ground-pickup call site readable while sharing the stricter policy.
+     *  保留地面拾取调用点的可读性，同时复用更严格的非商店拿枪策略。 */
+    public static boolean shouldBlockGroundGunPickup(Collection<Identifier> traits, boolean gunStack) {
+        return shouldBlockNonShopGunAcquisition(traits, gunStack);
     }
 
     private static void addRevolver(PlayerEntity player, BuildShopEntries.ShopContext context) {
