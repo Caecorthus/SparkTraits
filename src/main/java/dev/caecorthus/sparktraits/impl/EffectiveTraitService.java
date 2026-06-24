@@ -617,6 +617,12 @@ public final class EffectiveTraitService {
         return isOriginalCivilian(killerRole) && !hasImpostor(killerTraits);
     }
 
+    /** Treat gun victims by their effective alignment for innocent-shot penalties.
+     *  枪击惩罚按目标的有效阵营判定，确保善良杀手被当作好人。 */
+    public static boolean shouldTreatGunVictimAsInnocent(Role victimRole, Collection<Identifier> victimTraits) {
+        return isEffectiveCivilian(victimRole, victimTraits);
+    }
+
     public static boolean shouldPunishConscienceKill(boolean victimIsEffectiveCivilian, Identifier deathReason) {
         return shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, null);
     }
