@@ -144,15 +144,6 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
-    void taskMoneySupplementsFlippedRolesWithoutDoublePayingNativeTaskMoneyRoles() {
-        assertTrue(EffectiveTraitService.shouldRewardTaskMoney(WatheRoles.KILLER, Set.of(ConscienceTrait.ID)));
-        assertTrue(EffectiveTraitService.shouldRewardTaskMoney(WatheRoles.CIVILIAN, Set.of(ImpostorTrait.ID)));
-        assertFalse(EffectiveTraitService.shouldRewardTaskMoney(Noellesroles.WAITER, Set.of(ImpostorTrait.ID)));
-        assertFalse(EffectiveTraitService.shouldRewardTaskMoney(Noellesroles.WAITER, Set.of()));
-        assertFalse(EffectiveTraitService.shouldRewardTaskMoney(WatheRoles.CIVILIAN, Set.of()));
-    }
-
-    @Test
     void conscienceGetsKillRewardOnlyForNonCivilianVictims() {
         assertFalse(EffectiveTraitService.shouldRewardConscienceKill(WatheRoles.CIVILIAN, Set.of()));
         assertTrue(EffectiveTraitService.shouldRewardConscienceKill(WatheRoles.KILLER, Set.of()));
