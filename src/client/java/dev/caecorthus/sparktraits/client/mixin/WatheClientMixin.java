@@ -43,6 +43,18 @@ public abstract class WatheClientMixin {
         PlayerEntity playerTarget = target instanceof PlayerEntity targetPlayer ? targetPlayer : null;
         GameWorldComponent game = playerTarget == null ? null : GameWorldComponent.KEY.get(viewer.getWorld());
         MorphlingPlayerComponent morphling = playerTarget == null ? null : MorphlingPlayerComponent.KEY.get(playerTarget);
+        TraitPlayerComponent targetTraits = playerTarget == null ? null : TraitPlayerComponent.KEY.get(playerTarget);
+
+        // Phantom invisibility must beat SparkTraits' effective-alignment instinct overlays.
+        // 幽灵隐身优先于 SparkTraits 的有效阵营本能高亮覆盖。
+        if (targetTraits != null && EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(
+                playerTarget.isInvisible(),
+                targetTraits.isLastStandPending(),
+                targetTraits.isKillerInstinctHidden()
+        )) {
+            cir.setReturnValue(-1);
+            return;
+        }
 
         // Corpse mode has priority over every non-spectator instinct overlay.
         // 尸体模式优先于所有非旁观者本能描边。
@@ -65,7 +77,6 @@ public abstract class WatheClientMixin {
             return;
         }
 
-        TraitPlayerComponent targetTraits = playerTarget == null ? null : TraitPlayerComponent.KEY.get(playerTarget);
         boolean targetHasBluePoison = targetTraits != null && targetTraits.hasConsciencePoison();
         boolean targetHasNormalPoison = playerTarget != null && PlayerPoisonComponent.KEY.get(playerTarget).poisonTicks > 0;
         if (playerTarget != null

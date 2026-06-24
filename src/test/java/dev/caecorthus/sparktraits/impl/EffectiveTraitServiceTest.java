@@ -198,6 +198,14 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void invisibleTargetsSkipSparkTraitsEffectiveInstinctOverlays() {
+        assertTrue(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(true, false, false));
+        assertFalse(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(false, false, false));
+        assertFalse(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(true, true, false));
+        assertFalse(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(true, false, true));
+    }
+
+    @Test
     void conscienceMorphlingCorpseModeHidesFromInstinct() {
         assertTrue(EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(true, true, true));
         assertFalse(EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(true, true, false));

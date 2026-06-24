@@ -113,6 +113,16 @@ public final class EffectiveTraitService {
         return lastStandPending || killerInstinctHidden || spiritProjecting;
     }
 
+    /** Keeps Phantom invisibility from leaking through SparkTraits instinct overrides.
+     *  防止幽灵隐身被 SparkTraits 的本能透视覆盖逻辑暴露。 */
+    public static boolean shouldSkipInvisibleTargetFromEffectiveInstinct(
+            boolean targetInvisible,
+            boolean lastStandPending,
+            boolean killerInstinctHidden
+    ) {
+        return targetInvisible && !lastStandPending && !killerInstinctHidden;
+    }
+
     public static boolean isSpiritProjecting(PlayerEntity player) {
         return player != null && SpiritPlayerComponent.KEY.get(player).isProjecting();
     }
