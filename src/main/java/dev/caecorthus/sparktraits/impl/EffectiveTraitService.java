@@ -485,8 +485,7 @@ public final class EffectiveTraitService {
         return role != null
                 && (role == WatheRoles.VIGILANTE
                 || role == WatheRoles.VETERAN
-                || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
-                || role.identifier().equals(Noellesroles.DEMON_HUNTER_ID));
+                || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID));
     }
 
     public static boolean countsAsPublicKiller(Role role, Collection<Identifier> traits) {

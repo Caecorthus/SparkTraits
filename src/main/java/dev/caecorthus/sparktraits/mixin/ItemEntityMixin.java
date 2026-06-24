@@ -5,11 +5,13 @@ import dev.caecorthus.sparktraits.impl.ImpostorRevolverService;
 import dev.doctor4t.wathe.index.tag.WatheItemTags;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -34,5 +36,21 @@ public abstract class ItemEntityMixin {
         )) {
             ci.cancel();
         }
+    }
+
+    @Redirect(
+            method = "onPlayerCollision",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/player/PlayerInventory;insertStack(Lnet/minecraft/item/ItemStack;)Z")
+    )
+    private boolean sparktraits$blockImpostorGroundGunInsert(PlayerInventory inventory, ItemStack stack, PlayerEntity player) {
+        // Guard the exact vanilla ground-pickup insert call even if another mixin reaches it.
+        // 即使其他 mixin 进入原版地面拾取入包调用，也在这个精确调用点拦住内鬼拿枪。
+        if (ImpostorRevolverService.shouldBlockGroundGunPickup(
+                TraitPlayerComponent.KEY.get(player).getActiveTraitIds(),
+                stack.isIn(WatheItemTags.GUNS)
+        )) {
+            return false;
+        }
+        return inventory.insertStack(stack);
     }
 }

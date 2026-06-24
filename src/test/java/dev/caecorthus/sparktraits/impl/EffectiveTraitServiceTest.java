@@ -47,9 +47,13 @@ class EffectiveTraitServiceTest {
     @Test
     void protectedInnocentRolesCanNeverSelectImpostor() {
         assertFalse(EffectiveTraitService.canSelectImpostor(Noellesroles.SURVIVAL_MASTER, 2, Set.of()));
-        assertFalse(EffectiveTraitService.canSelectImpostor(Noellesroles.DEMON_HUNTER, 2, Set.of()));
         assertFalse(EffectiveTraitService.canSelectImpostor(WatheRoles.VIGILANTE, 2, Set.of()));
         assertFalse(EffectiveTraitService.canSelectImpostor(WatheRoles.VETERAN, 2, Set.of()));
+    }
+
+    @Test
+    void demonHunterCanSelectImpostor() {
+        assertTrue(EffectiveTraitService.canSelectImpostor(Noellesroles.DEMON_HUNTER, 2, Set.of()));
     }
 
     @Test
