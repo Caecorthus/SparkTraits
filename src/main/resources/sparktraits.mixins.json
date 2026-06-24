@@ -16,6 +16,7 @@
     "ForceRoleCommandMixin",
     "EntityCollisionMixin",
     "LivingEntityCollisionMixin",
+    "ItemEntityMixin",
     "MurderGameModeMixin",
     "NoellesRolesJesterMomentMixin",
     "NoellesRolesSerialKillerRewardMixin",

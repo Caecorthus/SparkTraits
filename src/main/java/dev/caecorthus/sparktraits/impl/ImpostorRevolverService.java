@@ -31,6 +31,12 @@ public final class ImpostorRevolverService {
         return traits != null && EffectiveTraitService.hasImpostor(traits);
     }
 
+    /** Keeps Impostors on the paid shop route for guns instead of ground pickups.
+     *  让内鬼只能通过付费商店路径获得枪械，不能通过地面拾取绕过。 */
+    public static boolean shouldBlockGroundGunPickup(Collection<Identifier> traits, boolean gunStack) {
+        return gunStack && traits != null && EffectiveTraitService.hasImpostor(traits);
+    }
+
     private static void addRevolver(PlayerEntity player, BuildShopEntries.ShopContext context) {
         GameWorldComponent gameComponent = GameWorldComponent.KEY.get(player.getWorld());
         if (!shouldAddRevolverToShop(gameComponent.getRole(player), TraitPlayerComponent.KEY.get(player).getActiveTraitIds())) {

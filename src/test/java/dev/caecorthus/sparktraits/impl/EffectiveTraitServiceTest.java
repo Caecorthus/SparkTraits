@@ -180,6 +180,34 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void innocentShotPunishmentIsCancelledOnlyForImpostors() {
+        assertFalse(EffectiveTraitService.shouldCancelInnocentShotPunishment(
+                WatheRoles.KILLER,
+                Set.of(),
+                WatheRoles.CIVILIAN,
+                Set.of()
+        ));
+        assertFalse(EffectiveTraitService.shouldCancelInnocentShotPunishment(
+                WatheRoles.KILLER,
+                Set.of(),
+                WatheRoles.KILLER,
+                Set.of(ConscienceTrait.ID)
+        ));
+        assertTrue(EffectiveTraitService.shouldCancelInnocentShotPunishment(
+                WatheRoles.CIVILIAN,
+                Set.of(ImpostorTrait.ID),
+                WatheRoles.CIVILIAN,
+                Set.of()
+        ));
+        assertFalse(EffectiveTraitService.shouldCancelInnocentShotPunishment(
+                WatheRoles.CIVILIAN,
+                Set.of(ImpostorTrait.ID),
+                WatheRoles.KILLER,
+                Set.of()
+        ));
+    }
+
+    @Test
     void effectiveMoodTypeOverridesOriginalRoleMood() {
         assertEquals(Role.MoodType.REAL, EffectiveTraitService.effectiveMoodType(WatheRoles.KILLER, Set.of(ConscienceTrait.ID)));
         assertEquals(Role.MoodType.FAKE, EffectiveTraitService.effectiveMoodType(WatheRoles.CIVILIAN, Set.of(ImpostorTrait.ID)));

@@ -52,7 +52,12 @@ public final class EffectiveTraitService {
         });
         ShouldPunishGunShooter.EVENT.register((shooter, victim) -> {
             GameWorldComponent game = GameWorldComponent.KEY.get(shooter.getWorld());
-            if (isEffectiveKiller(shooter, game) && isEffectiveCivilian(victim, game)) {
+            if (shouldCancelInnocentShotPunishment(
+                    game.getRole(shooter),
+                    TraitPlayerComponent.KEY.get(shooter).getActiveTraitIds(),
+                    game.getRole(victim),
+                    TraitPlayerComponent.KEY.get(victim).getActiveTraitIds()
+            )) {
                 return ShouldPunishGunShooter.PunishResult.cancel();
             }
             return null;
@@ -621,6 +626,19 @@ public final class EffectiveTraitService {
      *  枪击惩罚按目标的有效阵营判定，确保善良杀手被当作好人。 */
     public static boolean shouldTreatGunVictimAsInnocent(Role victimRole, Collection<Identifier> victimTraits) {
         return isEffectiveCivilian(victimRole, victimTraits);
+    }
+
+    /** Cancels Wathe's innocent-shot punishment only for Impostor shots.
+     *  只在内鬼开枪时取消 Wathe 的好人枪击惩罚，普通杀手保留原版消耗枪械逻辑。 */
+    public static boolean shouldCancelInnocentShotPunishment(
+            Role shooterRole,
+            Collection<Identifier> shooterTraits,
+            Role victimRole,
+            Collection<Identifier> victimTraits
+    ) {
+        return isEffectiveKiller(shooterRole, shooterTraits)
+                && hasImpostor(shooterTraits)
+                && shouldTreatGunVictimAsInnocent(victimRole, victimTraits);
     }
 
     public static boolean shouldPunishConscienceKill(boolean victimIsEffectiveCivilian, Identifier deathReason) {

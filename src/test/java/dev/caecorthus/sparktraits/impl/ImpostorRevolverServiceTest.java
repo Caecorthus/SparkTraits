@@ -27,4 +27,24 @@ class ImpostorRevolverServiceTest {
         assertEquals(150, ImpostorRevolverService.REVOLVER_PRICE);
         assertEquals("sparktraits:impostor_revolver", ImpostorRevolverService.REVOLVER_SHOP_ID.toString());
     }
+
+    @Test
+    void impostorsCanBuyRevolversButCannotPickUpGroundGuns() {
+        assertTrue(ImpostorRevolverService.shouldAddRevolverToShop(
+                WatheRoles.CIVILIAN,
+                Set.of(ImpostorTrait.ID)
+        ));
+        assertTrue(ImpostorRevolverService.shouldBlockGroundGunPickup(
+                Set.of(ImpostorTrait.ID),
+                true
+        ));
+        assertFalse(ImpostorRevolverService.shouldBlockGroundGunPickup(
+                Set.of(),
+                true
+        ));
+        assertFalse(ImpostorRevolverService.shouldBlockGroundGunPickup(
+                Set.of(ImpostorTrait.ID),
+                false
+        ));
+    }
 }
