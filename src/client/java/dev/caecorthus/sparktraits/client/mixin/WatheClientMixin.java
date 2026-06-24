@@ -129,7 +129,10 @@ public abstract class WatheClientMixin {
         if (!EffectiveTraitService.isEffectiveKiller(viewer, game)) {
             return;
         }
-        if (EffectiveTraitService.isHiddenFromKillerInstinct(playerTarget)) {
+        // SparkTraits answers before NoellesRoles' event skip, so preserve Survival Master's blocked-vision immunity here.
+        // SparkTraits 会先于 NoellesRoles 的事件 skip 返回，因此这里保留生存大师被遮挡时的免透视规则。
+        if (EffectiveTraitService.isHiddenFromKillerInstinct(playerTarget)
+                || EffectiveTraitService.shouldSkipSurvivalMasterInstinctTarget(game.getRole(playerTarget), viewer.canSee(playerTarget))) {
             cir.setReturnValue(-1);
             return;
         }

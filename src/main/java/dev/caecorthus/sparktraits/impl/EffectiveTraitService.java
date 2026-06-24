@@ -139,6 +139,14 @@ public final class EffectiveTraitService {
                 && !killerInstinctHidden;
     }
 
+    /** Preserves Survival Master's wall-blocked immunity from killer instinct.
+     *  保留生存大师被障碍物遮挡时不触发杀手本能透视的规则。 */
+    public static boolean shouldSkipSurvivalMasterInstinctTarget(Role targetRole, boolean viewerCanSeeTarget) {
+        return targetRole != null
+                && targetRole.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
+                && !viewerCanSeeTarget;
+    }
+
     public static boolean isSpiritProjecting(PlayerEntity player) {
         return player != null && SpiritPlayerComponent.KEY.get(player).isProjecting();
     }

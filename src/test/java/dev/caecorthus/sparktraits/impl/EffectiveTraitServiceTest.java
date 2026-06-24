@@ -253,6 +253,13 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void survivalMasterSkipsImpostorInstinctWhenOutOfSight() {
+        assertTrue(EffectiveTraitService.shouldSkipSurvivalMasterInstinctTarget(Noellesroles.SURVIVAL_MASTER, false));
+        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterInstinctTarget(Noellesroles.SURVIVAL_MASTER, true));
+        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterInstinctTarget(WatheRoles.CIVILIAN, false));
+    }
+
+    @Test
     void conscienceMorphlingCorpseModeHidesFromInstinct() {
         assertTrue(EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(true, true, true));
         assertFalse(EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(true, true, false));
