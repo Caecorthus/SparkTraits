@@ -19,6 +19,7 @@
     "ItemEntityMixin",
     "PlayerInventoryMixin",
     "MurderGameModeMixin",
+    "NoellesRolesBodyguardMixin",
     "NoellesRolesJesterMomentMixin",
     "NoellesRolesSerialKillerRewardMixin",
     "NoellesRolesPacketMixin",
