@@ -6,6 +6,7 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.mixin.GameWorldComponentAccessor;
 import dev.doctor4t.wathe.api.Faction;
 import dev.doctor4t.wathe.api.Role;
+import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.api.event.KillPlayer;
@@ -56,6 +57,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -248,6 +250,18 @@ public final class LastStandService {
 
     static boolean shouldHideFromKillerInstinct(boolean lastStandPending, boolean killerInstinctHidden) {
         return EffectiveTraitService.shouldHideFromKillerInstinct(lastStandPending, killerInstinctHidden);
+    }
+
+    public static int pendingSpectatorHighlightColor(
+            boolean canSeeSpectatorInformation,
+            boolean instinctEnabled,
+            boolean lastStandPending,
+            @Nullable Role targetRole
+    ) {
+        if (!canSeeSpectatorInformation || !instinctEnabled || !lastStandPending) {
+            return -1;
+        }
+        return Objects.requireNonNullElse(targetRole, WatheRoles.CIVILIAN).color();
     }
 
     static Identifier noCollisionEffectId() {

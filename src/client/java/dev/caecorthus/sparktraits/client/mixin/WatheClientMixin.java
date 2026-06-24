@@ -4,6 +4,7 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.ConscienceSerialKillerService;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
@@ -36,14 +37,29 @@ public abstract class WatheClientMixin {
     @Inject(method = "getInstinctHighlight", at = @At("HEAD"), cancellable = true)
     private static void sparktraits$effectiveInstinctHighlight(Entity target, CallbackInfoReturnable<Integer> cir) {
         PlayerEntity viewer = MinecraftClient.getInstance().player;
-        if (viewer == null || WatheClient.canSeeSpectatorInformation()) {
+        if (viewer == null) {
             return;
         }
 
         PlayerEntity playerTarget = target instanceof PlayerEntity targetPlayer ? targetPlayer : null;
         GameWorldComponent game = playerTarget == null ? null : GameWorldComponent.KEY.get(viewer.getWorld());
-        MorphlingPlayerComponent morphling = playerTarget == null ? null : MorphlingPlayerComponent.KEY.get(playerTarget);
         TraitPlayerComponent targetTraits = playerTarget == null ? null : TraitPlayerComponent.KEY.get(playerTarget);
+        if (WatheClient.canSeeSpectatorInformation()) {
+            // Last Stand pending players are fake-dead spectators, so vanilla spectator instinct needs a bypass.
+            // 背水一战等待复活的玩家处于假死旁观状态，因此原版旁观透视需要单独放行。
+            int highlight = LastStandService.pendingSpectatorHighlightColor(
+                    true,
+                    WatheClient.isInstinctEnabled(),
+                    targetTraits != null && targetTraits.isLastStandPending(),
+                    game == null ? null : game.getRole(playerTarget)
+            );
+            if (highlight != -1) {
+                cir.setReturnValue(highlight);
+            }
+            return;
+        }
+
+        MorphlingPlayerComponent morphling = playerTarget == null ? null : MorphlingPlayerComponent.KEY.get(playerTarget);
 
         // Phantom invisibility must beat SparkTraits' effective-alignment instinct overlays.
         // 幽灵隐身优先于 SparkTraits 的有效阵营本能高亮覆盖。

@@ -83,6 +83,15 @@ class LastStandServiceTest {
     }
 
     @Test
+    void spectatorInstinctCanStillHighlightPendingLastStandPlayer() {
+        assertEquals(WatheRoles.KILLER.color(), LastStandService.pendingSpectatorHighlightColor(true, true, true, WatheRoles.KILLER));
+        assertEquals(WatheRoles.CIVILIAN.color(), LastStandService.pendingSpectatorHighlightColor(true, true, true, null));
+        assertEquals(-1, LastStandService.pendingSpectatorHighlightColor(false, true, true, WatheRoles.KILLER));
+        assertEquals(-1, LastStandService.pendingSpectatorHighlightColor(true, false, true, WatheRoles.KILLER));
+        assertEquals(-1, LastStandService.pendingSpectatorHighlightColor(true, true, false, WatheRoles.KILLER));
+    }
+
+    @Test
     void pendingNoCollisionUsesNoellesRolesEffect() {
         assertEquals(Identifier.of("noellesroles", "no_collision"), LastStandService.noCollisionEffectId());
     }
