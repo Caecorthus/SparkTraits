@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl;
 
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
+import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.Test;
 
@@ -147,5 +148,25 @@ class TraitAssignmentServiceTest {
                 Set.of(ConscienceTrait.ID),
                 false
         ));
+    }
+
+    @Test
+    void conscienceCompensationClearsOriginalCivilianStartingItems() {
+        assertEquals(List.of(Identifier.of("noellesroles", "iron_man_vial")),
+                TraitAssignmentService.initialRoleItemIdsToClearForConscienceCompensation(Noellesroles.PROFESSOR));
+        assertEquals(List.of(Identifier.of("noellesroles", "antidote")),
+                TraitAssignmentService.initialRoleItemIdsToClearForConscienceCompensation(Noellesroles.TOXICOLOGIST));
+        assertEquals(List.of(Identifier.of("noellesroles", "repair_tool")),
+                TraitAssignmentService.initialRoleItemIdsToClearForConscienceCompensation(Noellesroles.ENGINEER));
+        assertEquals(List.of(Identifier.ofVanilla("written_book")),
+                TraitAssignmentService.initialRoleItemIdsToClearForConscienceCompensation(Noellesroles.ATTENDANT));
+        assertEquals(List.of(Identifier.of("wathe", "walkie_talkie")),
+                TraitAssignmentService.initialRoleItemIdsToClearForConscienceCompensation(Noellesroles.UNDERCOVER));
+        assertEquals(List.of(Identifier.of("noellesroles", "master_key")),
+                TraitAssignmentService.initialRoleItemIdsToClearForConscienceCompensation(Noellesroles.CONDUCTOR));
+        assertEquals(List.of(Identifier.of("wathe", "note")),
+                TraitAssignmentService.initialRoleItemIdsToClearForConscienceCompensation(Noellesroles.AWESOME_BINGLUS));
+        assertEquals(List.of(),
+                TraitAssignmentService.initialRoleItemIdsToClearForConscienceCompensation(WatheRoles.CIVILIAN));
     }
 }

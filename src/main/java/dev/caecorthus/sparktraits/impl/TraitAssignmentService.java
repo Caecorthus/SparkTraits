@@ -12,9 +12,12 @@ import dev.doctor4t.wathe.api.RoleSelectionContext;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.RoleAssigned;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import net.minecraft.item.Item;
+import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
+import org.agmas.noellesroles.Noellesroles;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,6 +31,18 @@ import java.util.UUID;
 /** Builds round trait plans before Wathe sends welcome information.
  *  在 Wathe 发送开局信息前构建本局天赋方案。 */
 public final class TraitAssignmentService {
+    private static final String WATHE_MOD_ID = "wathe";
+    private static final String NOELLESROLES_MOD_ID = "noellesroles";
+    private static final Identifier WATHE_REVOLVER_ID = Identifier.of(WATHE_MOD_ID, "revolver");
+    private static final Identifier WATHE_KNIFE_ID = Identifier.of(WATHE_MOD_ID, "knife");
+    private static final Identifier WATHE_NOTE_ID = Identifier.of(WATHE_MOD_ID, "note");
+    private static final Identifier WATHE_WALKIE_TALKIE_ID = Identifier.of(WATHE_MOD_ID, "walkie_talkie");
+    private static final Identifier NOELLES_MASTER_KEY_ID = Identifier.of(NOELLESROLES_MOD_ID, "master_key");
+    private static final Identifier NOELLES_ANTIDOTE_ID = Identifier.of(NOELLESROLES_MOD_ID, "antidote");
+    private static final Identifier NOELLES_IRON_MAN_VIAL_ID = Identifier.of(NOELLESROLES_MOD_ID, "iron_man_vial");
+    private static final Identifier NOELLES_REPAIR_TOOL_ID = Identifier.of(NOELLESROLES_MOD_ID, "repair_tool");
+    private static final Identifier MINECRAFT_WRITTEN_BOOK_ID = Identifier.ofVanilla("written_book");
+
     private TraitAssignmentService() {
     }
 
@@ -185,7 +200,9 @@ public final class TraitAssignmentService {
                 SparkTraits.LOGGER.warn("Could not add an extra killer for Conscience compensation because no enabled killer role is available.");
                 return;
             }
+            Role originalRole = gameComponent.getRole(extraKiller.player());
             extraKiller.clearRandomTraits();
+            clearInitialRoleItemsForConscienceCompensation(extraKiller.player(), originalRole);
             gameComponent.addRole(extraKiller.player(), compensationRole);
             RoleAssigned.EVENT.invoker().assignRole(extraKiller.player(), compensationRole);
             TraitPlayerComponent.KEY.get(extraKiller.player()).sync();
@@ -250,6 +267,51 @@ public final class TraitAssignmentService {
                 && role != WatheRoles.VETERAN
                 && !traits.contains(ImpostorTrait.ID)
                 && !traits.contains(ConscienceTrait.ID);
+    }
+
+    /** Removes old civilian role kit before Conscience compensation assigns a killer role.
+     *  在善良补偿杀手改写身份前，移除原好人身份的开局物品。 */
+    private static void clearInitialRoleItemsForConscienceCompensation(ServerPlayerEntity player, Role originalRole) {
+        for (Identifier itemId : initialRoleItemIdsToClearForConscienceCompensation(originalRole)) {
+            Item item = Registries.ITEM.get(itemId);
+            player.getInventory().remove(
+                    stack -> stack.isOf(item),
+                    Integer.MAX_VALUE,
+                    player.playerScreenHandler.getCraftingInput()
+            );
+            player.getItemCooldownManager().remove(item);
+        }
+    }
+
+    static List<Identifier> initialRoleItemIdsToClearForConscienceCompensation(Role role) {
+        if (role == WatheRoles.VIGILANTE) {
+            return List.of(WATHE_REVOLVER_ID);
+        }
+        if (role == WatheRoles.VETERAN) {
+            return List.of(WATHE_KNIFE_ID);
+        }
+        if (role == Noellesroles.CONDUCTOR) {
+            return List.of(NOELLES_MASTER_KEY_ID);
+        }
+        if (role == Noellesroles.AWESOME_BINGLUS) {
+            return List.of(WATHE_NOTE_ID);
+        }
+        if (role == Noellesroles.TOXICOLOGIST) {
+            return List.of(NOELLES_ANTIDOTE_ID);
+        }
+        if (role == Noellesroles.PROFESSOR) {
+            return List.of(NOELLES_IRON_MAN_VIAL_ID);
+        }
+        if (role == Noellesroles.ENGINEER) {
+            return List.of(NOELLES_REPAIR_TOOL_ID);
+        }
+        if (role == Noellesroles.ATTENDANT) {
+            return List.of(MINECRAFT_WRITTEN_BOOK_ID);
+        }
+        if (role == Noellesroles.UNDERCOVER) {
+            return List.of(WATHE_WALKIE_TALKIE_ID);
+        }
+        return List.of();
     }
 
     private static Role chooseConscienceCompensationKillerRole(
