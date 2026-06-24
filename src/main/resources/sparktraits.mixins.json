@@ -32,6 +32,7 @@
     "SerialKillerPlayerComponentAccessor",
     "SerialKillerPlayerComponentMixin",
     "ScreenHandlerMixin",
+    "TimekeeperShopHandlerMixin",
     "TrimmedBedBlockEntityMixin",
     "TrimmedBedBlockMixin",
     "VentHatchBlockMixin"
