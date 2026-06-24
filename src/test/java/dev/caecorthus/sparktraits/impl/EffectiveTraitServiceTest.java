@@ -303,6 +303,53 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void conscienceMorphlingCohortCanUsePublicDisguiseKillerState() {
+        assertEquals(
+                Boolean.TRUE,
+                EffectiveTraitService.conscienceMorphlingCohortOverride(
+                        WatheRoles.KILLER,
+                        Set.of(),
+                        true,
+                        true,
+                        false,
+                        true,
+                        true,
+                        true,
+                        false,
+                        false
+                )
+        );
+    }
+
+    @Test
+    void realKillerTargetKeepsCohortWhenCopiedByConscienceMorphling() {
+        assertEquals(
+                Boolean.TRUE,
+                EffectiveTraitService.conscienceMorphlingDisguiseTargetCohortOverride(
+                        WatheRoles.KILLER,
+                        Set.of(),
+                        WatheRoles.KILLER,
+                        Set.of(),
+                        true
+                )
+        );
+    }
+
+    @Test
+    void conscienceDisguiseTargetDoesNotBecomeCohort() {
+        assertEquals(
+                null,
+                EffectiveTraitService.conscienceMorphlingDisguiseTargetCohortOverride(
+                        WatheRoles.KILLER,
+                        Set.of(),
+                        WatheRoles.KILLER,
+                        Set.of(ConscienceTrait.ID),
+                        true
+                )
+        );
+    }
+
+    @Test
     void conscienceKillPunishmentIgnoresAreaDamage() {
         assertTrue(EffectiveTraitService.shouldPunishConscienceKill(true, GameConstants.DeathReasons.GUN));
         assertFalse(EffectiveTraitService.shouldPunishConscienceKill(true, GameConstants.DeathReasons.GRENADE));

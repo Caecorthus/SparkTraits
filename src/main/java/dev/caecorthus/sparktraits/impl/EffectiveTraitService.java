@@ -66,6 +66,12 @@ public final class EffectiveTraitService {
                         ? ShouldShowCohort.CohortResult.show(ShouldShowCohort.CohortResult.PRIORITY_HIGH)
                         : ShouldShowCohort.CohortResult.hide();
             }
+            Boolean disguiseTargetOverride = conscienceMorphlingDisguiseTargetCohortOverride(viewer, target, game, viewerTraits);
+            if (disguiseTargetOverride != null) {
+                return disguiseTargetOverride
+                        ? ShouldShowCohort.CohortResult.show(ShouldShowCohort.CohortResult.PRIORITY_HIGH)
+                        : ShouldShowCohort.CohortResult.hide();
+            }
             Boolean override = cohortOverride(
                     game.getRole(viewer),
                     viewerTraits,
@@ -220,7 +226,8 @@ public final class EffectiveTraitService {
                 targetIsMorphling,
                 targetCorpseMode,
                 targetMorphing,
-                disguiseRole,
+                disguiseRole != null,
+                isOriginalKiller(disguiseRole),
                 hasConscience(disguiseTraits),
                 hasImpostor(disguiseTraits)
         );
@@ -237,6 +244,32 @@ public final class EffectiveTraitService {
             boolean disguiseHasConscience,
             boolean disguiseHasImpostor
     ) {
+        return conscienceMorphlingCohortOverride(
+                viewerRole,
+                viewerTraits,
+                targetHasConscience,
+                targetIsMorphling,
+                targetCorpseMode,
+                targetMorphing,
+                disguiseRole != null,
+                isOriginalKiller(disguiseRole),
+                disguiseHasConscience,
+                disguiseHasImpostor
+        );
+    }
+
+    public static Boolean conscienceMorphlingCohortOverride(
+            Role viewerRole,
+            Collection<Identifier> viewerTraits,
+            boolean targetHasConscience,
+            boolean targetIsMorphling,
+            boolean targetCorpseMode,
+            boolean targetMorphing,
+            boolean hasDisguise,
+            boolean disguiseCanUseKillerFeatures,
+            boolean disguiseHasConscience,
+            boolean disguiseHasImpostor
+    ) {
         if (shouldHideConscienceMorphlingFromInstinct(targetHasConscience, targetIsMorphling, targetCorpseMode)) {
             return Boolean.FALSE;
         }
@@ -245,14 +278,14 @@ public final class EffectiveTraitService {
                 targetIsMorphling,
                 targetCorpseMode,
                 targetMorphing,
-                disguiseRole != null
+                hasDisguise
         )) {
             return null;
         }
         if (!isEffectiveKiller(viewerRole, viewerTraits)) {
             return null;
         }
-        return disguiseHasImpostor || (!disguiseHasConscience && isOriginalKiller(disguiseRole))
+        return disguiseHasImpostor || (!disguiseHasConscience && disguiseCanUseKillerFeatures)
                 ? Boolean.TRUE
                 : Boolean.FALSE;
     }
@@ -267,6 +300,11 @@ public final class EffectiveTraitService {
         UUID disguise = morphling.disguise;
         Role disguiseRole = disguise == null ? null : game.getRole(disguise);
         PlayerEntity disguisePlayer = disguise == null ? null : target.getWorld().getPlayerByUuid(disguise);
+        // Clients can know the disguise target's killer capability even when its full Role lookup is missing.
+        // 客户端可能拿得到伪装目标是否可用杀手功能，但拿不到完整 Role；同伙提示要跟随这个公开状态。
+        boolean disguiseCanUseKillerFeatures = disguisePlayer != null
+                ? game.canUseKillerFeatures(disguisePlayer)
+                : isOriginalKiller(disguiseRole);
 
         return conscienceMorphlingCohortOverride(
                 game.getRole(viewer),
@@ -275,10 +313,62 @@ public final class EffectiveTraitService {
                 game.isRole(target, Noellesroles.MORPHLING),
                 morphling.corpseMode,
                 morphling.getMorphTicks() > 0,
-                disguiseRole,
+                disguise != null,
+                disguiseCanUseKillerFeatures,
                 disguisePlayer != null && isConscienceVisibleToInstinct(disguisePlayer),
                 disguisePlayer != null && isImpostorVisibleToInstinct(disguisePlayer)
         );
+    }
+
+    /** Keeps the real disguise target visible as a killer cohort while a Conscience Morphling copies them.
+     *  当善良变形者伪装成某个真实杀手时，那个真实目标杀手仍应对其他杀手显示“杀手同伙”。 */
+    public static Boolean conscienceMorphlingDisguiseTargetCohortOverride(
+            Role viewerRole,
+            Collection<Identifier> viewerTraits,
+            Role targetRole,
+            Collection<Identifier> targetTraits,
+            boolean targetIsDisguiseForConscienceMorphling
+    ) {
+        if (!targetIsDisguiseForConscienceMorphling) {
+            return null;
+        }
+        if (!isEffectiveKiller(viewerRole, viewerTraits)) {
+            return null;
+        }
+        return isEffectiveKiller(targetRole, targetTraits) ? Boolean.TRUE : null;
+    }
+
+    private static Boolean conscienceMorphlingDisguiseTargetCohortOverride(
+            PlayerEntity viewer,
+            PlayerEntity target,
+            GameWorldComponent game,
+            Collection<Identifier> viewerTraits
+    ) {
+        return conscienceMorphlingDisguiseTargetCohortOverride(
+                game.getRole(viewer),
+                viewerTraits,
+                game.getRole(target),
+                instinctVisibleTraitIds(target),
+                isDisguiseTargetForConscienceMorphling(target, game)
+        );
+    }
+
+    private static boolean isDisguiseTargetForConscienceMorphling(PlayerEntity target, GameWorldComponent game) {
+        UUID targetUuid = target.getUuid();
+        for (PlayerEntity player : target.getWorld().getPlayers()) {
+            if (player.getUuid().equals(targetUuid)) {
+                continue;
+            }
+            MorphlingPlayerComponent morphling = MorphlingPlayerComponent.KEY.get(player);
+            if (targetUuid.equals(morphling.disguise)
+                    && isConscienceVisibleToInstinct(player)
+                    && game.isRole(player, Noellesroles.MORPHLING)
+                    && !morphling.corpseMode
+                    && morphling.getMorphTicks() > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static Collection<Identifier> instinctVisibleTraitIds(PlayerEntity player) {
