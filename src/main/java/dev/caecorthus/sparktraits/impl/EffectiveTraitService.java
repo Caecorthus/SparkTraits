@@ -46,7 +46,8 @@ public final class EffectiveTraitService {
     public static void register() {
         CheckWinCondition.EVENT.register(EffectiveTraitService::checkWin);
         TaskComplete.EVENT.register((player, taskType) -> {
-            if (hasConscience(player)) {
+            GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
+            if (shouldRewardTaskMoney(game.getRole(player), TraitPlayerComponent.KEY.get(player).getActiveTraitIds())) {
                 PlayerShopComponent.KEY.get(player).addToBalance(TASK_MONEY_REWARD);
             }
         });
@@ -591,6 +592,23 @@ public final class EffectiveTraitService {
 
     public static int requiredExtraKillersForConscience(int intendedPublicKillerCount, int originalKillerRoleCount, int conscienceCount) {
         return Math.max(0, intendedPublicKillerCount + conscienceCount - originalKillerRoleCount);
+    }
+
+    /**
+     * Grants SparkTraits task money only when the base role does not already pay for tasks.
+     * 仅在原职业没有自带任务金币时，由 SparkTraits 给阵营翻转玩家补发任务金币。
+     */
+    public static boolean shouldRewardTaskMoney(Role role, Collection<Identifier> traits) {
+        return traits != null && (hasConscience(traits) || hasImpostor(traits)) && !hasNativeTaskMoneyReward(role);
+    }
+
+    public static boolean hasNativeTaskMoneyReward(Role role) {
+        return role != null
+                && (role.equals(Noellesroles.BARTENDER)
+                || role.equals(Noellesroles.RECALLER)
+                || role.equals(Noellesroles.TIMEKEEPER)
+                || role.equals(Noellesroles.REPORTER)
+                || role.equals(Noellesroles.WAITER));
     }
 
     public static boolean shouldRewardConscienceKill(Role victimRole, Collection<Identifier> victimTraits) {
