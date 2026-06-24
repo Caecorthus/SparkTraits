@@ -244,10 +244,11 @@ class EffectiveTraitServiceTest {
 
     @Test
     void invisibleTargetsSkipSparkTraitsEffectiveInstinctOverlays() {
-        assertTrue(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(true, false, false));
-        assertFalse(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(false, false, false));
-        assertFalse(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(true, true, false));
-        assertFalse(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(true, false, true));
+        assertTrue(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(true, true, false, false));
+        assertFalse(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(true, false, false, false));
+        assertFalse(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(false, true, false, false));
+        assertFalse(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(true, true, true, false));
+        assertFalse(EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(true, true, false, true));
     }
 
     @Test

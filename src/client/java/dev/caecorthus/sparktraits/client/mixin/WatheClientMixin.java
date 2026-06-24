@@ -49,6 +49,7 @@ public abstract class WatheClientMixin {
         // 幽灵隐身优先于 SparkTraits 的有效阵营本能高亮覆盖。
         if (targetTraits != null && EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(
                 playerTarget.isInvisible(),
+                EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget),
                 targetTraits.isLastStandPending(),
                 targetTraits.isKillerInstinctHidden()
         )) {
