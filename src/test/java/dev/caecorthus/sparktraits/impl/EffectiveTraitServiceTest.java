@@ -257,10 +257,21 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
-    void survivalMasterSkipsImpostorInstinct() {
-        assertTrue(EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(Noellesroles.SURVIVAL_MASTER, true));
-        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(Noellesroles.SURVIVAL_MASTER, false));
-        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(WatheRoles.CIVILIAN, true));
+    void survivalMasterSkipsOnlyOutOfSightImpostorInstinct() {
+        assertTrue(EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(Noellesroles.SURVIVAL_MASTER, true, false));
+        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(Noellesroles.SURVIVAL_MASTER, true, true));
+        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(Noellesroles.SURVIVAL_MASTER, false, false));
+        assertFalse(EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(WatheRoles.CIVILIAN, true, false));
+    }
+
+    @Test
+    void jesterMomentSkipsOtherPlayersEvenInSight() {
+        assertTrue(EffectiveTraitService.shouldSkipJesterMomentHighlight(WatheRoles.KILLER, Noellesroles.JESTER, true, false));
+        assertTrue(EffectiveTraitService.shouldSkipJesterMomentHighlight(WatheRoles.CIVILIAN, Noellesroles.JESTER, true, false));
+        assertFalse(EffectiveTraitService.shouldSkipJesterMomentHighlight(WatheRoles.KILLER, Noellesroles.JESTER, true, true));
+        assertFalse(EffectiveTraitService.shouldSkipJesterMomentHighlight(Noellesroles.DEMON_HUNTER, Noellesroles.JESTER, true, false));
+        assertFalse(EffectiveTraitService.shouldSkipJesterMomentHighlight(WatheRoles.KILLER, Noellesroles.JESTER, false, false));
+        assertFalse(EffectiveTraitService.shouldSkipJesterMomentHighlight(WatheRoles.KILLER, WatheRoles.CIVILIAN, true, false));
     }
 
     @Test

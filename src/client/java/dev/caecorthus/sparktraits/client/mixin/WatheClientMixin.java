@@ -15,6 +15,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.bomber.BomberPlayerComponent;
+import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import org.agmas.noellesroles.morphling.MorphlingPlayerComponent;
 import org.agmas.noellesroles.serialkiller.SerialKillerPlayerComponent;
 import org.spongepowered.asm.mixin.Mixin;
@@ -139,18 +140,31 @@ public abstract class WatheClientMixin {
             return;
         }
 
+        // Mirror NoellesRoles' Jester Moment skip before later always-on highlight events can expose the active Jester.
+        // 在后续全局高亮事件暴露小丑前，同步 NoellesRoles 的小丑时刻跳过规则。
+        if (playerTarget != null && EffectiveTraitService.shouldSkipJesterMomentHighlight(
+                game.getRole(viewer),
+                game.getRole(playerTarget),
+                JesterPlayerComponent.KEY.get(playerTarget).inPsychoMode,
+                viewer.getUuid().equals(playerTarget.getUuid())
+        )) {
+            cir.setReturnValue(-1);
+            return;
+        }
+
         if (!WatheClient.isInstinctEnabled() || playerTarget == null) {
             return;
         }
         if (!EffectiveTraitService.isEffectiveKiller(viewer, game)) {
             return;
         }
-        // SparkTraits answers before NoellesRoles' event skip, so block Impostor's civilian overlay here.
-        // SparkTraits 会先于 NoellesRoles 的事件 skip 返回，因此这里拦住内鬼对生存大师的好人描边。
+        // SparkTraits answers before NoellesRoles' event skip, so mirror sight-gated target skips here.
+        // SparkTraits 会先于 NoellesRoles 的事件 skip 返回，因此这里同步只阻止遮挡透视的目标规则。
         if (EffectiveTraitService.isHiddenFromKillerInstinct(playerTarget)
                 || EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(
                         game.getRole(playerTarget),
-                        EffectiveTraitService.hasImpostor(viewer)
+                        EffectiveTraitService.hasImpostor(viewer),
+                        viewer.canSee(playerTarget)
                 )) {
             cir.setReturnValue(-1);
             return;
