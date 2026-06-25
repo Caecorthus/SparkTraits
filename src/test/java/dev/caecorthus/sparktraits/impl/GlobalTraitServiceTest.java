@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl;
 
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
+import net.minecraft.entity.Entity;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.Test;
 
@@ -72,6 +73,22 @@ class GlobalTraitServiceTest {
         assertEquals(1, GlobalTraitService.fastHandsCooldown(1));
         assertEquals(0, GlobalTraitService.fastHandsCooldown(0));
         assertEquals(-5, GlobalTraitService.fastHandsCooldown(-5));
+    }
+
+    @Test
+    void cautiousMovementSuppressionKeepsEventsButDropsSounds() {
+        assertEquals(Entity.MoveEffect.EVENTS,
+                GlobalTraitService.suppressMovementSounds(Entity.MoveEffect.ALL, true));
+        assertEquals(Entity.MoveEffect.NONE,
+                GlobalTraitService.suppressMovementSounds(Entity.MoveEffect.SOUNDS, true));
+        assertEquals(Entity.MoveEffect.EVENTS,
+                GlobalTraitService.suppressMovementSounds(Entity.MoveEffect.EVENTS, true));
+        assertEquals(Entity.MoveEffect.NONE,
+                GlobalTraitService.suppressMovementSounds(Entity.MoveEffect.NONE, true));
+        assertEquals(Entity.MoveEffect.ALL,
+                GlobalTraitService.suppressMovementSounds(Entity.MoveEffect.ALL, false));
+        assertEquals(Entity.MoveEffect.SOUNDS,
+                GlobalTraitService.suppressMovementSounds(Entity.MoveEffect.SOUNDS, false));
     }
 
     @Test

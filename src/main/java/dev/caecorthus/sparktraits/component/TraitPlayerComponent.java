@@ -6,6 +6,7 @@ import dev.caecorthus.sparktraits.api.TraitAssignmentReason;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.caecorthus.sparktraits.api.TraitRemovalReason;
 import dev.caecorthus.sparktraits.api.event.TraitEvents;
+import dev.caecorthus.sparktraits.impl.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
@@ -58,6 +59,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Public blackout-only flag used to suppress default killer instinct.
     // 仅用于关灯期间压制默认杀手本能的公开状态标记。
     private boolean goingDarkInstinctHidden;
+    // Public sound-only flag used to mute remote Cautious players without revealing trait text.
+    // 仅用于声音静音的公开标记，让远端小心翼翼玩家静音但不暴露天赋文本。
+    private boolean cautiousSoundSuppressed;
     private int consciencePoisonTicks = -1;
     private UUID consciencePoisoner;
     private Identifier serialKillerMurdererRole;
@@ -111,6 +115,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     public boolean isImpostorInstinctVisible() {
         return activeTraits.contains(ImpostorTrait.ID) || impostorInstinctVisible;
+    }
+
+    public boolean shouldSuppressCautiousSounds() {
+        return activeTraits.contains(CautiousTrait.ID) || cautiousSoundSuppressed;
     }
 
     public Identifier getSerialKillerMurdererRole() {
@@ -234,7 +242,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     public void clearActiveTraits(TraitRemovalReason reason) {
         if (activeTraits.isEmpty() && revealedTraits.isEmpty() && !killerInstinctHidden && !lastStandPending
-                && !goingDarkInstinctHidden
+                && !goingDarkInstinctHidden && !cautiousSoundSuppressed
                 && consciencePoisonTicks <= 0
                 && !conscienceInstinctVisible && !impostorInstinctVisible && serialKillerMurdererRole == null
                 && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid) {
@@ -256,6 +264,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         impostorInstinctVisible = false;
         lastStandPending = false;
         goingDarkInstinctHidden = false;
+        cautiousSoundSuppressed = false;
         consciencePoisonTicks = -1;
         consciencePoisoner = null;
         serialKillerMurdererRole = null;
@@ -334,6 +343,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         buf.writeBoolean(activeTraits.contains(ImpostorTrait.ID));
         buf.writeVarInt(visibleConsciencePoisonTicks(recipient, spectator));
         writeOptionalIdentifier(buf, owner ? serialKillerMurdererRole : null);
+        buf.writeBoolean(activeTraits.contains(CautiousTrait.ID));
     }
 
     @Override
@@ -351,6 +361,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             consciencePoisonTicks = -1;
         }
         serialKillerMurdererRole = readOptionalIdentifier(buf);
+        cautiousSoundSuppressed = buf.readBoolean();
     }
 
     @Override
@@ -385,6 +396,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         impostorInstinctVisible = false;
         lastStandPending = false;
         goingDarkInstinctHidden = false;
+        cautiousSoundSuppressed = false;
         consciencePoisonTicks = -1;
         consciencePoisoner = null;
         serialKillerMurdererRole = null;

@@ -1,6 +1,5 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.GlobalTraitService;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
@@ -19,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class CautiousEntitySoundMixin {
     @Inject(method = "playStepSounds", at = @At("HEAD"), cancellable = true)
     private void sparktraits$skipCautiousStepSounds(BlockPos pos, BlockState state, CallbackInfo ci) {
-        if ((Object) this instanceof PlayerEntity player && GlobalTraitService.hasTrait(player, CautiousTrait.ID)) {
+        if ((Object) this instanceof PlayerEntity player && GlobalTraitService.shouldSuppressCautiousSounds(player)) {
             ci.cancel();
         }
     }

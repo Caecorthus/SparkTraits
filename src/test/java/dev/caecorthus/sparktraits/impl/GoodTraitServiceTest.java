@@ -41,6 +41,13 @@ class GoodTraitServiceTest {
     }
 
     @Test
+    void socialAndFocusGoodTraitsExcludeUndercover() {
+        assertFalse(TraitRules.canApplyAll(null, null, null, Noellesroles.UNDERCOVER, Set.of(GoodTraits.EXTROVERTED)));
+        assertFalse(TraitRules.canApplyAll(null, null, null, Noellesroles.UNDERCOVER, Set.of(GoodTraits.INTROVERTED)));
+        assertFalse(TraitRules.canApplyAll(null, null, null, Noellesroles.UNDERCOVER, Set.of(GoodTraits.FOCUS)));
+    }
+
+    @Test
     void focusExcludesWathePoliceRoles() {
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.CIVILIAN, Set.of(GoodTraits.FOCUS)));
         assertTrue(TraitRules.canApplyAll(null, null, null, Noellesroles.DETECTIVE, Set.of(GoodTraits.FOCUS)));
@@ -61,6 +68,7 @@ class GoodTraitServiceTest {
                 Set.of(ImpostorTrait.ID),
                 true
         ));
+        assertTrue(GoodTraitService.canSelectMoneyTree(Noellesroles.UNDERCOVER, Set.of(), true));
     }
 
     @Test

@@ -12,6 +12,7 @@ import dev.doctor4t.wathe.cca.PlayerStaminaComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheAttributes;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -151,6 +152,27 @@ public final class GlobalTraitService {
 
     public static boolean hasTrait(PlayerEntity player, Identifier traitId) {
         return player != null && TraitPlayerComponent.KEY.get(player).hasActiveTrait(traitId);
+    }
+
+    public static boolean shouldSuppressCautiousSounds(PlayerEntity player) {
+        return player != null && TraitPlayerComponent.KEY.get(player).shouldSuppressCautiousSounds();
+    }
+
+    /**
+     * Removes movement audio while preserving movement game events.
+     * 移除移动声音，同时保留移动相关的 game event。
+     */
+    public static Entity.MoveEffect suppressMovementSounds(Entity.MoveEffect original, boolean suppress) {
+        if (!suppress) {
+            return original;
+        }
+        if (original == Entity.MoveEffect.ALL) {
+            return Entity.MoveEffect.EVENTS;
+        }
+        if (original == Entity.MoveEffect.SOUNDS) {
+            return Entity.MoveEffect.NONE;
+        }
+        return original;
     }
 
     public static void applyChildishScale(ServerPlayerEntity player) {

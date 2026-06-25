@@ -1,6 +1,5 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.GlobalTraitService;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.sound.SoundEvent;
@@ -23,7 +22,7 @@ public abstract class FineDrinkItemMixin {
             )
     )
     private void sparktraits$skipCautiousFineDrinkSound(PlayerEntity player, SoundEvent sound) {
-        if (!GlobalTraitService.hasTrait(player, CautiousTrait.ID)) {
+        if (!GlobalTraitService.shouldSuppressCautiousSounds(player)) {
             player.playSound(sound);
         }
     }

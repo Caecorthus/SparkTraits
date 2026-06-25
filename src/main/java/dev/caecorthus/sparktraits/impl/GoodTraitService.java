@@ -41,6 +41,12 @@ public final class GoodTraitService {
                 && !EffectiveTraitService.hasImpostor(safeTraits(selectedTraits));
     }
 
+    /** Good-trait gate for effects that should not attach to Undercover.
+     *  不给卧底使用的好人词条资格入口。 */
+    public static boolean canSelectNonUndercoverGoodTrait(Role role, Collection<Identifier> selectedTraits) {
+        return canSelectGoodTrait(role, selectedTraits) && !EffectiveTraitService.isUndercover(role);
+    }
+
     public static boolean canSelectMoneyTree(
             Role role,
             Collection<Identifier> selectedTraits,
@@ -51,7 +57,7 @@ public final class GoodTraitService {
     }
 
     public static boolean canSelectFocus(Role role, Collection<Identifier> selectedTraits) {
-        return canSelectGoodTrait(role, selectedTraits) && !isWathePoliceRole(role);
+        return canSelectNonUndercoverGoodTrait(role, selectedTraits) && !isWathePoliceRole(role);
     }
 
     public static boolean shouldPreventSocialMoodDrain(Collection<Identifier> traits, int nearbyOtherPlayers) {

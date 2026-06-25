@@ -1,6 +1,5 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.GlobalTraitService;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -25,7 +24,7 @@ public abstract class CautiousLivingEntitySoundMixin {
             )
     )
     private void sparktraits$skipCautiousConsumptionSound(LivingEntity entity, SoundEvent sound, float volume, float pitch) {
-        if (entity instanceof PlayerEntity player && GlobalTraitService.hasTrait(player, CautiousTrait.ID)) {
+        if (entity instanceof PlayerEntity player && GlobalTraitService.shouldSuppressCautiousSounds(player)) {
             return;
         }
         entity.playSound(sound, volume, pitch);
@@ -49,7 +48,7 @@ public abstract class CautiousLivingEntitySoundMixin {
             float volume,
             float pitch
     ) {
-        if ((Object) this instanceof PlayerEntity player && GlobalTraitService.hasTrait(player, CautiousTrait.ID)) {
+        if ((Object) this instanceof PlayerEntity player && GlobalTraitService.shouldSuppressCautiousSounds(player)) {
             return;
         }
         world.playSound(except, x, y, z, sound, category, volume, pitch);
