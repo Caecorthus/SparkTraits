@@ -68,6 +68,19 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void unsupportedImpostorSelfRealizesWhenNoRealKillersRemain() {
+        Set<Identifier> impostor = Set.of(ImpostorTrait.ID);
+
+        assertFalse(EffectiveTraitService.isOriginalKiller(Noellesroles.CORRUPT_COP));
+        assertFalse(EffectiveTraitService.isOriginalKiller(Noellesroles.TAOTIE));
+        assertTrue(EffectiveTraitService.shouldSelfRealizeUnsupportedImpostor(impostor, true, true, false));
+        assertFalse(EffectiveTraitService.shouldSelfRealizeUnsupportedImpostor(impostor, true, true, true));
+        assertFalse(EffectiveTraitService.shouldSelfRealizeUnsupportedImpostor(impostor, false, true, false));
+        assertFalse(EffectiveTraitService.shouldSelfRealizeUnsupportedImpostor(impostor, true, false, false));
+        assertFalse(EffectiveTraitService.shouldSelfRealizeUnsupportedImpostor(Set.of(), true, true, false));
+    }
+
+    @Test
     void roundEndWinnersUseEffectiveTeams() {
         Set<Identifier> conscience = Set.of(ConscienceTrait.ID);
         Set<Identifier> impostor = Set.of(ImpostorTrait.ID);

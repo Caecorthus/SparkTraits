@@ -767,7 +767,7 @@ public final class EffectiveTraitService {
         }
 
         if (!realKillerAlive) {
-            killUnsupportedImpostors(players);
+            killUnsupportedImpostors(players, gameComponent, false);
             return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.PASSENGERS);
         }
         if (!effectiveCivilianAlive) {
@@ -779,9 +779,49 @@ public final class EffectiveTraitService {
         return null;
     }
 
-    private static void killUnsupportedImpostors(List<ServerPlayerEntity> players) {
+    /** Kills Impostors once their real killer-side support is gone, even if neutral blockers keep the round active.
+     *  当真实杀手支持消失时清理内鬼，即使中立阻塞者让回合继续。 */
+    public static void killUnsupportedImpostorsIfNoRealKillers(ServerWorld world, GameWorldComponent gameComponent) {
+        if (world == null
+                || gameComponent == null
+                || gameComponent.getGameStatus() != GameWorldComponent.GameStatus.ACTIVE) {
+            return;
+        }
+        List<ServerPlayerEntity> players = world.getPlayers();
+        boolean realKillerAlive = false;
         for (ServerPlayerEntity player : players) {
-            if (hasImpostor(player) && GameFunctions.isPlayerPlayingAndAlive(player)) {
+            if (!GameFunctions.isPlayerPlayingAndAlive(player) || !gameComponent.hasAnyRole(player)) {
+                continue;
+            }
+            if (isRealOriginalKiller(player, gameComponent)) {
+                realKillerAlive = true;
+                break;
+            }
+        }
+        killUnsupportedImpostors(players, gameComponent, realKillerAlive);
+    }
+
+    public static boolean shouldSelfRealizeUnsupportedImpostor(
+            Collection<Identifier> traits,
+            boolean playerAlive,
+            boolean playerInRound,
+            boolean realOriginalKillerAlive
+    ) {
+        return playerAlive && playerInRound && !realOriginalKillerAlive && traits != null && hasImpostor(traits);
+    }
+
+    private static void killUnsupportedImpostors(
+            List<ServerPlayerEntity> players,
+            GameWorldComponent gameComponent,
+            boolean realOriginalKillerAlive
+    ) {
+        for (ServerPlayerEntity player : players) {
+            if (shouldSelfRealizeUnsupportedImpostor(
+                    TraitPlayerComponent.KEY.get(player).getActiveTraitIds(),
+                    GameFunctions.isPlayerPlayingAndAlive(player),
+                    gameComponent.hasAnyRole(player),
+                    realOriginalKillerAlive
+            )) {
                 GameFunctions.killPlayer(player, true, null, SELF_REALIZATION, true);
             }
         }
