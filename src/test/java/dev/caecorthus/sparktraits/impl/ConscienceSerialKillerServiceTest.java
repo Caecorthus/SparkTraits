@@ -29,9 +29,23 @@ class ConscienceSerialKillerServiceTest {
                 true,
                 false
         ));
+        assertTrue(ConscienceSerialKillerService.canBeSerialKillerTarget(
+                Noellesroles.SWAPPER,
+                Set.of(ConscienceTrait.ID),
+                false,
+                true,
+                false
+        ));
         assertFalse(ConscienceSerialKillerService.canBeSerialKillerTarget(
                 WatheRoles.CIVILIAN,
                 Set.of(ImpostorTrait.ID),
+                false,
+                true,
+                false
+        ));
+        assertFalse(ConscienceSerialKillerService.canBeSerialKillerTarget(
+                Noellesroles.SWAPPER,
+                Set.of(),
                 false,
                 true,
                 false
@@ -146,7 +160,7 @@ class ConscienceSerialKillerServiceTest {
     }
 
     @Test
-    void protectedTargetKeepsSerialKillerInstinctHighlight() {
+    void serialKillerTargetKeepsSerialKillerInstinctHighlight() {
         assertTrue(ConscienceSerialKillerService.shouldUseSerialKillerTargetHighlight(true, true));
         assertFalse(ConscienceSerialKillerService.shouldUseSerialKillerTargetHighlight(true, false));
         assertFalse(ConscienceSerialKillerService.shouldUseSerialKillerTargetHighlight(false, true));

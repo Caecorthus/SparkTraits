@@ -82,7 +82,7 @@ public final class EffectiveTraitService {
                     game.getRole(viewer),
                     viewerTraits,
                     game.getRole(target),
-                    instinctVisibleTraitIds(target)
+                    publicEffectiveTraitIds(target)
             );
             if (override == null) {
                 return null;
@@ -386,7 +386,7 @@ public final class EffectiveTraitService {
                 game.getRole(viewer),
                 viewerTraits,
                 game.getRole(target),
-                instinctVisibleTraitIds(target),
+                publicEffectiveTraitIds(target),
                 isDisguiseTargetForConscienceMorphling(target, game)
         );
     }
@@ -409,7 +409,9 @@ public final class EffectiveTraitService {
         return false;
     }
 
-    private static Collection<Identifier> instinctVisibleTraitIds(PlayerEntity player) {
+    /** Uses client-synced public alignment flags without exposing hidden trait text.
+     *  使用客户端已同步的公开阵营标记，不暴露隐藏天赋文本。 */
+    private static Collection<Identifier> publicEffectiveTraitIds(PlayerEntity player) {
         boolean conscience = isConscienceVisibleToInstinct(player);
         boolean impostor = isImpostorVisibleToInstinct(player);
         if (conscience && impostor) {

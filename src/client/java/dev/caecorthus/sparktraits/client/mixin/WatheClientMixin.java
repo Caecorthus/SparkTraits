@@ -89,7 +89,7 @@ public abstract class WatheClientMixin {
         // NoellesRoles serial-killer targets are always visible; keep that before Conscience range logic.
         // NoellesRoles 的连环杀手目标不受善良本能距离限制，先保留原目标高亮。
         if (playerTarget != null && ConscienceSerialKillerService.shouldUseSerialKillerTargetHighlight(
-                ConscienceSerialKillerService.isConscienceSerialKiller(viewer, game),
+                game.isRole(viewer, Noellesroles.SERIAL_KILLER),
                 SerialKillerPlayerComponent.KEY.get(viewer).isCurrentTarget(playerTarget.getUuid())
         )) {
             cir.setReturnValue(Noellesroles.SERIAL_KILLER.color());

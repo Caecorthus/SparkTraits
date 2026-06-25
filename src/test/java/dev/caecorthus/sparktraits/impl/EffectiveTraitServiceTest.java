@@ -111,6 +111,24 @@ class EffectiveTraitServiceTest {
                         Set.of(ConscienceTrait.ID)
                 )
         );
+        assertEquals(
+                Boolean.FALSE,
+                EffectiveTraitService.cohortOverride(
+                        Noellesroles.SERIAL_KILLER,
+                        Set.of(),
+                        Noellesroles.SWAPPER,
+                        Set.of(ConscienceTrait.ID)
+                )
+        );
+        assertEquals(
+                null,
+                EffectiveTraitService.cohortOverride(
+                        Noellesroles.SERIAL_KILLER,
+                        Set.of(),
+                        Noellesroles.SWAPPER,
+                        Set.of()
+                )
+        );
     }
 
     @Test
