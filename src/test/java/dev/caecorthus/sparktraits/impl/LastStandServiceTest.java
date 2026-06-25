@@ -3,9 +3,12 @@ package dev.caecorthus.sparktraits.impl;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -110,5 +113,99 @@ class LastStandServiceTest {
                 WatheRoles.CIVILIAN,
                 Set.of(ImpostorTrait.ID)
         ));
+    }
+
+    @Test
+    void reviveSafetyAcceptsSupportAtFeetOrBelow() {
+        assertTrue(LastStandService.hasStandingSupport(true, false));
+        assertTrue(LastStandService.hasStandingSupport(false, true));
+        assertFalse(LastStandService.hasStandingSupport(false, false));
+    }
+
+    @Test
+    void reviveTargetPrefersSafeRoomPointOverDeathPoint() {
+        LastStandService.RevivePoint deathPoint = new LastStandService.RevivePoint(
+                World.OVERWORLD,
+                new Vec3d(10.0, 80.0, 10.0),
+                90.0f,
+                10.0f
+        );
+        LastStandService.RevivePoint roomPoint = new LastStandService.RevivePoint(
+                World.OVERWORLD,
+                new Vec3d(11.0, 122.5, -535.5),
+                -90.0f,
+                0.0f
+        );
+
+        LastStandService.RevivePoint target = LastStandService.selectRevivePoint(
+                deathPoint,
+                Optional.of(roomPoint),
+                Optional.empty(),
+                point -> true
+        );
+
+        assertEquals(roomPoint, target);
+    }
+
+    @Test
+    void reviveTargetFallsBackToReturnPointBeforeDeathPoint() {
+        LastStandService.RevivePoint deathPoint = new LastStandService.RevivePoint(
+                World.OVERWORLD,
+                new Vec3d(10.0, 80.0, 10.0),
+                90.0f,
+                10.0f
+        );
+        LastStandService.RevivePoint roomPoint = new LastStandService.RevivePoint(
+                World.OVERWORLD,
+                new Vec3d(11.0, 122.5, -535.5),
+                -90.0f,
+                0.0f
+        );
+        LastStandService.RevivePoint returnPoint = new LastStandService.RevivePoint(
+                World.OVERWORLD,
+                new Vec3d(20.0, 81.0, 20.0),
+                180.0f,
+                0.0f
+        );
+
+        LastStandService.RevivePoint target = LastStandService.selectRevivePoint(
+                deathPoint,
+                Optional.of(roomPoint),
+                Optional.of(returnPoint),
+                point -> point.equals(returnPoint)
+        );
+
+        assertEquals(returnPoint, target);
+    }
+
+    @Test
+    void reviveTargetUsesDeathPointWhenNoSavedPointIsUsable() {
+        LastStandService.RevivePoint deathPoint = new LastStandService.RevivePoint(
+                World.OVERWORLD,
+                new Vec3d(10.0, 80.0, 10.0),
+                90.0f,
+                10.0f
+        );
+        LastStandService.RevivePoint roomPoint = new LastStandService.RevivePoint(
+                World.OVERWORLD,
+                new Vec3d(11.0, 122.5, -535.5),
+                -90.0f,
+                0.0f
+        );
+        LastStandService.RevivePoint returnPoint = new LastStandService.RevivePoint(
+                World.OVERWORLD,
+                new Vec3d(20.0, 81.0, 20.0),
+                180.0f,
+                0.0f
+        );
+
+        LastStandService.RevivePoint target = LastStandService.selectRevivePoint(
+                deathPoint,
+                Optional.of(roomPoint),
+                Optional.of(returnPoint),
+                point -> false
+        );
+
+        assertEquals(deathPoint, target);
     }
 }

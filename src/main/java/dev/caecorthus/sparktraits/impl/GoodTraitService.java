@@ -41,6 +41,10 @@ public final class GoodTraitService {
                 && !EffectiveTraitService.hasImpostor(safeTraits(selectedTraits));
     }
 
+    public static boolean canSelectSocialTrait(Role role, Collection<Identifier> selectedTraits) {
+        return canSelectGoodTrait(role, selectedTraits) && !EffectiveTraitService.isUndercover(role);
+    }
+
     public static boolean canSelectMoneyTree(
             Role role,
             Collection<Identifier> selectedTraits,
@@ -51,7 +55,9 @@ public final class GoodTraitService {
     }
 
     public static boolean canSelectFocus(Role role, Collection<Identifier> selectedTraits) {
-        return canSelectGoodTrait(role, selectedTraits) && !isWathePoliceRole(role);
+        return canSelectGoodTrait(role, selectedTraits)
+                && !isWathePoliceRole(role)
+                && !EffectiveTraitService.isUndercover(role);
     }
 
     public static boolean shouldPreventSocialMoodDrain(Collection<Identifier> traits, int nearbyOtherPlayers) {
@@ -78,7 +84,7 @@ public final class GoodTraitService {
         }
         GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
         Collection<Identifier> traits = traitsOf(player);
-        if (!canSelectGoodTrait(game.getRole(player), traits)) {
+        if (!canSelectSocialTrait(game.getRole(player), traits)) {
             return proposedMood;
         }
         return socialMoodAdjustedMood(currentMood, proposedMood, traits, nearbyAliveOtherPlayers(player, game));

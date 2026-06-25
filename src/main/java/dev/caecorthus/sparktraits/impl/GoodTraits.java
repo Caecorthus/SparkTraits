@@ -22,9 +22,17 @@ public final class GoodTraits {
     public static void register() {
         TraitRegistry.register(base(EXTROVERTED, GoodTraitService.EXTROVERTED_COLOR)
                 .incompatibleWith(INTROVERTED)
+                .predicate(context -> GoodTraitService.canSelectSocialTrait(
+                        context.role(),
+                        context.selectedTraitIds()
+                ))
                 .build());
         TraitRegistry.register(base(INTROVERTED, GoodTraitService.INTROVERTED_COLOR)
                 .incompatibleWith(EXTROVERTED)
+                .predicate(context -> GoodTraitService.canSelectSocialTrait(
+                        context.role(),
+                        context.selectedTraitIds()
+                ))
                 .build());
         TraitRegistry.register(base(MONEY_TREE, GoodTraitService.MONEY_TREE_COLOR)
                 .predicate(context -> GoodTraitService.canSelectMoneyTree(
