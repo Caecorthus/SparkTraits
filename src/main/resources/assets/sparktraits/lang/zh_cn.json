@@ -16,6 +16,8 @@
   "trait.sparktraits.childish.description": "你的体型比平常小四分之一。",
   "trait.sparktraits.steady.name": "沉稳",
   "trait.sparktraits.steady.description": "你的真理智可以超过普通上限。",
+  "trait.sparktraits.excellent_physique.name": "体质优异",
+  "trait.sparktraits.excellent_physique.description": "你的体力上限和自然恢复速度翻倍。",
   "trait.sparktraits.bloodthirsty.name": "嗜血",
   "trait.sparktraits.bloodthirsty.description": "每次真实击杀都会小幅缩短你的刀冷却，最多受总人数限制。",
   "trait.sparktraits.the_showman.name": "作秀",

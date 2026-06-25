@@ -11,6 +11,7 @@
     "CautiousLivingEntitySoundMixin",
     "CrowbarItemMixin",
     "DemonHunterShootPacketMixin",
+    "ExcellentPhysiqueStaminaMixin",
     "FastHandsCooldownMixin",
     "FineDrinkItemMixin",
     "GameFunctionsMixin",

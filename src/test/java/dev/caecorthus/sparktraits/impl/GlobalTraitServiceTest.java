@@ -73,4 +73,30 @@ class GlobalTraitServiceTest {
         assertEquals(0, GlobalTraitService.fastHandsCooldown(0));
         assertEquals(-5, GlobalTraitService.fastHandsCooldown(-5));
     }
+
+    @Test
+    void excellentPhysiqueRequiresOriginalFiniteStamina() {
+        assertTrue(GlobalTraitService.canSelectExcellentPhysique(WatheRoles.CIVILIAN));
+        assertTrue(GlobalTraitService.canSelectExcellentPhysique(WatheRoles.VIGILANTE));
+        assertTrue(GlobalTraitService.canSelectExcellentPhysique(Noellesroles.WAITER));
+
+        assertFalse(GlobalTraitService.canSelectExcellentPhysique(WatheRoles.KILLER));
+        assertFalse(GlobalTraitService.canSelectExcellentPhysique(WatheRoles.LOOSE_END));
+        assertFalse(GlobalTraitService.canSelectExcellentPhysique(WatheRoles.NO_ROLE));
+        assertFalse(GlobalTraitService.canSelectExcellentPhysique(WatheRoles.DISCOVERY_CIVILIAN));
+    }
+
+    @Test
+    void excellentPhysiqueAddsOnlyExtraNaturalRecovery() {
+        assertTrue(GlobalTraitService.shouldRecoverExcellentPhysiqueStamina(WatheRoles.CIVILIAN, true, false, false));
+
+        assertFalse(GlobalTraitService.shouldRecoverExcellentPhysiqueStamina(WatheRoles.CIVILIAN, false, false, false));
+        assertFalse(GlobalTraitService.shouldRecoverExcellentPhysiqueStamina(WatheRoles.CIVILIAN, true, true, false));
+        assertFalse(GlobalTraitService.shouldRecoverExcellentPhysiqueStamina(WatheRoles.CIVILIAN, true, false, true));
+        assertFalse(GlobalTraitService.shouldRecoverExcellentPhysiqueStamina(WatheRoles.KILLER, true, false, false));
+
+        assertEquals(10.25f, GlobalTraitService.excellentPhysiqueRecoveredStamina(10.0f, 200), 0.0001f);
+        assertEquals(200.0f, GlobalTraitService.excellentPhysiqueRecoveredStamina(199.9f, 200), 0.0001f);
+        assertEquals(10.0f, GlobalTraitService.excellentPhysiqueRecoveredStamina(10.0f, -1), 0.0001f);
+    }
 }
