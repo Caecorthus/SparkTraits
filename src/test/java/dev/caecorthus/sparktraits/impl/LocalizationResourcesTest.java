@@ -53,6 +53,22 @@ class LocalizationResourcesTest {
         assertEquals("隐蔽行动", chinese.get("trait.sparktraits.going_dark.name").getAsString());
     }
 
+    @Test
+    void goodTraitNamesAreLocalized() throws IOException {
+        JsonObject english = readLanguageFile("en_us");
+        JsonObject chinese = readLanguageFile("zh_cn");
+
+        assertEquals("Extroverted", english.get("trait.sparktraits.extroverted.name").getAsString());
+        assertEquals("Introverted", english.get("trait.sparktraits.introverted.name").getAsString());
+        assertEquals("Money Tree", english.get("trait.sparktraits.money_tree.name").getAsString());
+        assertEquals("Focus", english.get("trait.sparktraits.focus.name").getAsString());
+
+        assertEquals("外向", chinese.get("trait.sparktraits.extroverted.name").getAsString());
+        assertEquals("内向", chinese.get("trait.sparktraits.introverted.name").getAsString());
+        assertEquals("摇钱树", chinese.get("trait.sparktraits.money_tree.name").getAsString());
+        assertEquals("专注", chinese.get("trait.sparktraits.focus.name").getAsString());
+    }
+
     private static JsonObject readLanguageFile(String language) throws IOException {
         return JsonParser.parseString(Files.readString(LANG_DIR.resolve(language + ".json"))).getAsJsonObject();
     }

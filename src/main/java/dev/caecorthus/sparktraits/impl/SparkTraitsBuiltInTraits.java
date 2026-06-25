@@ -20,6 +20,7 @@ public final class SparkTraitsBuiltInTraits {
         TraitRegistry.register(new ChildishTrait());
         TraitRegistry.register(new SteadyTrait());
         TraitRegistry.register(new ExcellentPhysiqueTrait());
+        GoodTraits.register();
         PoliceTraits.register();
         KillerTraits.register();
     }
