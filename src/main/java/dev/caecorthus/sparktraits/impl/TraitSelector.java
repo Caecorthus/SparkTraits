@@ -17,12 +17,14 @@ import java.util.List;
 import java.util.random.RandomGenerator;
 
 /**
- * Random trait selector for the three independent 25% slots.
- * 三个独立 25% 槽位的随机天赋选择器。
+ * Random trait selector for the three independent configurable slots.
+ * 三个独立、概率可配置的随机天赋槽位选择器。
  */
 public final class TraitSelector {
     public static final int SLOT_COUNT = 3;
-    public static final float SLOT_CHANCE = 0.25f;
+    public static final float DEFAULT_SLOT_CHANCE = TraitSlotRollChance.DEFAULT;
+    @Deprecated(forRemoval = false)
+    public static final float SLOT_CHANCE = DEFAULT_SLOT_CHANCE;
 
     private TraitSelector() {
     }
@@ -36,9 +38,10 @@ public final class TraitSelector {
     ) {
         LinkedHashSet<Identifier> selected = new LinkedHashSet<>();
         Role role = gameComponent.getRole(player);
+        float slotChance = traitWorld.getTraitSlotRollChance();
 
         for (int slot = 0; slot < SLOT_COUNT; slot++) {
-            if (selected.size() >= TraitPlayerComponent.MAX_TRAITS || random.nextFloat() >= SLOT_CHANCE) {
+            if (selected.size() >= TraitPlayerComponent.MAX_TRAITS || !shouldRollSlot(slotChance, random)) {
                 continue;
             }
 
@@ -55,6 +58,10 @@ public final class TraitSelector {
         }
 
         return List.copyOf(selected);
+    }
+
+    static boolean shouldRollSlot(float slotChance, RandomGenerator random) {
+        return random.nextFloat() < TraitSlotRollChance.normalize(slotChance);
     }
 
     private static List<Trait> collectCandidates(

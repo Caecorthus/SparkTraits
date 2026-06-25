@@ -66,4 +66,23 @@ class SparkTraitsCommandsTest {
     void traitCommandNameUsesShortIdForSparkTraitsNamespace() {
         assertEquals("last_stand", SparkTraitsCommands.formatTraitIdForCommand(SparkTraits.id("last_stand")));
     }
+
+    @Test
+    void traitSlotRollChanceFeedbackUsesWholePercent() {
+        assertEquals(
+                "Trait slot roll chance is 75%.",
+                SparkTraitsCommands.formatTraitSlotRollChanceFeedback(0.75f).getString()
+        );
+        assertEquals(
+                "Trait slot roll chance set to 100%.",
+                SparkTraitsCommands.formatTraitSlotRollChanceSetFeedback(1.0f).getString()
+        );
+    }
+
+    @Test
+    void traitSlotRollChancePercentConvertsToUnitChance() {
+        assertEquals(0.0f, SparkTraitsCommands.traitSlotRollChanceFromPercent(0), 0.0001f);
+        assertEquals(0.75f, SparkTraitsCommands.traitSlotRollChanceFromPercent(75), 0.0001f);
+        assertEquals(1.0f, SparkTraitsCommands.traitSlotRollChanceFromPercent(100), 0.0001f);
+    }
 }

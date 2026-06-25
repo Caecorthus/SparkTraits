@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.component;
 
 import dev.caecorthus.sparktraits.SparkTraits;
+import dev.caecorthus.sparktraits.impl.TraitSlotRollChance;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
@@ -30,6 +31,7 @@ import java.util.UUID;
  */
 public class TraitWorldComponent implements AutoSyncedComponent {
     public static final ComponentKey<TraitWorldComponent> KEY = ComponentRegistry.getOrCreate(SparkTraits.id("world"), TraitWorldComponent.class);
+    public static final float DEFAULT_TRAIT_SLOT_ROLL_CHANCE = TraitSlotRollChance.DEFAULT;
 
     private final World world;
     private final LinkedHashSet<Identifier> disabledTraits = new LinkedHashSet<>();
@@ -38,6 +40,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     // 服务端本局天赋快照，用于玩家离线后仍能正确生成回合结束数据。
     private final Map<UUID, List<Identifier>> roundTraitSnapshots = new HashMap<>();
     private final Map<UUID, List<Identifier>> deathTraitSnapshots = new HashMap<>();
+    private float traitSlotRollChance = TraitSlotRollChance.DEFAULT;
 
     public TraitWorldComponent(World world) {
         this.world = world;
@@ -58,6 +61,18 @@ public class TraitWorldComponent implements AutoSyncedComponent {
 
     public Set<Identifier> getDisabledTraitIds() {
         return Set.copyOf(disabledTraits);
+    }
+
+    public float getTraitSlotRollChance() {
+        return traitSlotRollChance;
+    }
+
+    public void setTraitSlotRollChance(float traitSlotRollChance) {
+        float normalized = TraitSlotRollChance.normalize(traitSlotRollChance);
+        if (Float.compare(this.traitSlotRollChance, normalized) != 0) {
+            this.traitSlotRollChance = normalized;
+            sync();
+        }
     }
 
     public boolean isUniqueTraitUsed(Identifier traitId) {
@@ -111,6 +126,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
             buf.writeUuid(entry.getKey());
             writeIdentifierSet(buf, entry.getValue());
         }
+        buf.writeFloat(traitSlotRollChance);
     }
 
     @Override
@@ -125,17 +141,26 @@ public class TraitWorldComponent implements AutoSyncedComponent {
             readIdentifierSet(buf, ids);
             deathTraitSnapshots.put(uuid, new ArrayList<>(ids));
         }
+        // Added after the original synced fields so older packets can still fall back safely.
+        // 添加在原同步字段之后，让旧格式数据包可以安全回退到默认值。
+        traitSlotRollChance = buf.readableBytes() > 0
+                ? TraitSlotRollChance.normalize(buf.readFloat())
+                : TraitSlotRollChance.DEFAULT;
     }
 
     @Override
     public void writeToNbt(@NotNull NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
         tag.put("DisabledTraits", toNbt(disabledTraits));
+        tag.putFloat(TraitSlotRollChance.NBT_KEY, traitSlotRollChance);
     }
 
     @Override
     public void readFromNbt(@NotNull NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
         disabledTraits.clear();
         fromNbt(tag.getList("DisabledTraits", NbtElement.STRING_TYPE), disabledTraits);
+        traitSlotRollChance = tag.contains(TraitSlotRollChance.NBT_KEY, NbtElement.NUMBER_TYPE)
+                ? TraitSlotRollChance.normalize(tag.getFloat(TraitSlotRollChance.NBT_KEY))
+                : TraitSlotRollChance.DEFAULT;
     }
 
     private static NbtList toNbt(Collection<Identifier> ids) {

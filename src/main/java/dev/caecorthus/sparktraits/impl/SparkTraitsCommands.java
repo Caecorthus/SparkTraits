@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.impl;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -40,6 +41,7 @@ public final class SparkTraitsCommands {
             dispatcher.register(playerTraitCommand("sparktraits:removeTrait", PlayerTraitAction.REMOVE));
             dispatcher.register(clearTraitsCommand("sparktraits:clearTraits"));
             dispatcher.register(listPlayerTraitsCommand("sparktraits:listPlayerTraits"));
+            dispatcher.register(traitSlotRollChanceCommand("sparktraits:traitSlotRollChance"));
         });
     }
 
@@ -124,6 +126,23 @@ public final class SparkTraitsCommands {
                         }));
     }
 
+    private static LiteralArgumentBuilder<ServerCommandSource> traitSlotRollChanceCommand(String literalName) {
+        return literal(literalName)
+                .executes(context -> {
+                    float chance = TraitWorldComponent.KEY.get(context.getSource().getWorld()).getTraitSlotRollChance();
+                    context.getSource().sendFeedback(() -> formatTraitSlotRollChanceFeedback(chance), false);
+                    return traitSlotRollChanceToPercent(chance);
+                })
+                .then(argument("percent", IntegerArgumentType.integer(0, 100))
+                        .requires(source -> source.hasPermissionLevel(2))
+                        .executes(context -> {
+                            float chance = traitSlotRollChanceFromPercent(IntegerArgumentType.getInteger(context, "percent"));
+                            TraitWorldComponent.KEY.get(context.getSource().getWorld()).setTraitSlotRollChance(chance);
+                            context.getSource().sendFeedback(() -> formatTraitSlotRollChanceSetFeedback(chance), true);
+                            return traitSlotRollChanceToPercent(chance);
+                        }));
+    }
+
     private static int executePlayerTraitAction(ServerCommandSource source, Trait trait, Collection<ServerPlayerEntity> players, PlayerTraitAction action) {
         int changed = 0;
         String singleChangedPlayerName = null;
@@ -165,6 +184,22 @@ public final class SparkTraitsCommands {
             return traitId.getPath();
         }
         return traitId.toString();
+    }
+
+    static Text formatTraitSlotRollChanceFeedback(float chance) {
+        return Text.literal("Trait slot roll chance is " + traitSlotRollChanceToPercent(chance) + "%.");
+    }
+
+    static Text formatTraitSlotRollChanceSetFeedback(float chance) {
+        return Text.literal("Trait slot roll chance set to " + traitSlotRollChanceToPercent(chance) + "%.");
+    }
+
+    static float traitSlotRollChanceFromPercent(int percent) {
+        return TraitSlotRollChance.fromPercent(percent);
+    }
+
+    static int traitSlotRollChanceToPercent(float chance) {
+        return TraitSlotRollChance.toPercent(chance);
     }
 
     private static AddResult canAddPending(ServerCommandSource source, ServerPlayerEntity player, TraitPlayerComponent component, Trait trait) {
