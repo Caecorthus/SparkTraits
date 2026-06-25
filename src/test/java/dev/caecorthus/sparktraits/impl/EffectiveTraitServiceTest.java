@@ -79,18 +79,6 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
-    void noellesBlockingNeutralsDeferEffectiveTeamWins() {
-        assertTrue(EffectiveTraitService.isBlockingNoellesTeamWinNeutral(Noellesroles.CORRUPT_COP));
-        assertTrue(EffectiveTraitService.isBlockingNoellesTeamWinNeutral(Noellesroles.TAOTIE));
-        assertFalse(EffectiveTraitService.isBlockingNoellesTeamWinNeutral(Noellesroles.JESTER));
-
-        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.PASSENGERS, true));
-        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.KILLERS, true));
-        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.TIME, true));
-        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.PASSENGERS, false));
-    }
-
-    @Test
     void conscienceViewerForcesCohortHidden() {
         assertEquals(
                 Boolean.FALSE,
@@ -215,25 +203,7 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
-    void innocentShotPunishmentUsesEffectiveAlignment() {
-        assertTrue(EffectiveTraitService.shouldCancelInnocentShotPunishment(
-                WatheRoles.CIVILIAN,
-                Set.of(),
-                WatheRoles.CIVILIAN,
-                Set.of(ImpostorTrait.ID)
-        ));
-        assertFalse(EffectiveTraitService.shouldCancelInnocentShotPunishment(
-                WatheRoles.CIVILIAN,
-                Set.of(),
-                WatheRoles.CIVILIAN,
-                Set.of()
-        ));
-        assertFalse(EffectiveTraitService.shouldCancelInnocentShotPunishment(
-                WatheRoles.CIVILIAN,
-                Set.of(),
-                WatheRoles.KILLER,
-                Set.of(ConscienceTrait.ID)
-        ));
+    void innocentShotPunishmentIsCancelledOnlyForImpostors() {
         assertFalse(EffectiveTraitService.shouldCancelInnocentShotPunishment(
                 WatheRoles.KILLER,
                 Set.of(),

@@ -11,9 +11,7 @@ import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.cca.MapEnhancementsWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
-import dev.doctor4t.wathe.config.datapack.RoomConfig;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheEntities;
@@ -58,13 +56,10 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Predicate;
 
 /**
  * Runtime state machine for the Last Stand trait.
@@ -80,7 +75,7 @@ public final class LastStandService {
     private static final Text CANNOT_ASSASSINATE = Text.literal("This target cannot be assassinated.");
     private static final Text CANNOT_SWAP = Text.literal("This target cannot be swapped.");
 
-    private static final Map<UUID, RevivePoint> returnPoints = new HashMap<>();
+    private static final Map<UUID, ReturnPoint> returnPoints = new HashMap<>();
     private static final Map<UUID, ArrayDeque<Double>> moodSamples = new HashMap<>();
     private static final Map<UUID, Long> lastSampleTicks = new HashMap<>();
     private static final Map<UUID, Double> preDeathMoodPercent = new HashMap<>();
@@ -135,7 +130,7 @@ public final class LastStandService {
     }
 
     public static void recordReturnPoint(ServerPlayerEntity player) {
-        returnPoints.put(player.getUuid(), new RevivePoint(
+        returnPoints.put(player.getUuid(), new ReturnPoint(
                 player.getServerWorld().getRegistryKey(),
                 player.getPos(),
                 player.getYaw(),
@@ -281,21 +276,6 @@ public final class LastStandService {
     ) {
         return EffectiveTraitService.isEffectiveCivilian(victimRole, victimTraits)
                 && EffectiveTraitService.isEffectiveKiller(killerRole, killerTraits);
-    }
-
-    static RevivePoint selectRevivePoint(
-            RevivePoint deathPoint,
-            Optional<RevivePoint> roomPoint,
-            Optional<RevivePoint> returnPoint,
-            Predicate<RevivePoint> canUsePoint
-    ) {
-        if (roomPoint.isPresent() && canUsePoint.test(roomPoint.get())) {
-            return roomPoint.get();
-        }
-        if (returnPoint.isPresent() && canUsePoint.test(returnPoint.get())) {
-            return returnPoint.get();
-        }
-        return deathPoint;
     }
 
     private static boolean approveLastStandDeath(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer) {
@@ -500,22 +480,19 @@ public final class LastStandService {
         pendingPlayers.remove(state.playerUuid());
         TraitPlayerComponent.KEY.get(player).setLastStandPending(false);
 
-        RevivePoint deathPoint = new RevivePoint(
-                state.deathWorldKey(),
-                state.deathPos(),
-                state.deathYaw(),
-                state.deathPitch()
-        );
-        RevivePoint targetPoint = selectRevivePoint(
-                deathPoint,
-                roomRevivePoint(player),
-                Optional.ofNullable(returnPoints.get(state.playerUuid())),
-                point -> canUseRevivePoint(player, server, point)
-        );
-        ServerWorld targetWorld = server == null ? null : server.getWorld(targetPoint.worldKey());
-        if (targetWorld == null) {
-            targetWorld = player.getServerWorld();
-            targetPoint = deathPoint;
+        ServerWorld targetWorld = player.getServerWorld();
+        Vec3d targetPos = state.deathPos();
+        float targetYaw = state.deathYaw();
+        float targetPitch = state.deathPitch();
+        ReturnPoint returnPoint = returnPoints.get(state.playerUuid());
+        if (server != null && returnPoint != null) {
+            ServerWorld returnWorld = server.getWorld(returnPoint.worldKey());
+            if (returnWorld != null && canSafelyStandAt(player, returnWorld, returnPoint.pos())) {
+                targetWorld = returnWorld;
+                targetPos = returnPoint.pos();
+                targetYaw = returnPoint.yaw();
+                targetPitch = returnPoint.pitch();
+            }
         }
 
         GameWorldComponent game = GameWorldComponent.KEY.get(targetWorld);
@@ -526,15 +503,7 @@ public final class LastStandService {
         player.setHealth(player.getMaxHealth());
         player.setAir(player.getMaxAir());
         player.setInvulnerable(state.wasInvulnerable());
-        player.teleport(
-                targetWorld,
-                targetPoint.pos().x,
-                targetPoint.pos().y,
-                targetPoint.pos().z,
-                Set.of(),
-                targetPoint.yaw(),
-                targetPoint.pitch()
-        );
+        player.teleport(targetWorld, targetPos.x, targetPos.y, targetPos.z, Set.of(), targetYaw, targetPitch);
         state.effects().restore(player);
         if (isRealMoodRole(game.getRole(player))) {
             PlayerMoodComponent.KEY.get(player).setMood(0.5f);
@@ -561,42 +530,6 @@ public final class LastStandService {
     private static void restorePendingControl(ServerPlayerEntity player) {
         player.setCameraEntity(player);
         player.changeGameMode(GameMode.ADVENTURE);
-    }
-
-    // Prefer Wathe's assigned room spawn so Last Stand returns the player to their room.
-    // 优先使用 Wathe 分配的房间出生点，确保背水一战把玩家送回自己的房间。
-    private static Optional<RevivePoint> roomRevivePoint(ServerPlayerEntity player) {
-        ServerWorld world = player.getServerWorld();
-        GameWorldComponent game = GameWorldComponent.KEY.get(world);
-        GameWorldComponent.RoomData room = game.getPlayerRoom(player);
-        if (room == null) {
-            return Optional.empty();
-        }
-        List<UUID> roomPlayers = room.getPlayers();
-        int playerIndexInRoom = roomPlayers.indexOf(player.getUuid());
-        if (playerIndexInRoom < 0) {
-            return Optional.empty();
-        }
-        return MapEnhancementsWorldComponent.KEY.get(world)
-                .getSpawnPointForPlayer(room.getIndex(), playerIndexInRoom)
-                .map(spawnPoint -> revivePoint(world, spawnPoint));
-    }
-
-    private static RevivePoint revivePoint(ServerWorld world, RoomConfig.SpawnPoint spawnPoint) {
-        return new RevivePoint(
-                world.getRegistryKey(),
-                spawnPoint.toVec3d(),
-                spawnPoint.yaw(),
-                spawnPoint.pitch()
-        );
-    }
-
-    private static boolean canUseRevivePoint(ServerPlayerEntity player, @Nullable MinecraftServer server, RevivePoint point) {
-        if (server == null) {
-            return false;
-        }
-        ServerWorld world = server.getWorld(point.worldKey());
-        return world != null && canSafelyStandAt(player, world, point.pos());
     }
 
     private static void addMoodSample(UUID uuid, double moodPercent) {
@@ -723,21 +656,11 @@ public final class LastStandService {
         }
         BlockPos feet = BlockPos.ofFloored(pos);
         BlockPos below = feet.down();
-        if (!hasStandingSupport(hasCollisionShape(world, feet), hasCollisionShape(world, below))) {
+        if (world.getBlockState(below).getCollisionShape(world, below).isEmpty()) {
             return false;
         }
         Box targetBox = player.getBoundingBox().offset(pos.subtract(player.getPos()));
         return world.isSpaceEmpty(player, targetBox);
-    }
-
-    // Half-block room spawns can be supported by the block at the player's feet.
-    // 半格房间出生点的支撑可能来自玩家脚所在方块。
-    static boolean hasStandingSupport(boolean feetHasCollision, boolean belowHasCollision) {
-        return feetHasCollision || belowHasCollision;
-    }
-
-    private static boolean hasCollisionShape(ServerWorld world, BlockPos pos) {
-        return !world.getBlockState(pos).getCollisionShape(world, pos).isEmpty();
     }
 
     private static void ensureRevolver(ServerPlayerEntity player) {
@@ -769,7 +692,7 @@ public final class LastStandService {
         }
     }
 
-    record RevivePoint(RegistryKey<World> worldKey, Vec3d pos, float yaw, float pitch) {
+    private record ReturnPoint(RegistryKey<World> worldKey, Vec3d pos, float yaw, float pitch) {
     }
 
     private record PendingState(

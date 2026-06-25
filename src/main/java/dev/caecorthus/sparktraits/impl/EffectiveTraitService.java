@@ -607,18 +607,6 @@ public final class EffectiveTraitService {
         };
     }
 
-    /** Mirrors NoellesRoles neutrals that block ordinary team wins while alive.
-     *  同步 NoellesRoles 中存活时会阻止普通阵营胜利的中立身份。 */
-    static boolean isBlockingNoellesTeamWinNeutral(Role role) {
-        return role != null && (role.equals(Noellesroles.CORRUPT_COP) || role.equals(Noellesroles.TAOTIE));
-    }
-
-    static boolean shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus proposedStatus, boolean blockingNeutralAlive) {
-        return blockingNeutralAlive
-                && (proposedStatus == GameFunctions.WinStatus.PASSENGERS
-                || proposedStatus == GameFunctions.WinStatus.KILLERS);
-    }
-
     public static Role.MoodType effectiveMoodType(PlayerEntity player, Role role) {
         if (hasConscience(player)) {
             return Role.MoodType.REAL;
@@ -696,17 +684,14 @@ public final class EffectiveTraitService {
         return isEffectiveCivilian(victimRole, victimTraits);
     }
 
-    /** Cancels Wathe's innocent-shot punishment when raw roles disagree with effective alignment.
-     *  当原始身份与有效阵营不一致时，取消 Wathe 的好人枪击惩罚。 */
+    /** Cancels Wathe's innocent-shot punishment only for Impostor shots.
+     *  只在内鬼开枪时取消 Wathe 的好人枪击惩罚，普通杀手保留原版消耗枪械逻辑。 */
     public static boolean shouldCancelInnocentShotPunishment(
             Role shooterRole,
             Collection<Identifier> shooterTraits,
             Role victimRole,
             Collection<Identifier> victimTraits
     ) {
-        if (isOriginalCivilian(victimRole) && !shouldTreatGunVictimAsInnocent(victimRole, victimTraits)) {
-            return true;
-        }
         return isEffectiveKiller(shooterRole, shooterTraits)
                 && hasImpostor(shooterTraits)
                 && shouldTreatGunVictimAsInnocent(victimRole, victimTraits);
@@ -766,7 +751,6 @@ public final class EffectiveTraitService {
         List<ServerPlayerEntity> players = world.getPlayers();
         boolean realKillerAlive = false;
         boolean effectiveCivilianAlive = false;
-        boolean blockingNeutralAlive = false;
 
         for (ServerPlayerEntity player : players) {
             if (!GameFunctions.isPlayerPlayingAndAlive(player) || !gameComponent.hasAnyRole(player)) {
@@ -778,26 +762,13 @@ public final class EffectiveTraitService {
             if (isEffectiveCivilian(player, gameComponent)) {
                 effectiveCivilianAlive = true;
             }
-            if (isBlockingNoellesTeamWinNeutral(gameComponent.getRole(player))) {
-                blockingNeutralAlive = true;
-            }
         }
 
         if (!realKillerAlive) {
             killUnsupportedImpostors(players);
-            if (shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.PASSENGERS, blockingNeutralAlive)) {
-                // Let NoellesRoles finish neutral win/block checks instead of settling early.
-                // 交还给 NoellesRoles 执行中立胜利/阻止检查，避免 SparkTraits 抢先结算。
-                return null;
-            }
             return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.PASSENGERS);
         }
         if (!effectiveCivilianAlive) {
-            if (shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.KILLERS, blockingNeutralAlive)) {
-                // Let NoellesRoles finish neutral win/block checks instead of settling early.
-                // 交还给 NoellesRoles 执行中立胜利/阻止检查，避免 SparkTraits 抢先结算。
-                return null;
-            }
             return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.KILLERS);
         }
         if (currentStatus == GameFunctions.WinStatus.PASSENGERS || currentStatus == GameFunctions.WinStatus.KILLERS) {

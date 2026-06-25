@@ -50,13 +50,6 @@ class GoodTraitServiceTest {
     }
 
     @Test
-    void undercoverConflictsWithSocialAndFocusTraits() {
-        assertFalse(TraitRules.canApplyAll(null, null, null, Noellesroles.UNDERCOVER, Set.of(GoodTraits.EXTROVERTED)));
-        assertFalse(TraitRules.canApplyAll(null, null, null, Noellesroles.UNDERCOVER, Set.of(GoodTraits.INTROVERTED)));
-        assertFalse(TraitRules.canApplyAll(null, null, null, Noellesroles.UNDERCOVER, Set.of(GoodTraits.FOCUS)));
-    }
-
-    @Test
     void moneyTreeRequiresVisibleMoneyOrNativeTaskMoney() {
         assertFalse(GoodTraitService.canSelectMoneyTree(WatheRoles.CIVILIAN, Set.of(), false));
         assertTrue(GoodTraitService.canSelectMoneyTree(WatheRoles.CIVILIAN, Set.of(), true));
