@@ -55,6 +55,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Client-visible Last Stand pending flag for rendering and collision checks.
     // 用于客户端渲染与碰撞判断的背水一战等待复活标记。
     private boolean lastStandPending;
+    // Public blackout-only flag used to suppress default killer instinct.
+    // 仅用于关灯期间压制默认杀手本能的公开状态标记。
+    private boolean goingDarkInstinctHidden;
     private int consciencePoisonTicks = -1;
     private UUID consciencePoisoner;
     private Identifier serialKillerMurdererRole;
@@ -96,6 +99,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     public boolean isLastStandPending() {
         return lastStandPending;
+    }
+
+    public boolean isGoingDarkInstinctHidden() {
+        return goingDarkInstinctHidden;
     }
 
     public boolean isConscienceInstinctVisible() {
@@ -173,6 +180,13 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         }
     }
 
+    public void setGoingDarkInstinctHidden(boolean goingDarkInstinctHidden) {
+        if (this.goingDarkInstinctHidden != goingDarkInstinctHidden) {
+            this.goingDarkInstinctHidden = goingDarkInstinctHidden;
+            sync();
+        }
+    }
+
     public boolean addPendingTrait(Identifier traitId) {
         if (pendingTraits.size() >= MAX_TRAITS && !pendingTraits.contains(traitId)) {
             return false;
@@ -220,6 +234,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     public void clearActiveTraits(TraitRemovalReason reason) {
         if (activeTraits.isEmpty() && revealedTraits.isEmpty() && !killerInstinctHidden && !lastStandPending
+                && !goingDarkInstinctHidden
                 && consciencePoisonTicks <= 0
                 && !conscienceInstinctVisible && !impostorInstinctVisible && serialKillerMurdererRole == null
                 && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid) {
@@ -240,6 +255,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         conscienceInstinctVisible = false;
         impostorInstinctVisible = false;
         lastStandPending = false;
+        goingDarkInstinctHidden = false;
         consciencePoisonTicks = -1;
         consciencePoisoner = null;
         serialKillerMurdererRole = null;
@@ -313,6 +329,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         writeIdentifierSet(buf, revealedTraits);
         buf.writeBoolean(killerInstinctHidden);
         buf.writeBoolean(lastStandPending);
+        buf.writeBoolean(goingDarkInstinctHidden);
         buf.writeBoolean(activeTraits.contains(ConscienceTrait.ID));
         buf.writeBoolean(activeTraits.contains(ImpostorTrait.ID));
         buf.writeVarInt(visibleConsciencePoisonTicks(recipient, spectator));
@@ -326,6 +343,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         readIdentifierSet(buf, revealedTraits);
         killerInstinctHidden = buf.readBoolean();
         lastStandPending = buf.readBoolean();
+        goingDarkInstinctHidden = buf.readBoolean();
         conscienceInstinctVisible = buf.readBoolean();
         impostorInstinctVisible = buf.readBoolean();
         consciencePoisonTicks = buf.readVarInt();
@@ -366,6 +384,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         conscienceInstinctVisible = false;
         impostorInstinctVisible = false;
         lastStandPending = false;
+        goingDarkInstinctHidden = false;
         consciencePoisonTicks = -1;
         consciencePoisoner = null;
         serialKillerMurdererRole = null;

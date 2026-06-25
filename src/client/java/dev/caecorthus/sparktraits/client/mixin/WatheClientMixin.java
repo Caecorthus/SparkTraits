@@ -5,6 +5,7 @@ import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.ConscienceSerialKillerService;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.LastStandService;
+import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
@@ -167,6 +168,13 @@ public abstract class WatheClientMixin {
                         viewer.canSee(playerTarget)
                 )) {
             cir.setReturnValue(-1);
+            return;
+        }
+        if (VigilanteVeteranTraitService.shouldSkipGoingDarkDefaultInstinct(
+                targetTraits.isGoingDarkInstinctHidden(),
+                true,
+                false
+        )) {
             return;
         }
         Integer morphlingColor = sparktraits$conscienceMorphlingDisguiseColor(playerTarget, game, morphling);

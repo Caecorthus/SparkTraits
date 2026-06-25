@@ -2,9 +2,12 @@ package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.util.GunShootPayload;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -26,5 +29,22 @@ public abstract class GunShootPayloadMixin {
                 game.getRole(victim),
                 TraitPlayerComponent.KEY.get(victim).getActiveTraitIds()
         );
+    }
+
+    @Redirect(
+            method = "receive",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/doctor4t/wathe/game/GameFunctions;killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;)V",
+                    ordinal = 1
+            )
+    )
+    private void sparktraits$applyHeavyArtilleryGunDamage(
+            ServerPlayerEntity victim,
+            boolean spawnBody,
+            ServerPlayerEntity shooter,
+            Identifier deathReason
+    ) {
+        VigilanteVeteranTraitService.killPlayerWithHeavyArtillery(victim, spawnBody, shooter, deathReason);
     }
 }

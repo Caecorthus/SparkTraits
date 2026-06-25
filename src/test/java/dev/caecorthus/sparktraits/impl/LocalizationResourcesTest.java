@@ -35,6 +35,24 @@ class LocalizationResourcesTest {
         );
     }
 
+    @Test
+    void policeTraitNamesAreLocalized() throws IOException {
+        JsonObject english = readLanguageFile("en_us");
+        JsonObject chinese = readLanguageFile("zh_cn");
+
+        assertEquals("Marksman", english.get("trait.sparktraits.marksman.name").getAsString());
+        assertEquals("Fast Reload", english.get("trait.sparktraits.fast_reload.name").getAsString());
+        assertEquals("Heavy Artillery", english.get("trait.sparktraits.heavy_artillery.name").getAsString());
+        assertEquals("Well Trained", english.get("trait.sparktraits.well_trained.name").getAsString());
+        assertEquals("Going Dark", english.get("trait.sparktraits.going_dark.name").getAsString());
+
+        assertEquals("精确枪手", chinese.get("trait.sparktraits.marksman.name").getAsString());
+        assertEquals("快速装填", chinese.get("trait.sparktraits.fast_reload.name").getAsString());
+        assertEquals("重炮手", chinese.get("trait.sparktraits.heavy_artillery.name").getAsString());
+        assertEquals("训练有素", chinese.get("trait.sparktraits.well_trained.name").getAsString());
+        assertEquals("隐蔽行动", chinese.get("trait.sparktraits.going_dark.name").getAsString());
+    }
+
     private static JsonObject readLanguageFile(String language) throws IOException {
         return JsonParser.parseString(Files.readString(LANG_DIR.resolve(language + ".json"))).getAsJsonObject();
     }
