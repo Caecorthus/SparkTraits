@@ -1,5 +1,13 @@
 # 更新日志
 
+## 0.1.3 - 2026-06-25
+
+范围：`c7f2bf0 Finalize 0.1.2 changelog` 之后的启动崩溃修复。
+
+### 修复与调整
+
+- 修复 0.1.2 客户端启动时 `ExcellentPhysiqueStaminaMixin` 因 `@Shadow isSprinting()` 绑定到 `PlayerEntity` 失败而崩溃的问题；体质优异的体力恢复逻辑不变。
+
 ## 0.1.2 - 2026-06-24
 
 范围：`a721c67 Release 0.1.1` 之后到 `34fea55 Weight conscience compensation killers by role history`。
