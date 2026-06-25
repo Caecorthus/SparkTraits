@@ -1,6 +1,6 @@
 # 更新日志
 
-## 0.1.2 候选 - 2026-06-24
+## 0.1.2 - 2026-06-24
 
 范围：`a721c67 Release 0.1.1` 之后到 `34fea55 Weight conscience compensation killers by role history`。
 
