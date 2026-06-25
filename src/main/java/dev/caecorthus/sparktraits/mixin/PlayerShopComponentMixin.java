@@ -2,11 +2,15 @@ package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.KillerTraitService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerShopComponent;
+import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
@@ -16,6 +20,18 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  */
 @Mixin(value = PlayerShopComponent.class, remap = false)
 public abstract class PlayerShopComponentMixin {
+    @Shadow
+    @Final
+    private PlayerEntity player;
+
+    @Redirect(
+            method = "tryBuy",
+            at = @At(value = "INVOKE", target = "Ldev/doctor4t/wathe/util/ShopEntry;price()I")
+    )
+    private int sparktraits$applyCharismaPurchasePrice(ShopEntry entry) {
+        return KillerTraitService.effectiveCharismaPurchasePrice(this.player, entry);
+    }
+
     @Redirect(
             method = "applyBlackoutCooldownToAllKillers",
             at = @At(value = "INVOKE", target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;canUseKillerFeatures(Lnet/minecraft/entity/player/PlayerEntity;)Z")

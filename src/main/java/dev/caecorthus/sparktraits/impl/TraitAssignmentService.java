@@ -465,6 +465,14 @@ public final class TraitAssignmentService {
             if (lockedTraits.contains(traitId) || randomTraits.contains(traitId)) {
                 return true;
             }
+            Trait trait = TraitRegistry.get(traitId);
+            if (trait == null || !isCompatibleWithLockedTraits(trait)) {
+                return false;
+            }
+            randomTraits.removeIf(randomTraitId -> {
+                Trait randomTrait = TraitRegistry.get(randomTraitId);
+                return randomTrait != null && TraitRules.areIncompatible(trait, randomTrait);
+            });
             if (lockedTraits.size() >= TraitPlayerComponent.MAX_TRAITS) {
                 return false;
             }
@@ -479,11 +487,22 @@ public final class TraitAssignmentService {
             if (lockedTraits.contains(traitId) || randomTraits.contains(traitId)) {
                 return true;
             }
-            return lockedTraits.size() < TraitPlayerComponent.MAX_TRAITS;
+            Trait trait = TraitRegistry.get(traitId);
+            return trait != null && lockedTraits.size() < TraitPlayerComponent.MAX_TRAITS && isCompatibleWithLockedTraits(trait);
         }
 
         void clearRandomTraits() {
             randomTraits.clear();
+        }
+
+        private boolean isCompatibleWithLockedTraits(Trait trait) {
+            for (Identifier lockedTraitId : lockedTraits) {
+                Trait lockedTrait = TraitRegistry.get(lockedTraitId);
+                if (lockedTrait != null && TraitRules.areIncompatible(trait, lockedTrait)) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         void removeDuplicateUniqueLocks(Collection<Identifier> usedUniqueTraits) {

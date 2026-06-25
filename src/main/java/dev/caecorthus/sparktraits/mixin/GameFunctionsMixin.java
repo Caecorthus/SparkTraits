@@ -1,17 +1,20 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.KillerTraitService;
 import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
@@ -23,6 +26,36 @@ import java.util.UUID;
  */
 @Mixin(value = GameFunctions.class, remap = false)
 public abstract class GameFunctionsMixin {
+    @Inject(
+            method = "killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Z)V",
+            at = @At("HEAD")
+    )
+    private static void sparktraits$beginSecondStrikeAttempt(
+            ServerPlayerEntity victim,
+            boolean spawnBody,
+            ServerPlayerEntity killer,
+            Identifier deathReason,
+            boolean force,
+            CallbackInfo ci
+    ) {
+        KillerTraitService.beginKillAttempt(victim, killer, force);
+    }
+
+    @Inject(
+            method = "killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Z)V",
+            at = @At("RETURN")
+    )
+    private static void sparktraits$finishSecondStrikeAttempt(
+            ServerPlayerEntity victim,
+            boolean spawnBody,
+            ServerPlayerEntity killer,
+            Identifier deathReason,
+            boolean force,
+            CallbackInfo ci
+    ) {
+        KillerTraitService.finishKillAttempt(victim, spawnBody, killer, deathReason, force);
+    }
+
     @Inject(method = "shouldDropOnDeath", at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$keepLastStandRevolver(ItemStack stack, PlayerEntity victim, CallbackInfoReturnable<Boolean> cir) {
         if (LastStandService.shouldPreventDeathDrop(victim, stack)) {

@@ -19,5 +19,6 @@ public final class SparkTraitsBuiltInTraits {
         TraitRegistry.register(new FastHandsTrait());
         TraitRegistry.register(new ChildishTrait());
         TraitRegistry.register(new SteadyTrait());
+        KillerTraits.register();
     }
 }

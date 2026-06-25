@@ -58,6 +58,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     private int consciencePoisonTicks = -1;
     private UUID consciencePoisoner;
     private Identifier serialKillerMurdererRole;
+    private int bloodthirstyKillCount;
+    private boolean corneredLastKillerRewardPaid;
 
     public TraitPlayerComponent(PlayerEntity player) {
         this.player = player;
@@ -118,6 +120,22 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     public UUID getConsciencePoisoner() {
         return consciencePoisoner;
+    }
+
+    public int getBloodthirstyKillCount() {
+        return bloodthirstyKillCount;
+    }
+
+    public void incrementBloodthirstyKillCount() {
+        this.bloodthirstyKillCount++;
+    }
+
+    public boolean hasCorneredLastKillerRewardPaid() {
+        return corneredLastKillerRewardPaid;
+    }
+
+    public void markCorneredLastKillerRewardPaid() {
+        this.corneredLastKillerRewardPaid = true;
     }
 
     public void setConsciencePoisonTicks(int ticks, UUID poisoner) {
@@ -203,7 +221,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     public void clearActiveTraits(TraitRemovalReason reason) {
         if (activeTraits.isEmpty() && revealedTraits.isEmpty() && !killerInstinctHidden && !lastStandPending
                 && consciencePoisonTicks <= 0
-                && !conscienceInstinctVisible && !impostorInstinctVisible && serialKillerMurdererRole == null) {
+                && !conscienceInstinctVisible && !impostorInstinctVisible && serialKillerMurdererRole == null
+                && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid) {
             return;
         }
         if (player instanceof ServerPlayerEntity serverPlayer) {
@@ -224,6 +243,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         consciencePoisonTicks = -1;
         consciencePoisoner = null;
         serialKillerMurdererRole = null;
+        bloodthirstyKillCount = 0;
+        corneredLastKillerRewardPaid = false;
         sync();
     }
 
@@ -328,6 +349,12 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 tag.putUuid("ConsciencePoisoner", consciencePoisoner);
             }
         }
+        if (bloodthirstyKillCount > 0) {
+            tag.putInt("BloodthirstyKillCount", bloodthirstyKillCount);
+        }
+        if (corneredLastKillerRewardPaid) {
+            tag.putBoolean("CorneredLastKillerRewardPaid", true);
+        }
     }
 
     @Override
@@ -342,6 +369,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         consciencePoisonTicks = -1;
         consciencePoisoner = null;
         serialKillerMurdererRole = null;
+        bloodthirstyKillCount = 0;
+        corneredLastKillerRewardPaid = false;
         fromNbt(tag.getList("ActiveTraits", NbtElement.STRING_TYPE), activeTraits);
         fromNbt(tag.getList("PendingTraits", NbtElement.STRING_TYPE), pendingTraits);
         fromNbt(tag.getList("RevealedTraits", NbtElement.STRING_TYPE), revealedTraits);
@@ -352,6 +381,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             consciencePoisonTicks = tag.getInt("ConsciencePoisonTicks");
             consciencePoisoner = tag.containsUuid("ConsciencePoisoner") ? tag.getUuid("ConsciencePoisoner") : null;
         }
+        if (tag.contains("BloodthirstyKillCount", NbtElement.NUMBER_TYPE)) {
+            bloodthirstyKillCount = tag.getInt("BloodthirstyKillCount");
+        }
+        corneredLastKillerRewardPaid = tag.contains("CorneredLastKillerRewardPaid", NbtElement.BYTE_TYPE)
+                && tag.getBoolean("CorneredLastKillerRewardPaid");
     }
 
     private static NbtList toNbt(Collection<Identifier> ids) {

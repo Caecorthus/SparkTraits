@@ -6,6 +6,7 @@
   "mixins": [
     "BomberPlayerComponentMixin",
     "BeveragePlateBlockEntityMixin",
+    "BloodthirstyCooldownMixin",
     "CautiousEntitySoundMixin",
     "CautiousLivingEntitySoundMixin",
     "CrowbarItemMixin",
@@ -20,6 +21,7 @@
     "ForceRoleCommandMixin",
     "EntityCollisionMixin",
     "LivingEntityCollisionMixin",
+    "KillerTraitLivingEntityMixin",
     "ItemEntityMixin",
     "PlayerInventoryMixin",
     "MurderGameModeMixin",

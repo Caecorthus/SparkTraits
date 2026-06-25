@@ -19,6 +19,7 @@ public final class TraitGameHooks {
     public static void register() {
         EffectiveTraitService.register();
         GlobalTraitService.register();
+        KillerTraitService.register();
         ImpostorRevolverService.register();
         ConscienceSerialKillerService.register();
         ConsciencePoisonerService.register();
@@ -41,6 +42,7 @@ public final class TraitGameHooks {
                 syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
                 return;
             }
+            KillerTraitService.handleAfterRealKill(victim, killer, deathReason);
             ImpostorBodyguardService.handleAfterKill(victim);
             ConscienceSerialKillerService.handleAfterKill(victim, killer, deathReason);
             playerTraits.clearActiveTraits(TraitRemovalReason.DEATH);
