@@ -7,11 +7,17 @@ import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.caecorthus.sparktraits.api.TraitSelectionContext;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.mixin.RoleHistoryComponentAccessor;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.RoleSelectionContext;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.RoleAssigned;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.cca.RoleHistoryComponent;
+import dev.doctor4t.wathe.game.rotation.GameEntry;
+import dev.doctor4t.wathe.game.rotation.RoleCategory;
+import dev.doctor4t.wathe.game.rotation.RoleRotation;
+import dev.doctor4t.wathe.game.rotation.RotationStrength;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -22,11 +28,14 @@ import org.agmas.noellesroles.Noellesroles;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.function.ToDoubleFunction;
 
 /** Builds round trait plans before Wathe sends welcome information.
  *  在 Wathe 发送开局信息前构建本局天赋方案。 */
@@ -193,9 +202,10 @@ public final class TraitAssignmentService {
         int conscienceCount = countTrait(plans, ConscienceTrait.ID);
         int extraKillers = EffectiveTraitService.requiredExtraKillersForConscience(publicKillerCount, originalKillerCount, conscienceCount);
         RoleSelectionContext selectionContext = createRoleSelectionContext(world, gameComponent, players);
+        RoleHistoryComponent roleHistory = RoleHistoryComponent.KEY.get(world.getScoreboard());
 
         for (int i = 0; i < extraKillers; i++) {
-            PlayerPlan extraKiller = chooseExtraKiller(gameComponent, plans, lockedRolePlayers);
+            PlayerPlan extraKiller = chooseExtraKiller(gameComponent, roleHistory, plans, lockedRolePlayers, random);
             if (extraKiller == null) {
                 SparkTraits.LOGGER.warn("Could not add an extra killer for Conscience compensation.");
                 return;
@@ -209,6 +219,7 @@ public final class TraitAssignmentService {
             extraKiller.clearRandomTraits();
             clearInitialRoleItemsForConscienceCompensation(extraKiller.player(), originalRole);
             gameComponent.addRole(extraKiller.player(), compensationRole);
+            replaceLatestConscienceCompensationRoleHistoryEntry(roleHistory, extraKiller.player().getUuid(), compensationRole);
             RoleAssigned.EVENT.invoker().assignRole(extraKiller.player(), compensationRole);
             TraitPlayerComponent.KEY.get(extraKiller.player()).sync();
             gameComponent.sync();
@@ -217,34 +228,72 @@ public final class TraitAssignmentService {
 
     private static PlayerPlan chooseExtraKiller(
             GameWorldComponent gameComponent,
+            RoleHistoryComponent roleHistory,
             List<PlayerPlan> plans,
-            Set<UUID> lockedRolePlayers
+            Set<UUID> lockedRolePlayers,
+            Random random
     ) {
-        for (PlayerPlan plan : plans) {
-            if (canBecomeExtraKiller(gameComponent, plan, lockedRolePlayers)
-                    && gameComponent.isRole(plan.player(), WatheRoles.CIVILIAN)
-                    && plan.isUnlocked()) {
-                return plan;
-            }
-        }
-        for (PlayerPlan plan : plans) {
-            if (canBecomeExtraKiller(gameComponent, plan, lockedRolePlayers)
-                    && gameComponent.isRole(plan.player(), WatheRoles.CIVILIAN)
-                    && !plan.hasLocks()) {
-                return plan;
-            }
-        }
-        for (PlayerPlan plan : plans) {
-            if (canBecomeExtraKiller(gameComponent, plan, lockedRolePlayers) && plan.isUnlocked()) {
-                return plan;
-            }
-        }
-        for (PlayerPlan plan : plans) {
-            if (canBecomeExtraKiller(gameComponent, plan, lockedRolePlayers) && !plan.hasLocks()) {
-                return plan;
+        List<PlayerPlan> eligiblePlans = plans.stream()
+                .filter(plan -> canBecomeExtraKiller(gameComponent, plan, lockedRolePlayers))
+                .toList();
+        return pickWeightedConscienceCompensationCandidate(
+                eligiblePlans,
+                List.of(
+                        plan -> gameComponent.isRole(plan.player(), WatheRoles.CIVILIAN) && plan.isUnlocked(),
+                        plan -> gameComponent.isRole(plan.player(), WatheRoles.CIVILIAN) && !plan.hasLocks(),
+                        PlayerPlan::isUnlocked,
+                        plan -> !plan.hasLocks()
+                ),
+                plan -> roleHistory.debt(plan.player().getUuid(), RoleCategory.KILLER),
+                gameComponent.getRoleRotationStrength(),
+                random
+        );
+    }
+
+    /** Keeps existing priority buckets, but lets Wathe's role-rotation debt choose within each bucket.
+     *  保留原有候选优先级，只在同一优先级内交给 Wathe 的身份轮换债务加权抽选。 */
+    static <T> T pickWeightedConscienceCompensationCandidate(
+            List<T> candidates,
+            List<Predicate<T>> priorityBuckets,
+            ToDoubleFunction<T> killerDebtProvider,
+            RotationStrength rotationStrength,
+            Random random
+    ) {
+        for (Predicate<T> priorityBucket : priorityBuckets) {
+            List<T> bucketCandidates = candidates.stream()
+                    .filter(priorityBucket)
+                    .toList();
+            T selected = pickWeightedConscienceCompensationCandidate(
+                    bucketCandidates,
+                    killerDebtProvider,
+                    rotationStrength,
+                    random
+            );
+            if (selected != null) {
+                return selected;
             }
         }
         return null;
+    }
+
+    private static <T> T pickWeightedConscienceCompensationCandidate(
+            List<T> candidates,
+            ToDoubleFunction<T> killerDebtProvider,
+            RotationStrength rotationStrength,
+            Random random
+    ) {
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        RotationStrength safeRotationStrength = rotationStrength == null ? RotationStrength.OFF : rotationStrength;
+        return RoleRotation.selectWeighted(
+                        candidates,
+                        candidate -> RoleRotation.weight(killerDebtProvider.applyAsDouble(candidate), safeRotationStrength),
+                        1,
+                        random::nextDouble
+                ).stream()
+                .findFirst()
+                .orElse(null);
     }
 
     private static boolean canBecomeExtraKiller(
@@ -272,6 +321,35 @@ public final class TraitAssignmentService {
                 && role != WatheRoles.VETERAN
                 && !traits.contains(ImpostorTrait.ID)
                 && !traits.contains(ConscienceTrait.ID);
+    }
+
+    private static void replaceLatestConscienceCompensationRoleHistoryEntry(
+            RoleHistoryComponent roleHistory,
+            UUID playerUuid,
+            Role compensationRole
+    ) {
+        Deque<GameEntry> playerHistory = ((RoleHistoryComponentAccessor) roleHistory).sparktraits$getHistory().get(playerUuid);
+        replaceLatestConscienceCompensationRoleHistoryEntry(playerHistory, compensationRole);
+    }
+
+    /** Rewrites the current-round role entry instead of appending a second round.
+     *  只改写本局最新身份记录，避免额外追加一局历史。 */
+    static boolean replaceLatestConscienceCompensationRoleHistoryEntry(
+            Deque<GameEntry> playerHistory,
+            Role compensationRole
+    ) {
+        if (playerHistory == null || playerHistory.isEmpty() || compensationRole == null) {
+            return false;
+        }
+        GameEntry latestEntry = playerHistory.removeLast();
+        playerHistory.addLast(new GameEntry(
+                latestEntry.killerShare(),
+                latestEntry.vigilanteShare(),
+                latestEntry.neutralShare(),
+                RoleCategory.KILLER,
+                compensationRole.identifier().toString()
+        ));
+        return true;
     }
 
     /** Removes old civilian role kit before Conscience compensation assigns a killer role.

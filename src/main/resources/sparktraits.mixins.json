@@ -37,6 +37,7 @@
     "PlayerMoodComponentMixin",
     "PlayerPoisonComponentMixin",
     "PlayerEntityMixin",
+    "RoleHistoryComponentAccessor",
     "SerialKillerPlayerComponentAccessor",
     "SerialKillerPlayerComponentMixin",
     "ServerItemCooldownManagerAccessor",
