@@ -44,6 +44,7 @@
     "ServerItemCooldownManagerAccessor",
     "ScreenHandlerMixin",
     "TimekeeperShopHandlerMixin",
+    "TrainDoorBlockMixin",
     "TrimmedBedBlockEntityMixin",
     "TrimmedBedBlockMixin",
     "VentHatchBlockMixin",
