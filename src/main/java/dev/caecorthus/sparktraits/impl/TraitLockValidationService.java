@@ -56,6 +56,9 @@ public final class TraitLockValidationService {
         if (isUnknownRole(role)) {
             return true;
         }
+        if (!TraitRoleEligibility.canReceiveTraits(role)) {
+            return false;
+        }
         Faction faction = role.getFaction();
         return switch (trait.audience()) {
             case UNIVERSAL -> true;

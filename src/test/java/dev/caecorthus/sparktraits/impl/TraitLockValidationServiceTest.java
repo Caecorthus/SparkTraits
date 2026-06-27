@@ -4,6 +4,7 @@ import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.api.Trait;
 import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
+import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import net.minecraft.util.Identifier;
 import org.junit.jupiter.api.BeforeAll;
@@ -18,11 +19,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TraitLockValidationServiceTest {
     private static final Identifier REGISTERED_KILLER_TRAIT_ID = Identifier.of("sparktraits_test", "registered_killer_trait");
+    private static final Identifier REGISTERED_UNIVERSAL_TRAIT_ID = Identifier.of("sparktraits_test", "registered_universal_trait");
 
     @BeforeAll
     static void registerTestTraits() {
         if (!TraitRegistry.contains(REGISTERED_KILLER_TRAIT_ID)) {
             TraitRegistry.register(trait(REGISTERED_KILLER_TRAIT_ID, TraitAudience.KILLER_ONLY));
+        }
+        if (!TraitRegistry.contains(REGISTERED_UNIVERSAL_TRAIT_ID)) {
+            TraitRegistry.register(trait(REGISTERED_UNIVERSAL_TRAIT_ID, TraitAudience.UNIVERSAL));
         }
     }
 
@@ -51,6 +56,14 @@ class TraitLockValidationServiceTest {
     }
 
     @Test
+    void sparkWitchBlockedRoleRejectsAnyTraitLock() {
+        assertFalse(TraitLockValidationService.isAudienceCompatibleWithRole(
+                trait(SparkTraits.id("steady"), TraitAudience.UNIVERSAL),
+                sparkWitchRole("grand_witch")
+        ));
+    }
+
+    @Test
     void pendingTraitBlocksConflictingRoleForcedLater() {
         TraitLockValidationService.RoleConflict conflict = TraitLockValidationService.findPendingTraitAudienceConflict(
                 List.of(REGISTERED_KILLER_TRAIT_ID),
@@ -60,6 +73,18 @@ class TraitLockValidationServiceTest {
         assertNotNull(conflict);
         assertEquals(REGISTERED_KILLER_TRAIT_ID, conflict.trait().id());
         assertEquals(WatheRoles.CIVILIAN, conflict.role());
+    }
+
+    @Test
+    void pendingTraitBlocksSparkWitchBlockedRoleForcedLater() {
+        TraitLockValidationService.RoleConflict conflict = TraitLockValidationService.findPendingTraitAudienceConflict(
+                List.of(REGISTERED_UNIVERSAL_TRAIT_ID),
+                sparkWitchRole("murderous_witch")
+        );
+
+        assertNotNull(conflict);
+        assertEquals(REGISTERED_UNIVERSAL_TRAIT_ID, conflict.trait().id());
+        assertEquals(Identifier.of("sparkwitch", "murderous_witch"), conflict.role().identifier());
     }
 
     @Test
@@ -101,5 +126,17 @@ class TraitLockValidationServiceTest {
                 return audience;
             }
         };
+    }
+
+    private static Role sparkWitchRole(String path) {
+        return new Role(
+                Identifier.of("sparkwitch", path),
+                0xFFFFFF,
+                false,
+                false,
+                Role.MoodType.FAKE,
+                200,
+                false
+        );
     }
 }

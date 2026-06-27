@@ -43,6 +43,9 @@ public final class TraitRules {
             Collection<Identifier> traitIds
     ) {
         LinkedHashSet<Identifier> ids = new LinkedHashSet<>(traitIds);
+        if (!ids.isEmpty() && !TraitRoleEligibility.canReceiveTraits(role)) {
+            return false;
+        }
         for (Identifier id : ids) {
             Trait trait = TraitRegistry.get(id);
             if (trait == null) {

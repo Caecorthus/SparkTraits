@@ -131,6 +131,9 @@ public final class TraitAssignmentService {
     ) {
         LinkedHashSet<Identifier> accepted = new LinkedHashSet<>();
         Role role = gameComponent.getRole(player);
+        if (!TraitRoleEligibility.canReceiveTraits(role)) {
+            return List.of();
+        }
         for (Identifier traitId : pendingTraits) {
             if (accepted.size() >= TraitPlayerComponent.MAX_TRAITS) {
                 break;

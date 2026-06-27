@@ -38,6 +38,9 @@ public final class TraitSelector {
     ) {
         LinkedHashSet<Identifier> selected = new LinkedHashSet<>();
         Role role = gameComponent.getRole(player);
+        if (!TraitRoleEligibility.canReceiveTraits(role)) {
+            return List.of();
+        }
         float slotChance = traitWorld.getTraitSlotRollChance();
 
         for (int slot = 0; slot < SLOT_COUNT; slot++) {
