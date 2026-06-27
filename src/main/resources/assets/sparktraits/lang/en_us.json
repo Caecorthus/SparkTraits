@@ -33,7 +33,7 @@
   "trait.sparktraits.heavy_artillery.name": "Heavy Artillery",
   "trait.sparktraits.heavy_artillery.description": "Close-range gunshots resolve twice, piercing a single shield layer.",
   "trait.sparktraits.niko.name": "Niko",
-  "trait.sparktraits.niko.description": "While sneaking, gain night vision and extend revolver and derringer range to 300 blocks. Sneaking revolver shots fire three times with much lower recoil and a 60-second cooldown.",
+  "trait.sparktraits.niko.description": "While sneaking, gain night vision and extend revolver and derringer range to 300 blocks. Sneaking revolver shots fire three times and trigger a 60-second cooldown.",
   "trait.sparktraits.well_trained.name": "Well Trained",
   "trait.sparktraits.well_trained.description": "Low sanity no longer hinders you, and sanity drains thirty percent slower.",
   "trait.sparktraits.going_dark.name": "Going Dark",

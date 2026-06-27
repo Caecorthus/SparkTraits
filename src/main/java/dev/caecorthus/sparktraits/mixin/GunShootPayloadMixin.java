@@ -14,13 +14,29 @@ import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Applies effective alignment to Wathe's innocent-shot victim check.
- *  让 Wathe 枪击“目标是否好人”的检查使用有效阵营。 */
+/** Hooks SparkTraits gun behavior into Wathe's gun packet handler.
+ *  将 SparkTraits 的枪械行为接入 Wathe 枪械发包处理。 */
 @Mixin(value = GunShootPayload.Receiver.class, remap = false)
 public abstract class GunShootPayloadMixin {
+    /** Starts Niko's extra shots before target resolution, so missed first shots still audibly burst.
+     *  在目标结算前启动 Niko 补发，让第一发没命中时也能表现为连续射击。 */
+    @Inject(
+            method = "receive(Ldev/doctor4t/wathe/util/GunShootPayload;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V",
+            at = @At("HEAD")
+    )
+    private void sparktraits$scheduleNikoRevolverBurst(
+            GunShootPayload payload,
+            ServerPlayNetworking.Context context,
+            CallbackInfo ci
+    ) {
+        VigilanteVeteranTraitService.scheduleNikoRevolverBurstRepeats(context.player());
+    }
+
     /** Extends only Niko crouch gun validation; other roles and traits keep Wathe's original cap.
      *  只放宽 Niko 蹲下枪械的服务端距离校验，其他角色和天赋保留 Wathe 原始上限。 */
     @ModifyConstant(

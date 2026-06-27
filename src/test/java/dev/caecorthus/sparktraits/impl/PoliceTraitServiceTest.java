@@ -11,6 +11,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PoliceTraitServiceTest {
@@ -23,6 +24,9 @@ class PoliceTraitServiceTest {
 
     @Test
     void policeTraitsRequireOriginalPoliceRoles() {
+        assertNotNull(TraitRegistry.get(PoliceTraits.NIKO));
+        assertEquals(0x39FF14, TraitRegistry.get(PoliceTraits.NIKO).color());
+
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.VIGILANTE, Set.of(PoliceTraits.MARKSMAN)));
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.VIGILANTE, Set.of(PoliceTraits.FAST_RELOAD)));
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.VIGILANTE, Set.of(PoliceTraits.HEAVY_ARTILLERY)));
@@ -177,63 +181,121 @@ class PoliceTraitServiceTest {
     }
 
     @Test
-    void nikoRevolverRecoilOnlyShrinksWhenCrouchingOriginalVigilante() {
-        assertEquals(0.4f, VigilanteVeteranTraitService.adjustedRevolverRecoil(
-                4.0f,
+    void nikoBurstStartsOnlyForValidCrouchingOriginalVigilanteRevolverShots() {
+        assertTrue(VigilanteVeteranTraitService.shouldStartNikoRevolverBurst(
+                true,
+                false,
+                true,
+                true,
                 WatheRoles.VIGILANTE,
                 Set.of(PoliceTraits.NIKO),
                 true
-        ), 0.0001f);
-        assertEquals(4.0f, VigilanteVeteranTraitService.adjustedRevolverRecoil(
-                4.0f,
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldStartNikoRevolverBurst(
+                false,
+                false,
+                true,
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldStartNikoRevolverBurst(
+                true,
+                true,
+                true,
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldStartNikoRevolverBurst(
+                true,
+                false,
+                false,
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldStartNikoRevolverBurst(
+                true,
+                false,
+                true,
+                false,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldStartNikoRevolverBurst(
+                true,
+                false,
+                true,
+                true,
                 WatheRoles.VIGILANTE,
                 Set.of(PoliceTraits.NIKO),
                 false
-        ), 0.0001f);
-        assertEquals(4.0f, VigilanteVeteranTraitService.adjustedRevolverRecoil(
-                4.0f,
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldStartNikoRevolverBurst(
+                true,
+                false,
+                true,
+                true,
                 Noellesroles.DETECTIVE,
                 Set.of(PoliceTraits.NIKO),
                 true
-        ), 0.0001f);
+        ));
     }
 
     @Test
-    void nikoBurstOnlyAppliesToCrouchingOriginalVigilanteRevolver() {
-        assertTrue(VigilanteVeteranTraitService.isNikoRevolverBurst(
+    void nikoBurstContinuationKeepsStateChecksWithoutCooldownGate() {
+        assertTrue(VigilanteVeteranTraitService.shouldContinueNikoRevolverBurst(
+                true,
+                true,
                 true,
                 WatheRoles.VIGILANTE,
                 Set.of(PoliceTraits.NIKO),
-                true,
-                GameConstants.DeathReasons.GUN
+                true
         ));
-        assertFalse(VigilanteVeteranTraitService.isNikoRevolverBurst(
+        assertFalse(VigilanteVeteranTraitService.shouldContinueNikoRevolverBurst(
+                false,
+                true,
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldContinueNikoRevolverBurst(
+                true,
+                false,
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldContinueNikoRevolverBurst(
+                true,
+                true,
                 false,
                 WatheRoles.VIGILANTE,
                 Set.of(PoliceTraits.NIKO),
-                true,
-                GameConstants.DeathReasons.GUN
+                true
         ));
-        assertFalse(VigilanteVeteranTraitService.isNikoRevolverBurst(
+        assertFalse(VigilanteVeteranTraitService.shouldContinueNikoRevolverBurst(
                 true,
-                WatheRoles.VIGILANTE,
-                Set.of(PoliceTraits.NIKO),
-                false,
-                GameConstants.DeathReasons.GUN
-        ));
-        assertFalse(VigilanteVeteranTraitService.isNikoRevolverBurst(
+                true,
                 true,
                 Noellesroles.CORRUPT_COP,
                 Set.of(PoliceTraits.NIKO),
-                true,
-                GameConstants.DeathReasons.GUN
+                true
         ));
-        assertFalse(VigilanteVeteranTraitService.isNikoRevolverBurst(
+        assertFalse(VigilanteVeteranTraitService.shouldContinueNikoRevolverBurst(
+                true,
+                true,
                 true,
                 WatheRoles.VIGILANTE,
-                Set.of(PoliceTraits.NIKO),
-                true,
-                GameConstants.DeathReasons.KNIFE
+                Set.of(),
+                true
         ));
     }
 

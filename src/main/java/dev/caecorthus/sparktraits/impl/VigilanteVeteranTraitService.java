@@ -40,7 +40,6 @@ public final class VigilanteVeteranTraitService {
     public static final int NIKO_REVOLVER_COOLDOWN_TICKS = GameConstants.getInTicks(1, 0);
     public static final int NIKO_BURST_INTERVAL_TICKS = 2;
     public static final int NIKO_BURST_SHOTS = 3;
-    public static final float NIKO_RECOIL_MULTIPLIER = 0.1f;
     public static final int NIKO_NIGHT_VISION_TICKS = 60;
     public static final float FAST_RELOAD_MULTIPLIER = 0.7f;
     public static final float WELL_TRAINED_DRAIN_MULTIPLIER = 0.7f;
@@ -133,38 +132,65 @@ public final class VigilanteVeteranTraitService {
         return originalRange;
     }
 
-    public static boolean isNikoRevolverBurst(
+    public static boolean shouldStartNikoRevolverBurst(
             boolean revolver,
+            boolean coolingDown,
+            boolean gameRunning,
+            boolean playerPlayingAndAlive,
             Role role,
             Collection<Identifier> traits,
-            boolean sneaking,
-            Identifier deathReason
+            boolean sneaking
     ) {
         return revolver
-                && GameConstants.DeathReasons.GUN.equals(deathReason)
+                && !coolingDown
+                && gameRunning
+                && playerPlayingAndAlive
                 && canUseNikoTrait(role, traits, sneaking);
     }
 
-    public static boolean isNikoRevolverBurst(PlayerEntity player, Identifier deathReason) {
+    public static boolean shouldContinueNikoRevolverBurst(
+            boolean revolver,
+            boolean gameRunning,
+            boolean playerPlayingAndAlive,
+            Role role,
+            Collection<Identifier> traits,
+            boolean sneaking
+    ) {
+        return revolver
+                && gameRunning
+                && playerPlayingAndAlive
+                && canUseNikoTrait(role, traits, sneaking);
+    }
+
+    public static boolean shouldStartNikoRevolverBurst(PlayerEntity player) {
         return player != null
-                && isNikoRevolverBurst(
-                player.getMainHandStack().isOf(WatheItems.REVOLVER),
+                && !player.isSpectator()
+                && player.getWorld() != null
+                && player.getMainHandStack().isOf(WatheItems.REVOLVER)
+                && !player.getItemCooldownManager().isCoolingDown(WatheItems.REVOLVER)
+                && shouldStartNikoRevolverBurst(
+                true,
+                false,
+                GameWorldComponent.KEY.get(player.getWorld()).isRunning(),
+                GameFunctions.isPlayerPlayingAndAlive(player),
                 roleOf(player),
                 traitsOf(player),
-                isSneaking(player),
-                deathReason
+                isSneaking(player)
         );
     }
 
-    public static float adjustedRevolverRecoil(float recoil, Role role, Collection<Identifier> traits, boolean sneaking) {
-        if (!canUseNikoTrait(role, traits, sneaking)) {
-            return recoil;
-        }
-        return recoil * NIKO_RECOIL_MULTIPLIER;
-    }
-
-    public static float adjustedRevolverRecoil(float recoil, PlayerEntity player) {
-        return adjustedRevolverRecoil(recoil, roleOf(player), traitsOf(player), isSneaking(player));
+    private static boolean shouldContinueNikoRevolverBurst(PlayerEntity player) {
+        return player != null
+                && !player.isSpectator()
+                && player.getWorld() != null
+                && shouldContinueNikoRevolverBurst(
+                player.getMainHandStack().isOf(WatheItems.REVOLVER),
+                GameWorldComponent.KEY.get(player.getWorld()).isRunning(),
+                GameFunctions.isPlayerPlayingAndAlive(player),
+                roleOf(player),
+                traitsOf(player),
+                isSneaking(player)
+        );
     }
 
     public static boolean isHeavyArtilleryShot(
@@ -212,11 +238,7 @@ public final class VigilanteVeteranTraitService {
             ServerPlayerEntity shooter,
             Identifier deathReason
     ) {
-        boolean nikoBurst = isNikoRevolverBurst(shooter, deathReason);
         killPlayerWithHeavyArtillery(victim, spawnBody, shooter, deathReason);
-        if (nikoBurst) {
-            scheduleNikoBurstRepeats(shooter, spawnBody, deathReason);
-        }
     }
 
     public static float wellTrainedAdjustedMood(
@@ -284,42 +306,34 @@ public final class VigilanteVeteranTraitService {
         return playerPlayingAndAlive && canUseNikoTrait(role, traits, sneaking);
     }
 
-    private static void scheduleNikoBurstRepeats(
-            ServerPlayerEntity shooter,
-            boolean spawnBody,
-            Identifier deathReason
-    ) {
+    public static void scheduleNikoRevolverBurstRepeats(ServerPlayerEntity shooter) {
+        if (!shouldStartNikoRevolverBurst(shooter)) {
+            return;
+        }
         // Do not replay Wathe's full gun packet handler: it owns inventory, punishment, and cooldown side effects.
         // 不重复执行 Wathe 的完整枪械包处理；那里负责扣枪、惩罚和冷却，重复调用会扩大副作用。
         for (int shot = 1; shot < NIKO_BURST_SHOTS; shot++) {
             Scheduler.schedule(
-                    () -> repeatNikoBurstShot(shooter, spawnBody, deathReason),
+                    () -> repeatNikoBurstShot(shooter),
                     NIKO_BURST_INTERVAL_TICKS * shot
             );
         }
     }
 
-    private static void repeatNikoBurstShot(
-            ServerPlayerEntity shooter,
-            boolean spawnBody,
-            Identifier deathReason
-    ) {
-        if (!canContinueNikoBurst(shooter, deathReason)) {
+    private static void repeatNikoBurstShot(ServerPlayerEntity shooter) {
+        if (!canContinueNikoBurst(shooter)) {
             return;
         }
+        playNikoBurstFeedback(shooter);
         ServerPlayerEntity target = currentNikoGunTarget(shooter);
         if (target == null) {
             return;
         }
-        killPlayerWithHeavyArtillery(target, spawnBody, shooter, deathReason);
-        playNikoBurstFeedback(shooter);
+        killPlayerWithHeavyArtillery(target, true, shooter, GameConstants.DeathReasons.GUN);
     }
 
-    private static boolean canContinueNikoBurst(ServerPlayerEntity shooter, Identifier deathReason) {
-        return shooter != null
-                && shooter.getWorld() instanceof ServerWorld
-                && GameFunctions.isPlayerPlayingAndAlive(shooter)
-                && isNikoRevolverBurst(shooter, deathReason);
+    private static boolean canContinueNikoBurst(ServerPlayerEntity shooter) {
+        return shooter != null && shooter.getWorld() instanceof ServerWorld && shouldContinueNikoRevolverBurst(shooter);
     }
 
     private static ServerPlayerEntity currentNikoGunTarget(ServerPlayerEntity shooter) {

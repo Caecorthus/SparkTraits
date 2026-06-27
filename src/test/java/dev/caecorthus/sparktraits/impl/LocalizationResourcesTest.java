@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Verifies that localized SparkTraits resources stay complete.
@@ -53,6 +54,9 @@ class LocalizationResourcesTest {
         assertEquals("Niko", chinese.get("trait.sparktraits.niko.name").getAsString());
         assertEquals("训练有素", chinese.get("trait.sparktraits.well_trained.name").getAsString());
         assertEquals("隐蔽行动", chinese.get("trait.sparktraits.going_dark.name").getAsString());
+
+        assertFalse(english.get("trait.sparktraits.niko.description").getAsString().contains("recoil"));
+        assertFalse(chinese.get("trait.sparktraits.niko.description").getAsString().contains("后坐力"));
     }
 
     @Test

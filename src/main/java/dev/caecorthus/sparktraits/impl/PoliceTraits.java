@@ -25,7 +25,7 @@ public final class PoliceTraits {
         TraitRegistry.register(vigilante(MARKSMAN, 0xD6C27A).build());
         TraitRegistry.register(vigilante(FAST_RELOAD, 0xF4A261).build());
         TraitRegistry.register(vigilante(HEAVY_ARTILLERY, 0xD94F30).build());
-        TraitRegistry.register(vigilante(NIKO, 0x6FD3FF).build());
+        TraitRegistry.register(vigilante(NIKO, 0x39FF14).build());
         TraitRegistry.register(veteran(WELL_TRAINED, 0x4A90E2).build());
         TraitRegistry.register(veteran(GOING_DARK, 0x2E4057).build());
     }
