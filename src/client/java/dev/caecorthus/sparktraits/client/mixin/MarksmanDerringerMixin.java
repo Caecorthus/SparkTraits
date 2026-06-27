@@ -12,8 +12,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Extends only Marksman Vigilantes' derringer targeting range.
- * 只扩大精确枪手义警的德林加锁定射程。
+ * Extends only police-trait derringer targeting range.
+ * 只扩大警察系天赋的德林加锁定射程。
  */
 @Mixin(value = DerringerItem.class, remap = false)
 public abstract class MarksmanDerringerMixin {

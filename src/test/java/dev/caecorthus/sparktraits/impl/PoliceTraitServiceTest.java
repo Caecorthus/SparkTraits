@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.impl;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.game.GameConstants;
+import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +26,11 @@ class PoliceTraitServiceTest {
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.VIGILANTE, Set.of(PoliceTraits.MARKSMAN)));
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.VIGILANTE, Set.of(PoliceTraits.FAST_RELOAD)));
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.VIGILANTE, Set.of(PoliceTraits.HEAVY_ARTILLERY)));
+        assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.VIGILANTE, Set.of(PoliceTraits.NIKO)));
         assertFalse(TraitRules.canApplyAll(null, null, null, WatheRoles.VETERAN, Set.of(PoliceTraits.MARKSMAN)));
+        assertFalse(TraitRules.canApplyAll(null, null, null, WatheRoles.VETERAN, Set.of(PoliceTraits.NIKO)));
+        assertFalse(TraitRules.canApplyAll(null, null, null, WatheRoles.CIVILIAN, Set.of(PoliceTraits.NIKO)));
+        assertFalse(TraitRules.canApplyAll(null, null, null, Noellesroles.DETECTIVE, Set.of(PoliceTraits.NIKO)));
 
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.VETERAN, Set.of(PoliceTraits.WELL_TRAINED)));
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.VETERAN, Set.of(PoliceTraits.GOING_DARK)));
@@ -53,6 +58,62 @@ class PoliceTraitServiceTest {
     }
 
     @Test
+    void nikoCrouchRangeOnlyAppliesToOriginalVigilanteGuns() {
+        assertEquals(300.0, VigilanteVeteranTraitService.gunRange(
+                VigilanteVeteranTraitService.REVOLVER_RANGE,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001);
+        assertEquals(300.0, VigilanteVeteranTraitService.gunRange(
+                VigilanteVeteranTraitService.DERRINGER_RANGE,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001);
+        assertEquals(30.0, VigilanteVeteranTraitService.gunRange(
+                VigilanteVeteranTraitService.REVOLVER_RANGE,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                false
+        ), 0.0001);
+        assertEquals(30.0, VigilanteVeteranTraitService.gunRange(
+                VigilanteVeteranTraitService.REVOLVER_RANGE,
+                WatheRoles.VETERAN,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001);
+        assertEquals(30.0, VigilanteVeteranTraitService.gunRange(
+                VigilanteVeteranTraitService.REVOLVER_RANGE,
+                Noellesroles.DETECTIVE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001);
+    }
+
+    @Test
+    void nikoCrouchRangeOverridesMarksmanButStandingMarksmanStillWorks() {
+        assertEquals(300.0, VigilanteVeteranTraitService.gunRange(
+                VigilanteVeteranTraitService.REVOLVER_RANGE,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO, PoliceTraits.MARKSMAN),
+                true
+        ), 0.0001);
+        assertEquals(39.0, VigilanteVeteranTraitService.gunRange(
+                VigilanteVeteranTraitService.REVOLVER_RANGE,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO, PoliceTraits.MARKSMAN),
+                false
+        ), 0.0001);
+        assertEquals(9.1, VigilanteVeteranTraitService.gunRange(
+                VigilanteVeteranTraitService.DERRINGER_RANGE,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO, PoliceTraits.MARKSMAN),
+                false
+        ), 0.0001);
+    }
+
+    @Test
     void fastReloadOnlyShortensVigilanteRevolverCooldown() {
         int revolverCooldown = GameConstants.getInTicks(0, 10);
 
@@ -73,6 +134,140 @@ class PoliceTraitServiceTest {
                 revolverCooldown,
                 WatheRoles.CIVILIAN,
                 Set.of(PoliceTraits.FAST_RELOAD)
+        ));
+    }
+
+    @Test
+    void nikoRevolverCooldownIsNotShortenedByReloadTraits() {
+        int revolverCooldown = GameConstants.getInTicks(0, 10);
+
+        assertEquals(1200, VigilanteVeteranTraitService.fastReloadCooldown(
+                true,
+                revolverCooldown,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertEquals(1200, VigilanteVeteranTraitService.fastReloadCooldown(
+                true,
+                revolverCooldown,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO, PoliceTraits.FAST_RELOAD),
+                true
+        ));
+        assertEquals(140, VigilanteVeteranTraitService.fastReloadCooldown(
+                true,
+                revolverCooldown,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO, PoliceTraits.FAST_RELOAD),
+                false
+        ));
+        assertTrue(VigilanteVeteranTraitService.shouldPreserveNikoRevolverCooldown(
+                1200,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldPreserveNikoRevolverCooldown(
+                1200,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                false
+        ));
+    }
+
+    @Test
+    void nikoRevolverRecoilOnlyShrinksWhenCrouchingOriginalVigilante() {
+        assertEquals(0.4f, VigilanteVeteranTraitService.adjustedRevolverRecoil(
+                4.0f,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001f);
+        assertEquals(4.0f, VigilanteVeteranTraitService.adjustedRevolverRecoil(
+                4.0f,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                false
+        ), 0.0001f);
+        assertEquals(4.0f, VigilanteVeteranTraitService.adjustedRevolverRecoil(
+                4.0f,
+                Noellesroles.DETECTIVE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001f);
+    }
+
+    @Test
+    void nikoBurstOnlyAppliesToCrouchingOriginalVigilanteRevolver() {
+        assertTrue(VigilanteVeteranTraitService.isNikoRevolverBurst(
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true,
+                GameConstants.DeathReasons.GUN
+        ));
+        assertFalse(VigilanteVeteranTraitService.isNikoRevolverBurst(
+                false,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true,
+                GameConstants.DeathReasons.GUN
+        ));
+        assertFalse(VigilanteVeteranTraitService.isNikoRevolverBurst(
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                false,
+                GameConstants.DeathReasons.GUN
+        ));
+        assertFalse(VigilanteVeteranTraitService.isNikoRevolverBurst(
+                true,
+                Noellesroles.CORRUPT_COP,
+                Set.of(PoliceTraits.NIKO),
+                true,
+                GameConstants.DeathReasons.GUN
+        ));
+        assertFalse(VigilanteVeteranTraitService.isNikoRevolverBurst(
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true,
+                GameConstants.DeathReasons.KNIFE
+        ));
+    }
+
+    @Test
+    void nikoNightVisionRequiresLivingCrouchingOriginalVigilante() {
+        assertTrue(VigilanteVeteranTraitService.shouldRefreshNikoNightVision(
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldRefreshNikoNightVision(
+                false,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldRefreshNikoNightVision(
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                false
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldRefreshNikoNightVision(
+                true,
+                WatheRoles.VETERAN,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ));
+        assertFalse(VigilanteVeteranTraitService.shouldRefreshNikoNightVision(
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(),
+                true
         ));
     }
 

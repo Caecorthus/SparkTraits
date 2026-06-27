@@ -21,6 +21,7 @@ public final class TraitGameHooks {
         GlobalTraitService.register();
         GoodTraitService.register();
         KillerTraitService.register();
+        VigilanteVeteranTraitService.register();
         ImpostorRevolverService.register();
         ConscienceSerialKillerService.register();
         ConsciencePoisonerService.register();

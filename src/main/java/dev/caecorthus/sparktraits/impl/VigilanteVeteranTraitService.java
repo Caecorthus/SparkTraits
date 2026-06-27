@@ -7,11 +7,22 @@ import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
+import dev.doctor4t.wathe.index.WatheSounds;
+import dev.doctor4t.wathe.util.Scheduler;
+import dev.doctor4t.wathe.util.ShootMuzzleS2CPayload;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.item.Item;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.hit.EntityHitResult;
 
 import java.util.Collection;
 import java.util.List;
@@ -25,10 +36,20 @@ public final class VigilanteVeteranTraitService {
     public static final double DERRINGER_RANGE = 7.0;
     public static final double MARKSMAN_RANGE_MULTIPLIER = 1.3;
     public static final double HEAVY_ARTILLERY_RANGE = 5.0;
+    public static final double NIKO_GUN_RANGE = 300.0;
+    public static final int NIKO_REVOLVER_COOLDOWN_TICKS = GameConstants.getInTicks(1, 0);
+    public static final int NIKO_BURST_INTERVAL_TICKS = 2;
+    public static final int NIKO_BURST_SHOTS = 3;
+    public static final float NIKO_RECOIL_MULTIPLIER = 0.1f;
+    public static final int NIKO_NIGHT_VISION_TICKS = 60;
     public static final float FAST_RELOAD_MULTIPLIER = 0.7f;
     public static final float WELL_TRAINED_DRAIN_MULTIPLIER = 0.7f;
 
     private VigilanteVeteranTraitService() {
+    }
+
+    public static void register() {
+        ServerTickEvents.END_WORLD_TICK.register(VigilanteVeteranTraitService::tickWorld);
     }
 
     public static boolean canSelectVigilanteTrait(Role role) {
@@ -40,6 +61,13 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static double gunRange(double baseRange, Role role, Collection<Identifier> traits) {
+        return gunRange(baseRange, role, traits, false);
+    }
+
+    public static double gunRange(double baseRange, Role role, Collection<Identifier> traits, boolean sneaking) {
+        if (canUseNikoTrait(role, traits, sneaking)) {
+            return NIKO_GUN_RANGE;
+        }
         if (canUseVigilanteTrait(role, traits, PoliceTraits.MARKSMAN)) {
             return baseRange * MARKSMAN_RANGE_MULTIPLIER;
         }
@@ -47,11 +75,11 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static double gunRange(PlayerEntity player, double baseRange) {
-        return gunRange(baseRange, roleOf(player), traitsOf(player));
+        return gunRange(baseRange, roleOf(player), traitsOf(player), isSneaking(player));
     }
 
     public static int fastReloadCooldown(Item item, int duration, Role role, Collection<Identifier> traits) {
-        return fastReloadCooldown(item == WatheItems.REVOLVER, duration, role, traits);
+        return fastReloadCooldown(item == WatheItems.REVOLVER, duration, role, traits, false);
     }
 
     public static int fastReloadCooldown(
@@ -60,14 +88,83 @@ public final class VigilanteVeteranTraitService {
             Role role,
             Collection<Identifier> traits
     ) {
-        if (duration <= 0 || !revolver || !canUseVigilanteTrait(role, traits, PoliceTraits.FAST_RELOAD)) {
+        return fastReloadCooldown(revolver, duration, role, traits, false);
+    }
+
+    public static int fastReloadCooldown(
+            boolean revolver,
+            int duration,
+            Role role,
+            Collection<Identifier> traits,
+            boolean sneaking
+    ) {
+        if (duration <= 0 || !revolver) {
+            return duration;
+        }
+        if (canUseNikoTrait(role, traits, sneaking)) {
+            return NIKO_REVOLVER_COOLDOWN_TICKS;
+        }
+        if (!canUseVigilanteTrait(role, traits, PoliceTraits.FAST_RELOAD)) {
             return duration;
         }
         return Math.max(1, (int) (duration * FAST_RELOAD_MULTIPLIER));
     }
 
     public static int fastReloadCooldown(Item item, int duration, PlayerEntity player) {
-        return fastReloadCooldown(item, duration, roleOf(player), traitsOf(player));
+        return fastReloadCooldown(item == WatheItems.REVOLVER, duration, roleOf(player), traitsOf(player), isSneaking(player));
+    }
+
+    public static boolean shouldPreserveNikoRevolverCooldown(int duration, Role role, Collection<Identifier> traits, boolean sneaking) {
+        return duration == NIKO_REVOLVER_COOLDOWN_TICKS && canUseNikoTrait(role, traits, sneaking);
+    }
+
+    public static boolean shouldPreserveNikoRevolverCooldown(int duration, PlayerEntity player) {
+        return shouldPreserveNikoRevolverCooldown(duration, roleOf(player), traitsOf(player), isSneaking(player));
+    }
+
+    public static boolean shouldPreserveNikoRevolverCooldown(Item item, int duration, PlayerEntity player) {
+        return item == WatheItems.REVOLVER && shouldPreserveNikoRevolverCooldown(duration, player);
+    }
+
+    public static double serverGunTargetRange(double originalRange, PlayerEntity player, Item item) {
+        if ((item == WatheItems.REVOLVER || item == WatheItems.DERRINGER) && canUseNikoTrait(player)) {
+            return NIKO_GUN_RANGE;
+        }
+        return originalRange;
+    }
+
+    public static boolean isNikoRevolverBurst(
+            boolean revolver,
+            Role role,
+            Collection<Identifier> traits,
+            boolean sneaking,
+            Identifier deathReason
+    ) {
+        return revolver
+                && GameConstants.DeathReasons.GUN.equals(deathReason)
+                && canUseNikoTrait(role, traits, sneaking);
+    }
+
+    public static boolean isNikoRevolverBurst(PlayerEntity player, Identifier deathReason) {
+        return player != null
+                && isNikoRevolverBurst(
+                player.getMainHandStack().isOf(WatheItems.REVOLVER),
+                roleOf(player),
+                traitsOf(player),
+                isSneaking(player),
+                deathReason
+        );
+    }
+
+    public static float adjustedRevolverRecoil(float recoil, Role role, Collection<Identifier> traits, boolean sneaking) {
+        if (!canUseNikoTrait(role, traits, sneaking)) {
+            return recoil;
+        }
+        return recoil * NIKO_RECOIL_MULTIPLIER;
+    }
+
+    public static float adjustedRevolverRecoil(float recoil, PlayerEntity player) {
+        return adjustedRevolverRecoil(recoil, roleOf(player), traitsOf(player), isSneaking(player));
     }
 
     public static boolean isHeavyArtilleryShot(
@@ -106,6 +203,19 @@ public final class VigilanteVeteranTraitService {
         GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason);
         if (shouldRetryHeavyArtilleryDamage(eligibleShot, GameFunctions.isPlayerPlayingAndAlive(victim))) {
             GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason);
+        }
+    }
+
+    public static void killPlayerWithPoliceGunTraits(
+            ServerPlayerEntity victim,
+            boolean spawnBody,
+            ServerPlayerEntity shooter,
+            Identifier deathReason
+    ) {
+        boolean nikoBurst = isNikoRevolverBurst(shooter, deathReason);
+        killPlayerWithHeavyArtillery(victim, spawnBody, shooter, deathReason);
+        if (nikoBurst) {
+            scheduleNikoBurstRepeats(shooter, spawnBody, deathReason);
         }
     }
 
@@ -165,12 +275,134 @@ public final class VigilanteVeteranTraitService {
         }
     }
 
+    public static boolean shouldRefreshNikoNightVision(
+            boolean playerPlayingAndAlive,
+            Role role,
+            Collection<Identifier> traits,
+            boolean sneaking
+    ) {
+        return playerPlayingAndAlive && canUseNikoTrait(role, traits, sneaking);
+    }
+
+    private static void scheduleNikoBurstRepeats(
+            ServerPlayerEntity shooter,
+            boolean spawnBody,
+            Identifier deathReason
+    ) {
+        // Do not replay Wathe's full gun packet handler: it owns inventory, punishment, and cooldown side effects.
+        // 不重复执行 Wathe 的完整枪械包处理；那里负责扣枪、惩罚和冷却，重复调用会扩大副作用。
+        for (int shot = 1; shot < NIKO_BURST_SHOTS; shot++) {
+            Scheduler.schedule(
+                    () -> repeatNikoBurstShot(shooter, spawnBody, deathReason),
+                    NIKO_BURST_INTERVAL_TICKS * shot
+            );
+        }
+    }
+
+    private static void repeatNikoBurstShot(
+            ServerPlayerEntity shooter,
+            boolean spawnBody,
+            Identifier deathReason
+    ) {
+        if (!canContinueNikoBurst(shooter, deathReason)) {
+            return;
+        }
+        ServerPlayerEntity target = currentNikoGunTarget(shooter);
+        if (target == null) {
+            return;
+        }
+        killPlayerWithHeavyArtillery(target, spawnBody, shooter, deathReason);
+        playNikoBurstFeedback(shooter);
+    }
+
+    private static boolean canContinueNikoBurst(ServerPlayerEntity shooter, Identifier deathReason) {
+        return shooter != null
+                && shooter.getWorld() instanceof ServerWorld
+                && GameFunctions.isPlayerPlayingAndAlive(shooter)
+                && isNikoRevolverBurst(shooter, deathReason);
+    }
+
+    private static ServerPlayerEntity currentNikoGunTarget(ServerPlayerEntity shooter) {
+        if (ProjectileUtil.getCollision(
+                shooter,
+                entity -> entity instanceof ServerPlayerEntity target
+                        && target != shooter
+                        && GameFunctions.isPlayerAliveAndSurvival(target)
+                        && GameFunctions.isPlayerPlayingAndAlive(target),
+                NIKO_GUN_RANGE
+        ) instanceof EntityHitResult hit && hit.getEntity() instanceof ServerPlayerEntity target) {
+            return target;
+        }
+        return null;
+    }
+
+    private static void playNikoBurstFeedback(ServerPlayerEntity shooter) {
+        shooter.getWorld().playSound(
+                null,
+                shooter.getX(),
+                shooter.getEyeY(),
+                shooter.getZ(),
+                WatheSounds.ITEM_REVOLVER_SHOOT,
+                SoundCategory.PLAYERS,
+                5.0f,
+                1.0f + shooter.getRandom().nextFloat() * 0.1f - 0.05f
+        );
+        ShootMuzzleS2CPayload payload = new ShootMuzzleS2CPayload(shooter.getUuidAsString());
+        for (ServerPlayerEntity tracking : PlayerLookup.tracking(shooter)) {
+            ServerPlayNetworking.send(tracking, payload);
+        }
+        ServerPlayNetworking.send(shooter, payload);
+    }
+
+    private static void tickWorld(ServerWorld world) {
+        GameWorldComponent game = GameWorldComponent.KEY.get(world);
+        if (game == null || !game.isRunning()) {
+            return;
+        }
+        for (ServerPlayerEntity player : world.getPlayers()) {
+            TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
+            if (shouldRefreshNikoNightVision(
+                    GameFunctions.isPlayerPlayingAndAlive(player),
+                    game.getRole(player),
+                    traits.getActiveTraitIds(),
+                    player.isSneaking()
+            )) {
+                refreshNikoNightVision(player);
+            }
+        }
+    }
+
+    private static void refreshNikoNightVision(ServerPlayerEntity player) {
+        StatusEffectInstance current = player.getStatusEffect(StatusEffects.NIGHT_VISION);
+        if (current != null && current.getDuration() > NIKO_NIGHT_VISION_TICKS / 2) {
+            return;
+        }
+        // Refresh a short effect without removing it later, so other night-vision sources stay intact.
+        // 只刷新短时夜视，不在失效时主动移除，避免误删其他模组或关灯给予的夜视。
+        player.addStatusEffect(new StatusEffectInstance(
+                StatusEffects.NIGHT_VISION,
+                NIKO_NIGHT_VISION_TICKS,
+                0,
+                false,
+                false,
+                true
+        ));
+    }
+
+    private static boolean canUseNikoTrait(PlayerEntity player) {
+        return canUseNikoTrait(roleOf(player), traitsOf(player), isSneaking(player));
+    }
+
+    private static boolean canUseNikoTrait(Role role, Collection<Identifier> traits, boolean sneaking) {
+        return sneaking && canUseVigilanteTrait(role, traits, PoliceTraits.NIKO);
+    }
+
     private static boolean canUseVigilanteTrait(Role role, Collection<Identifier> traits, Identifier traitId) {
-        return canSelectVigilanteTrait(role) && traits.contains(traitId);
+        return canSelectVigilanteTrait(role) && safeTraits(traits).contains(traitId);
     }
 
     private static boolean canUseVeteranTrait(Role role, Collection<Identifier> traits, Identifier traitId) {
-        return canSelectVeteranTrait(role) && traits.contains(traitId);
+        return canSelectVeteranTrait(role) && safeTraits(traits).contains(traitId);
     }
 
     private static Role roleOf(PlayerEntity player) {
@@ -185,5 +417,13 @@ public final class VigilanteVeteranTraitService {
             return List.of();
         }
         return TraitPlayerComponent.KEY.get(player).getActiveTraitIds();
+    }
+
+    private static boolean isSneaking(PlayerEntity player) {
+        return player != null && player.isSneaking();
+    }
+
+    private static Collection<Identifier> safeTraits(Collection<Identifier> traits) {
+        return traits == null ? List.of() : traits;
     }
 }

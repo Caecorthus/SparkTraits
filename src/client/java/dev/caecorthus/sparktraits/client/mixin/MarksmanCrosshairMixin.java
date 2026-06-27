@@ -12,8 +12,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Keeps Marksman gun crosshair feedback aligned with the extended shot range.
- * 让精确枪手的枪械准星提示与扩大后的射程保持一致。
+ * Keeps police-trait gun crosshair feedback aligned with the extended shot range.
+ * 让警察系天赋的枪械准星提示与扩大后的射程保持一致。
  */
 @Mixin(value = CrosshairRenderer.class, remap = false)
 public abstract class MarksmanCrosshairMixin {

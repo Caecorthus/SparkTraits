@@ -14,6 +14,7 @@ public final class PoliceTraits {
     public static final Identifier MARKSMAN = SparkTraits.id("marksman");
     public static final Identifier FAST_RELOAD = SparkTraits.id("fast_reload");
     public static final Identifier HEAVY_ARTILLERY = SparkTraits.id("heavy_artillery");
+    public static final Identifier NIKO = SparkTraits.id("niko");
     public static final Identifier WELL_TRAINED = SparkTraits.id("well_trained");
     public static final Identifier GOING_DARK = SparkTraits.id("going_dark");
 
@@ -24,6 +25,7 @@ public final class PoliceTraits {
         TraitRegistry.register(vigilante(MARKSMAN, 0xD6C27A).build());
         TraitRegistry.register(vigilante(FAST_RELOAD, 0xF4A261).build());
         TraitRegistry.register(vigilante(HEAVY_ARTILLERY, 0xD94F30).build());
+        TraitRegistry.register(vigilante(NIKO, 0x6FD3FF).build());
         TraitRegistry.register(veteran(WELL_TRAINED, 0x4A90E2).build());
         TraitRegistry.register(veteran(GOING_DARK, 0x2E4057).build());
     }
