@@ -21,6 +21,7 @@ import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.morphling.MorphlingPlayerComponent;
 import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +39,7 @@ public final class EffectiveTraitService {
     public static final double CONSCIENCE_INSTINCT_RANGE_SQUARED = 100.0;
     public static final int TASK_MONEY_REWARD = 50;
     public static final Identifier SELF_REALIZATION = SparkTraits.id("self_realization");
+    private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
     private static final Map<UUID, Identifier> poisonSources = new HashMap<>();
 
     private EffectiveTraitService() {
@@ -609,6 +611,31 @@ public final class EffectiveTraitService {
         };
     }
 
+    /** Defers ordinary team wins so downstream neutral blockers can resolve their own win hooks.
+     *  延后普通队伍胜利，让后续中立阻塞角色用自己的胜利钩子结算。 */
+    public static boolean shouldDeferTeamWinForBlockingNeutral(
+            GameFunctions.WinStatus proposedWinStatus,
+            Collection<Role> livingRoles
+    ) {
+        if (proposedWinStatus != GameFunctions.WinStatus.KILLERS
+                && proposedWinStatus != GameFunctions.WinStatus.PASSENGERS) {
+            return false;
+        }
+        if (livingRoles == null) {
+            return false;
+        }
+        for (Role role : livingRoles) {
+            if (isBlockingTeamWinNeutral(role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isBlockingTeamWinNeutral(Role role) {
+        return role != null && SPARKWITCH_MURDEROUS_WITCH_ID.equals(role.identifier());
+    }
+
     public static Role.MoodType effectiveMoodType(PlayerEntity player, Role role) {
         if (hasConscience(player)) {
             return Role.MoodType.REAL;
@@ -751,6 +778,7 @@ public final class EffectiveTraitService {
             GameFunctions.WinStatus currentStatus
     ) {
         List<ServerPlayerEntity> players = world.getPlayers();
+        List<Role> livingRoles = new ArrayList<>();
         boolean realKillerAlive = false;
         boolean effectiveCivilianAlive = false;
 
@@ -758,19 +786,28 @@ public final class EffectiveTraitService {
             if (!GameFunctions.isPlayerPlayingAndAlive(player) || !gameComponent.hasAnyRole(player)) {
                 continue;
             }
-            if (isRealOriginalKiller(player, gameComponent)) {
+            Role role = gameComponent.getRole(player);
+            Collection<Identifier> traits = TraitPlayerComponent.KEY.get(player).getActiveTraitIds();
+            livingRoles.add(role);
+            if (isOriginalKiller(role) && !hasConscience(traits)) {
                 realKillerAlive = true;
             }
-            if (isEffectiveCivilian(player, gameComponent)) {
+            if (isEffectiveCivilian(role, traits)) {
                 effectiveCivilianAlive = true;
             }
         }
 
         if (!realKillerAlive) {
             killUnsupportedImpostors(players, gameComponent, false);
+            if (shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.PASSENGERS, livingRoles)) {
+                return null;
+            }
             return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.PASSENGERS);
         }
         if (!effectiveCivilianAlive) {
+            if (shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.KILLERS, livingRoles)) {
+                return null;
+            }
             return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.KILLERS);
         }
         if (currentStatus == GameFunctions.WinStatus.PASSENGERS || currentStatus == GameFunctions.WinStatus.KILLERS) {

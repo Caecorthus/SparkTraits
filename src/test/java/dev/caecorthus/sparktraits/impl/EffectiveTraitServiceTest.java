@@ -8,6 +8,7 @@ import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -89,6 +90,28 @@ class EffectiveTraitServiceTest {
         assertFalse(EffectiveTraitService.didEffectiveTeamWin(GameFunctions.WinStatus.KILLERS, WatheRoles.KILLER, conscience));
         assertTrue(EffectiveTraitService.didEffectiveTeamWin(GameFunctions.WinStatus.KILLERS, WatheRoles.CIVILIAN, impostor));
         assertFalse(EffectiveTraitService.didEffectiveTeamWin(GameFunctions.WinStatus.PASSENGERS, WatheRoles.CIVILIAN, impostor));
+    }
+
+    @Test
+    void murderousWitchDefersOnlyOrdinaryTeamWins() {
+        Role murderousWitch = sparkWitchRole("murderous_witch");
+
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(murderousWitch)
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.KILLERS,
+                List.of(murderousWitch)
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.TIME,
+                List.of(murderousWitch)
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(WatheRoles.CIVILIAN, sparkWitchRole("grand_witch"))
+        ));
     }
 
     @Test
@@ -488,5 +511,17 @@ class EffectiveTraitServiceTest {
     void conscienceBombRevealRadiusIsEightBlocks() {
         assertTrue(ConscienceBombService.isWithinRevealRadius(64.0));
         assertFalse(ConscienceBombService.isWithinRevealRadius(64.01));
+    }
+
+    private static Role sparkWitchRole(String path) {
+        return new Role(
+                Identifier.of("sparkwitch", path),
+                0xFFFFFF,
+                false,
+                false,
+                Role.MoodType.FAKE,
+                200,
+                false
+        );
     }
 }
