@@ -40,6 +40,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     // 服务端本局天赋快照，用于玩家离线后仍能正确生成回合结束数据。
     private final Map<UUID, List<Identifier>> roundTraitSnapshots = new HashMap<>();
     private final Map<UUID, List<Identifier>> deathTraitSnapshots = new HashMap<>();
+    private final LinkedHashSet<UUID> finalMomentLooseEnds = new LinkedHashSet<>();
     private float traitSlotRollChance = TraitSlotRollChance.DEFAULT;
     // Round-scoped final moment flag used by client highlight overlays.
     // 本局终局时刻标记，供客户端高亮覆盖使用。
@@ -91,6 +92,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
         usedUniqueTraits.clear();
         roundTraitSnapshots.clear();
         deathTraitSnapshots.clear();
+        finalMomentLooseEnds.clear();
         finalMomentActive = false;
         sync();
     }
@@ -104,6 +106,16 @@ public class TraitWorldComponent implements AutoSyncedComponent {
             this.finalMomentActive = finalMomentActive;
             sync();
         }
+    }
+
+    public void markFinalMomentLooseEnd(UUID playerUuid) {
+        if (playerUuid != null && finalMomentLooseEnds.add(playerUuid)) {
+            sync();
+        }
+    }
+
+    public boolean isFinalMomentLooseEnd(UUID playerUuid) {
+        return playerUuid != null && finalMomentLooseEnds.contains(playerUuid);
     }
 
     public void snapshotRoundTraits(UUID playerUuid, Collection<Identifier> traitIds) {
@@ -143,6 +155,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
         }
         buf.writeFloat(traitSlotRollChance);
         buf.writeBoolean(finalMomentActive);
+        writeUuidSet(buf, finalMomentLooseEnds);
     }
 
     @Override
@@ -163,6 +176,10 @@ public class TraitWorldComponent implements AutoSyncedComponent {
                 ? TraitSlotRollChance.normalize(buf.readFloat())
                 : TraitSlotRollChance.DEFAULT;
         finalMomentActive = buf.readableBytes() > 0 && buf.readBoolean();
+        finalMomentLooseEnds.clear();
+        if (buf.readableBytes() > 0) {
+            readUuidSet(buf, finalMomentLooseEnds);
+        }
     }
 
     @Override
@@ -179,6 +196,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
                 ? TraitSlotRollChance.normalize(tag.getFloat(TraitSlotRollChance.NBT_KEY))
                 : TraitSlotRollChance.DEFAULT;
         finalMomentActive = false;
+        finalMomentLooseEnds.clear();
     }
 
     private static NbtList toNbt(Collection<Identifier> ids) {
@@ -213,6 +231,21 @@ public class TraitWorldComponent implements AutoSyncedComponent {
             if (id != null) {
                 ids.add(id);
             }
+        }
+    }
+
+    private static void writeUuidSet(RegistryByteBuf buf, Collection<UUID> uuids) {
+        buf.writeVarInt(uuids.size());
+        for (UUID uuid : uuids) {
+            buf.writeUuid(uuid);
+        }
+    }
+
+    private static void readUuidSet(RegistryByteBuf buf, Set<UUID> uuids) {
+        uuids.clear();
+        int size = buf.readVarInt();
+        for (int i = 0; i < size; i++) {
+            uuids.add(buf.readUuid());
         }
     }
 }

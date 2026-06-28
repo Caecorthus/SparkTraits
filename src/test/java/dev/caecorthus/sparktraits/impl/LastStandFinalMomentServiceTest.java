@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.impl;
 
 import dev.doctor4t.wathe.api.WatheRoles;
+import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.util.Identifier;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LastStandFinalMomentServiceTest {
@@ -81,11 +83,127 @@ class LastStandFinalMomentServiceTest {
     }
 
     @Test
+    void activeFinalMomentReturnsPassengerWinWhenOnlyTriggeredLooseEndRemains() {
+        assertEquals(
+                GameFunctions.WinStatus.PASSENGERS,
+                LastStandFinalMomentService.finalMomentSurvivorWinStatus(true, List.of(
+                        state(FIRST, WatheRoles.LOOSE_END, true, true),
+                        state(SECOND, WatheRoles.KILLER, false, false)
+                ))
+        );
+    }
+
+    @Test
+    void activeFinalMomentReturnsPassengerWinBeforeTimeWinWhenOnlyTriggeredLooseEndRemains() {
+        CheckWinCondition.WinResult result = LastStandFinalMomentService.activeFinalMomentWinResult(
+                true,
+                GameFunctions.WinStatus.TIME,
+                List.of(state(FIRST, WatheRoles.LOOSE_END, true, true))
+        );
+
+        assertEquals(GameFunctions.WinStatus.PASSENGERS, result.status());
+    }
+
+    @Test
+    void activeFinalMomentDoesNotEndWhileOtherPlayersRemain() {
+        assertNull(LastStandFinalMomentService.finalMomentSurvivorWinStatus(true, List.of(
+                state(FIRST, WatheRoles.LOOSE_END, true, true),
+                state(SECOND, WatheRoles.KILLER, true, false)
+        )));
+        assertNull(LastStandFinalMomentService.finalMomentSurvivorWinStatus(true, List.of(
+                state(FIRST, WatheRoles.LOOSE_END, true, true),
+                state(SECOND, WatheRoles.LOOSE_END, true, true)
+        )));
+        assertNull(LastStandFinalMomentService.finalMomentSurvivorWinStatus(false, List.of(
+                state(FIRST, WatheRoles.LOOSE_END, true, true)
+        )));
+    }
+
+    @Test
+    void finalMomentTriggeredLooseEndKnifeCooldownIsZero() {
+        assertEquals(0, LastStandFinalMomentService.finalMomentKnifeCooldown(
+                900,
+                true,
+                WatheRoles.LOOSE_END,
+                true,
+                true
+        ));
+    }
+
+    @Test
+    void finalMomentKnifeCooldownLeavesOtherCasesAlone() {
+        assertEquals(900, LastStandFinalMomentService.finalMomentKnifeCooldown(
+                900,
+                false,
+                WatheRoles.LOOSE_END,
+                true,
+                true
+        ));
+        assertEquals(900, LastStandFinalMomentService.finalMomentKnifeCooldown(
+                900,
+                true,
+                WatheRoles.LOOSE_END,
+                false,
+                true
+        ));
+        assertEquals(900, LastStandFinalMomentService.finalMomentKnifeCooldown(
+                900,
+                true,
+                WatheRoles.CIVILIAN,
+                true,
+                true
+        ));
+        assertEquals(900, LastStandFinalMomentService.finalMomentKnifeCooldown(
+                900,
+                true,
+                WatheRoles.LOOSE_END,
+                true,
+                false
+        ));
+    }
+
+    @Test
+    void finalMomentInitialCooldownClearOnlyAppliesToKnife() {
+        assertTrue(LastStandFinalMomentService.shouldClearFinalMomentInitialCooldown(true));
+        assertFalse(LastStandFinalMomentService.shouldClearFinalMomentInitialCooldown(false));
+    }
+
+    @Test
     void finalMomentHighlightColorUsesFactionColors() {
         assertEquals(0x36E51B, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.CIVILIAN));
         assertEquals(0xC13838, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.KILLER));
         assertEquals(0xB567FF, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END));
         assertEquals(0xFFFFFF, LastStandFinalMomentService.finalMomentHighlightColor(null));
+    }
+
+    @Test
+    void finalMomentLastStandLooseEndUsesPassengerHighlightColor() {
+        assertEquals(0x36E51B, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END, true));
+        assertEquals(0xB567FF, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END, false));
+    }
+
+    @Test
+    void finalMomentLastStandLooseEndWinsWithPassengers() {
+        assertTrue(LastStandFinalMomentService.didFinalMomentPlayerWin(
+                GameFunctions.WinStatus.PASSENGERS,
+                WatheRoles.LOOSE_END,
+                true
+        ));
+        assertTrue(LastStandFinalMomentService.didFinalMomentPlayerWin(
+                GameFunctions.WinStatus.TIME,
+                WatheRoles.LOOSE_END,
+                true
+        ));
+        assertFalse(LastStandFinalMomentService.didFinalMomentPlayerWin(
+                GameFunctions.WinStatus.KILLERS,
+                WatheRoles.LOOSE_END,
+                true
+        ));
+        assertFalse(LastStandFinalMomentService.didFinalMomentPlayerWin(
+                GameFunctions.WinStatus.PASSENGERS,
+                WatheRoles.LOOSE_END,
+                false
+        ));
     }
 
     @Test

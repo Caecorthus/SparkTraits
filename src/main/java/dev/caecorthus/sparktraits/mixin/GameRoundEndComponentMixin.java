@@ -4,6 +4,7 @@ import com.mojang.authlib.GameProfile;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.LastStandFinalMomentService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.cca.GameRoundEndComponent;
@@ -70,7 +71,11 @@ public abstract class GameRoundEndComponentMixin {
             boolean wasDead = game.isPlayerDead(uuid);
             boolean isOnline = serverWorld.getPlayerByUuid(uuid) != null;
             GameRoundEndComponent.PlayerEndStatus endStatus = sparktraits$endStatus(wasDead, isOnline);
-            boolean isWinner = EffectiveTraitService.didEffectiveTeamWin(
+            boolean isWinner = LastStandFinalMomentService.didFinalMomentPlayerWin(
+                    winStatus,
+                    role,
+                    traitWorld.isFinalMomentLooseEnd(uuid)
+            ) || EffectiveTraitService.didEffectiveTeamWin(
                     winStatus,
                     role,
                     sparktraits$roundEndTraits(serverWorld, traitWorld, uuid)

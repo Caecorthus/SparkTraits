@@ -26,6 +26,7 @@
     "LivingEntityCollisionMixin",
     "KillerTraitLivingEntityMixin",
     "ItemEntityMixin",
+    "LastStandFinalMomentCooldownMixin",
     "PlayerInventoryMixin",
     "MurderGameModeMixin",
     "NoellesRolesBodyguardMixin",

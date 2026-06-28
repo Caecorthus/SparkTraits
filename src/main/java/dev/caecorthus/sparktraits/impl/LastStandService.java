@@ -279,12 +279,19 @@ public final class LastStandService {
             @Nullable Role killerRole,
             Collection<Identifier> killerTraits
     ) {
+        // Last Stand is a good-side comeback against any non-good attacker, not only native killers.
+        // 背水一战是好人阵营面对任意非好人击杀者的翻盘机会，不只绑定原生杀手。
         return EffectiveTraitService.isEffectiveCivilian(victimRole, victimTraits)
-                && EffectiveTraitService.isEffectiveKiller(killerRole, killerTraits);
+                && killerRole != null
+                && !EffectiveTraitService.isEffectiveCivilian(killerRole, killerTraits);
     }
 
     static boolean shouldBypassLastStandDeathReason(Identifier deathReason) {
-        return GameConstants.DeathReasons.MENTAL_BREAKDOWN.equals(deathReason);
+        return GameConstants.DeathReasons.MENTAL_BREAKDOWN.equals(deathReason)
+                || GameConstants.DeathReasons.FELL_OUT_OF_TRAIN.equals(deathReason)
+                || GameConstants.DeathReasons.DROWNED.equals(deathReason)
+                || GameConstants.DeathReasons.ESCAPED.equals(deathReason)
+                || GameConstants.DeathReasons.VANILLA_DEATH.equals(deathReason);
     }
 
     private static boolean approveLastStandDeath(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer) {

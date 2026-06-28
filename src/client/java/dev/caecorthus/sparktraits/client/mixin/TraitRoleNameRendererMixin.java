@@ -4,6 +4,7 @@ import dev.caecorthus.sparktraits.client.ConscienceSerialKillerHud;
 import dev.caecorthus.sparktraits.client.TraitClientTexts;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.impl.TraitDisplayService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.CanSeeBodyRole;
 import dev.doctor4t.wathe.api.event.CanTargetBody;
@@ -73,7 +74,13 @@ public abstract class TraitRoleNameRendererMixin {
         if (ProjectileUtil.getCollision(player, entity -> entity instanceof PlayerEntity, range) instanceof EntityHitResult hit
                 && hit.getEntity() instanceof PlayerEntity target) {
             Role role = game.getRole(target);
-            List<Identifier> traits = TraitPlayerComponent.KEY.get(target).getActiveTraitIds();
+            TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(player.getWorld());
+            List<Identifier> traits = TraitDisplayService.spectatorPlayerTraits(
+                    true,
+                    game.isPlayerDead(target.getUuid()),
+                    TraitPlayerComponent.KEY.get(target).getActiveTraitIds(),
+                    traitWorld.getDeathTraitSnapshot(target.getUuid())
+            );
             if (role != null && !traits.isEmpty()) {
                 sparktraits$lastPlayerRoleName = Text.translatable("announcement.role." + role.identifier().getPath());
                 sparktraits$lastPlayerTraits = traits;

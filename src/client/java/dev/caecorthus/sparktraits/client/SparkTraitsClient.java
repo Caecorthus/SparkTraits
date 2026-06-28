@@ -33,7 +33,8 @@ public class SparkTraitsClient implements ClientModInitializer {
             if (viewer == null || !(target instanceof PlayerEntity targetPlayer)) {
                 return null;
             }
-            if (!TraitWorldComponent.KEY.get(viewer.getWorld()).isFinalMomentActive()) {
+            TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(viewer.getWorld());
+            if (!traitWorld.isFinalMomentActive()) {
                 return null;
             }
             GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
@@ -45,7 +46,10 @@ public class SparkTraitsClient implements ClientModInitializer {
             // 终局时刻会按阵营颜色高亮所有存活玩家，直到本局结束。
             Role role = game.getRole(targetPlayer);
             return GetInstinctHighlight.HighlightResult.always(
-                    LastStandFinalMomentService.finalMomentHighlightColor(role),
+                    LastStandFinalMomentService.finalMomentHighlightColor(
+                            role,
+                            traitWorld.isFinalMomentLooseEnd(targetPlayer.getUuid())
+                    ),
                     GetInstinctHighlight.HighlightResult.PRIORITY_HIGH
             );
         });

@@ -72,14 +72,13 @@ public final class LastStandFinalMomentService {
     ) {
         TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(world);
         if (gameComponent.getGameStatus() != GameWorldComponent.GameStatus.ACTIVE
-                || currentStatus == GameFunctions.WinStatus.TIME
                 || currentStatus == GameFunctions.WinStatus.NEUTRAL) {
             return null;
         }
-        if (shouldBlockOrdinaryWin(traitWorld.isFinalMomentActive(), currentStatus)) {
-            return CheckWinCondition.WinResult.block();
-        }
         if (traitWorld.isFinalMomentActive()) {
+            return activeFinalMomentWinResult(true, currentStatus, snapshotPlayers(world, gameComponent));
+        }
+        if (currentStatus == GameFunctions.WinStatus.TIME) {
             return null;
         }
 
@@ -125,7 +124,92 @@ public final class LastStandFinalMomentService {
                 || currentStatus == GameFunctions.WinStatus.KILLERS);
     }
 
+    static @Nullable CheckWinCondition.WinResult activeFinalMomentWinResult(
+            boolean finalMomentActive,
+            GameFunctions.WinStatus currentStatus,
+            Collection<PlayerState> players
+    ) {
+        if (!finalMomentActive) {
+            return null;
+        }
+        GameFunctions.WinStatus survivorWinStatus = finalMomentSurvivorWinStatus(true, players);
+        if (survivorWinStatus != null) {
+            return CheckWinCondition.WinResult.allow(survivorWinStatus);
+        }
+        if (shouldBlockOrdinaryWin(true, currentStatus)) {
+            return CheckWinCondition.WinResult.block();
+        }
+        return null;
+    }
+
+    static @Nullable GameFunctions.WinStatus finalMomentSurvivorWinStatus(
+            boolean finalMomentActive,
+            Collection<PlayerState> players
+    ) {
+        if (!finalMomentActive) {
+            return null;
+        }
+        PlayerState onlyLivingPlayer = null;
+        int livingPlayers = 0;
+        for (PlayerState player : players) {
+            if (!player.alive()) {
+                continue;
+            }
+            livingPlayers++;
+            onlyLivingPlayer = player;
+            if (livingPlayers > 1) {
+                return null;
+            }
+        }
+        if (onlyLivingPlayer == null
+                || !onlyLivingPlayer.lastStandTriggered()
+                || onlyLivingPlayer.role() == null
+                || !WatheRoles.LOOSE_END.identifier().equals(onlyLivingPlayer.role().identifier())) {
+            return null;
+        }
+        // Final Moment is a Last Stand good-side comeback, so the survivor resolves as passengers.
+        // 终局时刻属于背水一战的好人翻盘，因此最后存活者按好人胜利结算。
+        return GameFunctions.WinStatus.PASSENGERS;
+    }
+
+    public static int finalMomentKnifeCooldown(ServerPlayerEntity player, Item item, int duration) {
+        if (player == null) {
+            return duration;
+        }
+        ServerWorld world = player.getServerWorld();
+        return finalMomentKnifeCooldown(
+                duration,
+                TraitWorldComponent.KEY.get(world).isFinalMomentActive(),
+                GameWorldComponent.KEY.get(world).getRole(player),
+                LastStandService.hasTriggeredThisRound(player.getUuid()),
+                item == WatheItems.KNIFE
+        );
+    }
+
+    static int finalMomentKnifeCooldown(
+            int duration,
+            boolean finalMomentActive,
+            @Nullable Role role,
+            boolean lastStandTriggered,
+            boolean knife
+    ) {
+        if (finalMomentActive
+                && knife
+                && lastStandTriggered
+                && isLooseEndRole(role)) {
+            return 0;
+        }
+        return duration;
+    }
+
     public static int finalMomentHighlightColor(@Nullable Role role) {
+        return finalMomentHighlightColor(role, false);
+    }
+
+    public static int finalMomentHighlightColor(@Nullable Role role, boolean lastStandFinalMomentLooseEnd) {
+        if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
+            return 0x36E51B;
+        }
         Faction faction = role == null ? Faction.NONE : role.getFaction();
         return switch (faction) {
             case CIVILIAN -> 0x36E51B;
@@ -135,6 +219,17 @@ public final class LastStandFinalMomentService {
         };
     }
 
+    public static boolean didFinalMomentPlayerWin(
+            GameFunctions.WinStatus winStatus,
+            @Nullable Role role,
+            boolean lastStandFinalMomentLooseEnd
+    ) {
+        return lastStandFinalMomentLooseEnd
+                && isLooseEndRole(role)
+                && (winStatus == GameFunctions.WinStatus.PASSENGERS
+                || winStatus == GameFunctions.WinStatus.TIME);
+    }
+
     static boolean isFinalMomentLooseEndBlackoutImmune(
             boolean finalMomentActive,
             @Nullable Role role,
@@ -142,8 +237,7 @@ public final class LastStandFinalMomentService {
     ) {
         return finalMomentActive
                 && lastStandTriggered
-                && role != null
-                && WatheRoles.LOOSE_END.identifier().equals(role.identifier());
+                && isLooseEndRole(role);
     }
 
     private static BlackoutEffect.BlackoutResult beforeBlackoutEffect(ServerPlayerEntity player, int durationTicks) {
@@ -201,6 +295,7 @@ public final class LastStandFinalMomentService {
         for (UUID uuid : finalPlayerUuids) {
             if (world.getPlayerByUuid(uuid) instanceof ServerPlayerEntity player
                     && GameFunctions.isPlayerPlayingAndAlive(player)) {
+                traitWorld.markFinalMomentLooseEnd(uuid);
                 convertToLooseEnd(world, gameComponent, player);
             }
         }
@@ -228,10 +323,20 @@ public final class LastStandFinalMomentService {
         giveFinalItem(player, WatheItems.KNIFE);
         giveFinalItem(player, WatheItems.DERRINGER);
         giveFinalItem(player, WatheItems.CROWBAR);
-        player.getItemCooldownManager().remove(WatheItems.KNIFE);
-        player.getItemCooldownManager().remove(WatheItems.DERRINGER);
-        player.getItemCooldownManager().remove(WatheItems.CROWBAR);
+        clearFinalMomentInitialCooldown(player, WatheItems.KNIFE);
+        clearFinalMomentInitialCooldown(player, WatheItems.DERRINGER);
+        clearFinalMomentInitialCooldown(player, WatheItems.CROWBAR);
         player.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, FINAL_MOMENT_TICKS + 20, SPEED_AMPLIFIER, false, false, true));
+    }
+
+    private static void clearFinalMomentInitialCooldown(ServerPlayerEntity player, Item item) {
+        if (shouldClearFinalMomentInitialCooldown(item == WatheItems.KNIFE)) {
+            player.getItemCooldownManager().remove(item);
+        }
+    }
+
+    static boolean shouldClearFinalMomentInitialCooldown(boolean knife) {
+        return knife;
     }
 
     private static void giveFinalItem(ServerPlayerEntity player, Item item) {
@@ -239,6 +344,10 @@ public final class LastStandFinalMomentService {
         if (!player.giveItemStack(stack)) {
             player.dropItem(stack, false);
         }
+    }
+
+    private static boolean isLooseEndRole(@Nullable Role role) {
+        return role != null && WatheRoles.LOOSE_END.identifier().equals(role.identifier());
     }
 
     private static List<ServerPlayerEntity> livingPlayers(ServerWorld world, GameWorldComponent gameComponent) {

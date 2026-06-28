@@ -114,8 +114,96 @@ class LastStandServiceTest {
     }
 
     @Test
+    void lastStandTriggersWhenEffectiveCivilianIsKilledByNonCivilianFaction() {
+        assertTrue(LastStandService.canTriggerFromKill(
+                WatheRoles.CIVILIAN,
+                Set.of(LastStandTrait.ID),
+                WatheRoles.KILLER,
+                Set.of()
+        ));
+        assertTrue(LastStandService.canTriggerFromKill(
+                WatheRoles.CIVILIAN,
+                Set.of(LastStandTrait.ID),
+                WatheRoles.CIVILIAN,
+                Set.of(ImpostorTrait.ID)
+        ));
+        assertTrue(LastStandService.canTriggerFromKill(
+                WatheRoles.CIVILIAN,
+                Set.of(LastStandTrait.ID),
+                sparkWitchNeutralRole("murderous_witch"),
+                Set.of()
+        ));
+        assertTrue(LastStandService.canTriggerFromKill(
+                WatheRoles.CIVILIAN,
+                Set.of(LastStandTrait.ID),
+                sparkWitchNeutralRole("grand_witch"),
+                Set.of()
+        ));
+    }
+
+    @Test
+    void lastStandDoesNotTriggerWhenKillerIsEffectivelyCivilianOrMissing() {
+        assertFalse(LastStandService.canTriggerFromKill(
+                WatheRoles.CIVILIAN,
+                Set.of(LastStandTrait.ID),
+                WatheRoles.CIVILIAN,
+                Set.of()
+        ));
+        assertFalse(LastStandService.canTriggerFromKill(
+                WatheRoles.CIVILIAN,
+                Set.of(LastStandTrait.ID),
+                sparkWitchApprenticeRole(),
+                Set.of()
+        ));
+        assertFalse(LastStandService.canTriggerFromKill(
+                WatheRoles.CIVILIAN,
+                Set.of(LastStandTrait.ID),
+                WatheRoles.KILLER,
+                Set.of(ConscienceTrait.ID)
+        ));
+        assertFalse(LastStandService.canTriggerFromKill(
+                WatheRoles.CIVILIAN,
+                Set.of(LastStandTrait.ID),
+                null,
+                Set.of()
+        ));
+    }
+
+    @Test
     void mentalBreakdownBypassesLastStand() {
         assertTrue(LastStandService.shouldBypassLastStandDeathReason(GameConstants.DeathReasons.MENTAL_BREAKDOWN));
         assertFalse(LastStandService.shouldBypassLastStandDeathReason(GameConstants.DeathReasons.BAT));
+    }
+
+    @Test
+    void naturalDeathReasonsBypassLastStandEvenWhenLastAttackerExists() {
+        assertTrue(LastStandService.shouldBypassLastStandDeathReason(GameConstants.DeathReasons.FELL_OUT_OF_TRAIN));
+        assertTrue(LastStandService.shouldBypassLastStandDeathReason(GameConstants.DeathReasons.DROWNED));
+        assertTrue(LastStandService.shouldBypassLastStandDeathReason(GameConstants.DeathReasons.ESCAPED));
+        assertTrue(LastStandService.shouldBypassLastStandDeathReason(GameConstants.DeathReasons.VANILLA_DEATH));
+    }
+
+    private static Role sparkWitchNeutralRole(String path) {
+        return new Role(
+                Identifier.of("sparkwitch", path),
+                0x7A3857,
+                false,
+                false,
+                Role.MoodType.FAKE,
+                -1,
+                false
+        );
+    }
+
+    private static Role sparkWitchApprenticeRole() {
+        return new Role(
+                Identifier.of("sparkwitch", "apprentice_witch"),
+                0x75EDFA,
+                true,
+                false,
+                Role.MoodType.REAL,
+                GameConstants.getInTicks(0, 10),
+                false
+        );
     }
 }
