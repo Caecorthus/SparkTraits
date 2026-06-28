@@ -14,11 +14,14 @@ public class SparkTraitsComponents implements EntityComponentInitializer, WorldC
         registry.beginRegistration(PlayerEntity.class, TraitPlayerComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(TraitPlayerComponent::new);
+        registry.beginRegistration(PlayerEntity.class, RoleEnhancementPlayerComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(RoleEnhancementPlayerComponent::new);
     }
 
     @Override
     public void registerWorldComponentFactories(@NotNull WorldComponentFactoryRegistry registry) {
         registry.register(TraitWorldComponent.KEY, TraitWorldComponent::new);
+        registry.register(RoleEnhancementWorldComponent.KEY, RoleEnhancementWorldComponent::new);
     }
 }
-

@@ -4,6 +4,8 @@
   "trait.sparktraits.last_stand.description": "A belief keeps you alive.",
   "trait.sparktraits.conscience.name": "Conscience",
   "trait.sparktraits.conscience.description": "Your conscience still knows who deserves to live.",
+  "trait.sparktraits.depression.name": "Depression",
+  "trait.sparktraits.depression.description": "Your sanity drains faster and your stamina is weaker. At low sanity, a private countdown can end you, or a hostile kill can push you into a counterattack.",
   "trait.sparktraits.impostor.name": "Impostor",
   "trait.sparktraits.impostor.description": "You know which side the truth belongs to.",
   "trait.sparktraits.cautious.name": "Cautious",

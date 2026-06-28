@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.component;
 
 import com.mojang.serialization.Codec;
 import dev.caecorthus.sparktraits.SparkTraits;
+import net.minecraft.item.ItemStack;
 import net.minecraft.component.ComponentType;
 import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.registry.Registries;
@@ -12,6 +13,14 @@ public final class SparkTraitsDataComponentTypes {
             Registries.DATA_COMPONENT_TYPE,
             SparkTraits.id("conscience_poisoner"),
             ComponentType.<String>builder().codec(Codec.STRING).packetCodec(PacketCodecs.STRING).build()
+    );
+    public static final ComponentType<ItemStack> CAPSULE_CONTENTS = Registry.register(
+            Registries.DATA_COMPONENT_TYPE,
+            SparkTraits.id("capsule_contents"),
+            ComponentType.<ItemStack>builder()
+                    .codec(ItemStack.OPTIONAL_CODEC)
+                    .packetCodec(ItemStack.OPTIONAL_PACKET_CODEC)
+                    .build()
     );
 
     private SparkTraitsDataComponentTypes() {

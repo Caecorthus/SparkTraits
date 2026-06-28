@@ -16,6 +16,9 @@
     "client": [
       "dev.caecorthus.sparktraits.client.SparkTraitsClient"
     ],
+    "voicechat": [
+      "dev.caecorthus.sparktraits.voice.SparkTraitsVoiceChatPlugin"
+    ],
     "cardinal-components": [
       "dev.caecorthus.sparktraits.component.SparkTraitsComponents"
     ]
