@@ -1,5 +1,7 @@
 package dev.caecorthus.sparktraits.impl;
 
+import dev.caecorthus.sparktraits.api.Trait;
+import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
@@ -8,10 +10,13 @@ import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DepressionTraitServiceTest {
@@ -63,6 +68,18 @@ class DepressionTraitServiceTest {
     }
 
     @Test
+    void depressionTraitKeepsOriginalRegistrationRules() {
+        Trait depression = TraitRegistry.get(GoodTraits.DEPRESSION);
+
+        assertNotNull(depression);
+        assertEquals(DepressionTraitService.COLOR, depression.color());
+        assertEquals(TraitAudience.INNOCENT_ONLY, depression.audience());
+        assertTrue(depression.uniquePerGame());
+        assertTrue(depression.incompatibleTraits().contains(ImpostorTrait.ID));
+        assertTrue(depression.incompatibleTraits().contains(LastStandTrait.ID));
+    }
+
+    @Test
     void triggerChanceIsLinearFromMidMoodToMinusTwenty() {
         assertEquals(0.0, DepressionTraitService.triggerChance(0.55f), 0.0001);
         assertEquals(100.0, DepressionTraitService.triggerChance(-0.20f), 0.0001);
@@ -105,6 +122,39 @@ class DepressionTraitServiceTest {
         assertEquals(10.2f, DepressionTraitService.depressionRecoveredStamina(10.0f, 10.25f, true), 0.0001f);
         assertEquals(9.0f, DepressionTraitService.depressionRecoveredStamina(10.0f, 9.0f, true), 0.0001f);
         assertEquals(10.25f, DepressionTraitService.depressionRecoveredStamina(10.0f, 10.25f, false), 0.0001f);
+    }
+
+    @Test
+    void depressionStaminaAppliesOnlyToFiniteDepressionOutsidePsycho() {
+        Role finiteRole = sparkWitchRole("finite_test");
+        Role infiniteRole = new Role(
+                Identifier.of("sparktraits", "infinite_test"),
+                0xFFFFFF,
+                true,
+                false,
+                Role.MoodType.REAL,
+                -1,
+                false
+        );
+
+        assertTrue(DepressionTraitService.shouldApplyDepressionStamina(finiteRole, true, false));
+        assertFalse(DepressionTraitService.shouldApplyDepressionStamina(finiteRole, false, false));
+        assertFalse(DepressionTraitService.shouldApplyDepressionStamina(finiteRole, true, true));
+        assertFalse(DepressionTraitService.shouldApplyDepressionStamina(infiniteRole, true, false));
+        assertFalse(DepressionTraitService.shouldApplyDepressionStamina(null, true, false));
+        assertEquals(-0.2, DepressionTraitService.DEPRESSION_STAMINA_MODIFIER_VALUE, 0.0001);
+    }
+
+    @Test
+    void playerBodyEquipmentMixinIsRegistered() throws Exception {
+        try (InputStream stream = DepressionTraitServiceTest.class
+                .getClassLoader()
+                .getResourceAsStream("sparktraits.mixins.json")) {
+            assertNotNull(stream);
+            String config = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+
+            assertTrue(config.contains("\"PlayerBodyEntityEquipmentMixin\""));
+        }
     }
 
     @Test

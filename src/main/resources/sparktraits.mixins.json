@@ -35,6 +35,7 @@
     "NoellesRolesPacketMixin",
     "PoisonGasCloudEntityMixin",
     "PoisonUtilsMixin",
+    "PlayerBodyEntityEquipmentMixin",
     "PlayerShopComponentMixin",
     "PlayerMoodComponentMixin",
     "PlayerPoisonComponentMixin",

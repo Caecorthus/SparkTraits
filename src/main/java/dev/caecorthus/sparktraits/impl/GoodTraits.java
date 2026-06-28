@@ -54,16 +54,7 @@ public final class GoodTraits {
                         context.selectedTraitIds()
                 ))
                 .build());
-        TraitRegistry.register(base(DEPRESSION, DepressionTraitService.COLOR)
-                .uniquePerGame()
-                .incompatibleWith(LastStandTrait.ID)
-                .predicate(context -> DepressionTraitService.canSelectDepression(
-                        context.role(),
-                        context.selectedTraitIds(),
-                        context.startingPlayerCount(),
-                        context.enforceStartingPlayerCount()
-                ))
-                .build());
+        TraitRegistry.register(new DepressionTrait());
     }
 
     private static TraitDefinition.Builder base(Identifier id, int color) {

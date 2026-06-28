@@ -16,9 +16,12 @@ import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheEntities;
+import dev.doctor4t.wathe.index.WatheAttributes;
 import dev.doctor4t.wathe.index.WatheItems;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.attribute.EntityAttributeInstance;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerInventory;
@@ -58,6 +61,13 @@ public final class DepressionTraitService {
     public static final float FULL_GRAYSCALE_MOOD = 0.0f;
     public static final double MIN_PSYCHO_COUNTER_CHANCE = 10.0;
     public static final Identifier APPRENTICE_WITCH_ID = Identifier.of("sparkwitch", "apprentice_witch");
+    public static final Identifier DEPRESSION_STAMINA_MODIFIER_ID = SparkTraits.id("depression_stamina");
+    public static final double DEPRESSION_STAMINA_MODIFIER_VALUE = -0.2;
+    private static final EntityAttributeModifier DEPRESSION_STAMINA_MODIFIER = new EntityAttributeModifier(
+            DEPRESSION_STAMINA_MODIFIER_ID,
+            DEPRESSION_STAMINA_MODIFIER_VALUE,
+            EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+    );
     private static final Text PSYCHO_ACTIONBAR = Text.literal("我们今天都会死。一个比另一个晚一点罢了").withColor(ATTACKER_HIGHLIGHT_COLOR);
     private static final Text ATTACKER_ACTIONBAR = Text.literal("！！反击或逃跑！！").withColor(ATTACKER_HIGHLIGHT_COLOR);
     private static final Text ATTACKER_TITLE = Text.literal("跑").withColor(ATTACKER_HIGHLIGHT_COLOR);
@@ -152,23 +162,60 @@ public final class DepressionTraitService {
         return previousTicks + (proposedTicks - previousTicks) * STAMINA_MULTIPLIER;
     }
 
-    public static void applyFiniteStaminaPenalty(ServerPlayerEntity player, float previousSprintingTicks) {
+    public static boolean shouldApplyDepressionStamina(Role role, boolean hasDepression, boolean psychoActive) {
+        return hasDepression && !psychoActive && GlobalTraitService.hasFiniteStamina(role);
+    }
+
+    public static void applyDepressionStamina(ServerPlayerEntity player) {
+        GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
+        Role role = game == null ? null : game.getRole(player);
         TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
-        if (!traits.hasActiveTrait(GoodTraits.DEPRESSION) || isPsychoActive(player)) {
+        if (!shouldApplyDepressionStamina(role, traits.hasActiveTrait(GoodTraits.DEPRESSION), isPsychoActive(player))) {
             return;
         }
+        EntityAttributeInstance stamina = player.getAttributeInstance(WatheAttributes.MAX_SPRINT_TIME);
+        if (stamina == null || stamina.hasModifier(DEPRESSION_STAMINA_MODIFIER_ID)) {
+            return;
+        }
+        stamina.addTemporaryModifier(DEPRESSION_STAMINA_MODIFIER);
+        PlayerStaminaComponent.KEY.get(player).sync();
+    }
+
+    public static void removeDepressionStamina(ServerPlayerEntity player) {
+        EntityAttributeInstance stamina = player.getAttributeInstance(WatheAttributes.MAX_SPRINT_TIME);
+        if (stamina == null) {
+            return;
+        }
+        if (stamina.hasModifier(DEPRESSION_STAMINA_MODIFIER_ID)) {
+            stamina.removeModifier(DEPRESSION_STAMINA_MODIFIER_ID);
+        }
+        PlayerStaminaComponent staminaComponent = PlayerStaminaComponent.KEY.get(player);
+        if (!staminaComponent.isInfiniteStamina()) {
+            int maxSprintTime = (int) stamina.getValue();
+            staminaComponent.setMaxSprintTime(maxSprintTime);
+            staminaComponent.setSprintingTicks(Math.min(staminaComponent.getSprintingTicks(), maxSprintTime));
+            staminaComponent.sync();
+        }
+    }
+
+    public static void applyFiniteStaminaPenalty(ServerPlayerEntity player, float previousSprintingTicks) {
+        TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
+        GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
+        Role role = game == null ? null : game.getRole(player);
+        if (!shouldApplyDepressionStamina(role, traits.hasActiveTrait(GoodTraits.DEPRESSION), isPsychoActive(player))) {
+            return;
+        }
+        applyDepressionStamina(player);
         PlayerStaminaComponent stamina = PlayerStaminaComponent.KEY.get(player);
         if (stamina.isInfiniteStamina()) {
             return;
         }
-        int maxSprintTime = depressionStaminaMax(stamina.getMaxSprintTime(), true);
+        int maxSprintTime = stamina.getMaxSprintTime();
         float sprintingTicks = depressionRecoveredStamina(previousSprintingTicks, stamina.getSprintingTicks(), true);
-        stamina.setMaxSprintTime(maxSprintTime);
         stamina.setSprintingTicks(Math.min(sprintingTicks, maxSprintTime));
         if (stamina.getSprintingTicks() <= 0) {
             stamina.setExhausted(true);
         }
-        stamina.sync();
     }
 
     public static boolean shouldMuteVoice(ServerPlayerEntity player) {
