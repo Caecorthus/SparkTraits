@@ -100,7 +100,14 @@ public final class TraitAssignmentService {
         Collections.shuffle(randomPlayers, random);
         for (ServerPlayerEntity player : randomPlayers) {
 
-            List<Identifier> randomTraits = TraitSelector.selectRandomTraits(world, gameComponent, traitWorld, player, random);
+            List<Identifier> randomTraits = TraitSelector.selectRandomTraits(
+                    world,
+                    gameComponent,
+                    traitWorld,
+                    player,
+                    random,
+                    players.size()
+            );
             plans.add(new PlayerPlan(player, List.of(), randomTraits));
         }
 

@@ -34,7 +34,8 @@ public final class TraitSelector {
             GameWorldComponent gameComponent,
             TraitWorldComponent traitWorld,
             ServerPlayerEntity player,
-            RandomGenerator random
+            RandomGenerator random,
+            int startingPlayerCount
     ) {
         LinkedHashSet<Identifier> selected = new LinkedHashSet<>();
         Role role = gameComponent.getRole(player);
@@ -48,7 +49,7 @@ public final class TraitSelector {
                 continue;
             }
 
-            List<Trait> candidates = collectCandidates(world, gameComponent, traitWorld, player, role, selected);
+            List<Trait> candidates = collectCandidates(world, gameComponent, traitWorld, player, role, selected, startingPlayerCount);
             if (candidates.isEmpty()) {
                 continue;
             }
@@ -73,10 +74,11 @@ public final class TraitSelector {
             TraitWorldComponent traitWorld,
             ServerPlayerEntity player,
             Role role,
-            LinkedHashSet<Identifier> selected
+            LinkedHashSet<Identifier> selected,
+            int startingPlayerCount
     ) {
         List<Trait> candidates = new ArrayList<>();
-        TraitSelectionContext context = new TraitSelectionContext(world, gameComponent, player, role, selected);
+        TraitSelectionContext context = new TraitSelectionContext(world, gameComponent, player, role, selected, startingPlayerCount, true);
         for (Trait trait : TraitRegistry.values()) {
             if (trait.weight() <= 0) {
                 continue;

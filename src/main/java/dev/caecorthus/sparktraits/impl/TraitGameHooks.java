@@ -27,6 +27,9 @@ public final class TraitGameHooks {
         ConscienceSerialKillerService.register();
         ConsciencePoisonerService.register();
         SilencedKillerRestrictionService.register();
+        RoleEnhancementService.register();
+        DetectiveCriminologistService.register();
+        AttendantFlashlightService.register();
         ResetPlayer.EVENT.register(player -> {
             ConscienceBombService.clearTimedBomb(player);
             ConscienceSerialKillerService.clearPlayer(player);

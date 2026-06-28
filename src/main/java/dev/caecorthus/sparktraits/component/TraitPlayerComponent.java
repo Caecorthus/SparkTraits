@@ -67,6 +67,14 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     private Identifier serialKillerMurdererRole;
     private int bloodthirstyKillCount;
     private boolean corneredLastKillerRewardPaid;
+    // Owner-only Depression suicide countdown, in ticks. -1 means hidden.
+    // 抑郁自杀判定倒计时，仅同步给本人；-1 表示隐藏。
+    private int depressionSuicideTicks = -1;
+    // Public psycho flag is needed for skin rendering; UUIDs are owner-only target hints.
+    // 疯魔公开标记用于皮肤渲染；UUID 只给本人用于高亮目标。
+    private boolean depressionPsychoActive;
+    private UUID depressionPsychoAttacker;
+    private UUID depressionCounterTarget;
 
     public TraitPlayerComponent(PlayerEntity player) {
         this.player = player;
@@ -147,6 +155,46 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     public boolean hasCorneredLastKillerRewardPaid() {
         return corneredLastKillerRewardPaid;
+    }
+
+    public int getDepressionSuicideTicks() {
+        return depressionSuicideTicks;
+    }
+
+    public boolean isDepressionPsychoActive() {
+        return depressionPsychoActive;
+    }
+
+    public UUID getDepressionPsychoAttacker() {
+        return depressionPsychoAttacker;
+    }
+
+    public UUID getDepressionCounterTarget() {
+        return depressionCounterTarget;
+    }
+
+    public void setDepressionSuicideTicks(int ticks) {
+        int normalizedTicks = ticks > 0 ? ticks : -1;
+        if (this.depressionSuicideTicks != normalizedTicks) {
+            this.depressionSuicideTicks = normalizedTicks;
+            sync();
+        }
+    }
+
+    public void setDepressionPsychoState(boolean active, UUID attacker) {
+        if (this.depressionPsychoActive != active
+                || (this.depressionPsychoAttacker == null ? attacker != null : !this.depressionPsychoAttacker.equals(attacker))) {
+            this.depressionPsychoActive = active;
+            this.depressionPsychoAttacker = active ? attacker : null;
+            sync();
+        }
+    }
+
+    public void setDepressionCounterTarget(UUID target) {
+        if (this.depressionCounterTarget == null ? target != null : !this.depressionCounterTarget.equals(target)) {
+            this.depressionCounterTarget = target;
+            sync();
+        }
     }
 
     public void markCorneredLastKillerRewardPaid() {
@@ -245,7 +293,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 && !goingDarkInstinctHidden && !cautiousSoundSuppressed
                 && consciencePoisonTicks <= 0
                 && !conscienceInstinctVisible && !impostorInstinctVisible && serialKillerMurdererRole == null
-                && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid) {
+                && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid
+                && depressionSuicideTicks <= 0 && !depressionPsychoActive
+                && depressionPsychoAttacker == null && depressionCounterTarget == null) {
             return;
         }
         if (player instanceof ServerPlayerEntity serverPlayer) {
@@ -270,6 +320,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         serialKillerMurdererRole = null;
         bloodthirstyKillCount = 0;
         corneredLastKillerRewardPaid = false;
+        depressionSuicideTicks = -1;
+        depressionPsychoActive = false;
+        depressionPsychoAttacker = null;
+        depressionCounterTarget = null;
         sync();
     }
 
@@ -344,6 +398,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         buf.writeVarInt(visibleConsciencePoisonTicks(recipient, spectator));
         writeOptionalIdentifier(buf, owner ? serialKillerMurdererRole : null);
         buf.writeBoolean(activeTraits.contains(CautiousTrait.ID));
+        buf.writeVarInt(owner ? depressionSuicideTicks : -1);
+        buf.writeBoolean(depressionPsychoActive);
+        writeOptionalUuid(buf, owner ? depressionPsychoAttacker : null);
+        writeOptionalUuid(buf, owner ? depressionCounterTarget : null);
     }
 
     @Override
@@ -362,6 +420,13 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         }
         serialKillerMurdererRole = readOptionalIdentifier(buf);
         cautiousSoundSuppressed = buf.readBoolean();
+        depressionSuicideTicks = buf.readableBytes() > 0 ? buf.readVarInt() : -1;
+        if (depressionSuicideTicks <= 0) {
+            depressionSuicideTicks = -1;
+        }
+        depressionPsychoActive = buf.readableBytes() > 0 && buf.readBoolean();
+        depressionPsychoAttacker = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;
+        depressionCounterTarget = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;
     }
 
     @Override
@@ -402,6 +467,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         serialKillerMurdererRole = null;
         bloodthirstyKillCount = 0;
         corneredLastKillerRewardPaid = false;
+        depressionSuicideTicks = -1;
+        depressionPsychoActive = false;
+        depressionPsychoAttacker = null;
+        depressionCounterTarget = null;
         fromNbt(tag.getList("ActiveTraits", NbtElement.STRING_TYPE), activeTraits);
         fromNbt(tag.getList("PendingTraits", NbtElement.STRING_TYPE), pendingTraits);
         fromNbt(tag.getList("RevealedTraits", NbtElement.STRING_TYPE), revealedTraits);
@@ -490,5 +559,19 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             return null;
         }
         return Identifier.tryParse(buf.readString());
+    }
+
+    private static void writeOptionalUuid(RegistryByteBuf buf, UUID uuid) {
+        buf.writeBoolean(uuid != null);
+        if (uuid != null) {
+            buf.writeUuid(uuid);
+        }
+    }
+
+    private static UUID readOptionalUuid(RegistryByteBuf buf) {
+        if (!buf.readBoolean()) {
+            return null;
+        }
+        return buf.readUuid();
     }
 }

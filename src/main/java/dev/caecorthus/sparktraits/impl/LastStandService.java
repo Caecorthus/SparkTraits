@@ -13,6 +13,7 @@ import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
+import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheEntities;
 import dev.doctor4t.wathe.index.WatheItems;
@@ -175,6 +176,10 @@ public final class LastStandService {
             preDeathMoodPercent.remove(uuid);
             return KillPlayer.KillResult.cancel();
         }
+        if (shouldBypassLastStandDeathReason(deathReason)) {
+            preDeathMoodPercent.remove(uuid);
+            return null;
+        }
         if (NOELLES_ASSASSINATED.equals(deathReason) && isProtectedFromNoellesRoleUtility(victim)) {
             preDeathMoodPercent.remove(uuid);
             notifyCannotAssassinate(killer);
@@ -276,6 +281,10 @@ public final class LastStandService {
     ) {
         return EffectiveTraitService.isEffectiveCivilian(victimRole, victimTraits)
                 && EffectiveTraitService.isEffectiveKiller(killerRole, killerTraits);
+    }
+
+    static boolean shouldBypassLastStandDeathReason(Identifier deathReason) {
+        return GameConstants.DeathReasons.MENTAL_BREAKDOWN.equals(deathReason);
     }
 
     private static boolean approveLastStandDeath(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer) {

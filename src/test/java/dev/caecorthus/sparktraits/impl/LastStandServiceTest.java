@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl;
 
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
+import dev.doctor4t.wathe.game.GameConstants;
 import net.minecraft.util.Identifier;
 import org.junit.jupiter.api.Test;
 
@@ -110,5 +111,11 @@ class LastStandServiceTest {
                 WatheRoles.CIVILIAN,
                 Set.of(ImpostorTrait.ID)
         ));
+    }
+
+    @Test
+    void mentalBreakdownBypassesLastStand() {
+        assertTrue(LastStandService.shouldBypassLastStandDeathReason(GameConstants.DeathReasons.MENTAL_BREAKDOWN));
+        assertFalse(LastStandService.shouldBypassLastStandDeathReason(GameConstants.DeathReasons.BAT));
     }
 }

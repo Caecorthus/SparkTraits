@@ -14,6 +14,7 @@ import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.client.particle.PoisonParticle;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
 import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.client.MinecraftClient;
@@ -27,6 +28,7 @@ public class SparkTraitsClient implements ClientModInitializer {
         registerFinalMomentHighlight();
         registerCriminologistHighlight();
         registerGoingDarkInstinctSkip();
+        ClientTickEvents.END_CLIENT_TICK.register(client -> DepressionHud.tick());
     }
 
     private static void registerFinalMomentHighlight() {

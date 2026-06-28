@@ -15,6 +15,7 @@ public final class GoodTraits {
     public static final Identifier INTROVERTED = SparkTraits.id("introverted");
     public static final Identifier MONEY_TREE = SparkTraits.id("money_tree");
     public static final Identifier FOCUS = SparkTraits.id("focus");
+    public static final Identifier DEPRESSION = SparkTraits.id("depression");
 
     private GoodTraits() {
     }
@@ -51,6 +52,16 @@ public final class GoodTraits {
                 .predicate(context -> GoodTraitService.canSelectFocus(
                         context.role(),
                         context.selectedTraitIds()
+                ))
+                .build());
+        TraitRegistry.register(base(DEPRESSION, DepressionTraitService.COLOR)
+                .uniquePerGame()
+                .incompatibleWith(LastStandTrait.ID)
+                .predicate(context -> DepressionTraitService.canSelectDepression(
+                        context.role(),
+                        context.selectedTraitIds(),
+                        context.startingPlayerCount(),
+                        context.enforceStartingPlayerCount()
                 ))
                 .build());
     }

@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.client.mixin;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.ConscienceSerialKillerService;
+import dev.caecorthus.sparktraits.impl.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
@@ -44,6 +45,18 @@ public abstract class WatheClientMixin {
         }
 
         PlayerEntity playerTarget = target instanceof PlayerEntity targetPlayer ? targetPlayer : null;
+        if (playerTarget != null) {
+            TraitPlayerComponent viewerTraits = TraitPlayerComponent.KEY.get(viewer);
+            if (playerTarget.getUuid().equals(viewerTraits.getDepressionPsychoAttacker())) {
+                cir.setReturnValue(DepressionTraitService.ATTACKER_HIGHLIGHT_COLOR);
+                return;
+            }
+            if (playerTarget.getUuid().equals(viewerTraits.getDepressionCounterTarget())) {
+                cir.setReturnValue(DepressionTraitService.VICTIM_HIGHLIGHT_COLOR);
+                return;
+            }
+        }
+
         GameWorldComponent game = playerTarget == null ? null : GameWorldComponent.KEY.get(viewer.getWorld());
         TraitPlayerComponent targetTraits = playerTarget == null ? null : TraitPlayerComponent.KEY.get(playerTarget);
         if (WatheClient.canSeeSpectatorInformation()) {

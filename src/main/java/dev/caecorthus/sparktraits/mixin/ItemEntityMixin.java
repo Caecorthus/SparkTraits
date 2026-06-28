@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.impl.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.ImpostorRevolverService;
 import dev.doctor4t.wathe.index.tag.WatheItemTags;
 import net.minecraft.entity.ItemEntity;
@@ -28,6 +29,10 @@ public abstract class ItemEntityMixin {
         if (player.isCreative() || player.getWorld().isClient) {
             return;
         }
+        if (DepressionTraitService.isPsychoActive(player)) {
+            ci.cancel();
+            return;
+        }
         // Ground collision only; shop insertion does not use ItemEntity pickup.
         // 只拦截地面碰撞拾取，商店直接入包不受影响。
         if (ImpostorRevolverService.shouldBlockGroundGunPickup(
@@ -45,6 +50,9 @@ public abstract class ItemEntityMixin {
     private boolean sparktraits$blockImpostorGroundGunInsert(PlayerInventory inventory, ItemStack stack, PlayerEntity player) {
         // Guard the exact vanilla ground-pickup insert call even if another mixin reaches it.
         // 即使其他 mixin 进入原版地面拾取入包调用，也在这个精确调用点拦住内鬼拿枪。
+        if (DepressionTraitService.isPsychoActive(player)) {
+            return false;
+        }
         if (ImpostorRevolverService.shouldBlockGroundGunPickup(
                 TraitPlayerComponent.KEY.get(player).getActiveTraitIds(),
                 stack.isIn(WatheItemTags.GUNS)

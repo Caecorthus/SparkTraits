@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.mixin;
 
 import com.mojang.datafixers.util.Either;
 import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
+import dev.caecorthus.sparktraits.impl.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.doctor4t.wathe.util.Scheduler;
 import net.minecraft.entity.ItemEntity;
@@ -24,7 +25,8 @@ public abstract class PlayerEntityMixin {
 
     @Inject(method = "dropItem(Lnet/minecraft/item/ItemStack;ZZ)Lnet/minecraft/entity/ItemEntity;", at = @At("HEAD"), cancellable = true)
     private void sparktraits$blockLastStandPendingDrops(ItemStack stack, boolean throwRandomly, boolean retainOwnership, CallbackInfoReturnable<ItemEntity> cir) {
-        if ((Object) this instanceof ServerPlayerEntity player && LastStandService.isPending(player)) {
+        if ((Object) this instanceof ServerPlayerEntity player
+                && (LastStandService.isPending(player) || DepressionTraitService.shouldBlockDrops(player))) {
             cir.setReturnValue(null);
         }
     }

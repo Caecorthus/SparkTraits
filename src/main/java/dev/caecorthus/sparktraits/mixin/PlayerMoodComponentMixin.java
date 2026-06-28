@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.impl.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.GoodTraitService;
 import dev.caecorthus.sparktraits.impl.GlobalTraitService;
@@ -58,12 +59,24 @@ public abstract class PlayerMoodComponentMixin {
     private float sparktraits$applyMoodDrainTraits(float proposedMood) {
         float adjustedMood = KillerTraitService.oppressiveAdjustedMood(this.mood, proposedMood, this.player);
         adjustedMood = VigilanteVeteranTraitService.wellTrainedAdjustedMood(this.mood, adjustedMood, this.player);
-        return GoodTraitService.socialMoodAdjustedMood(this.mood, adjustedMood, this.player);
+        adjustedMood = GoodTraitService.socialMoodAdjustedMood(this.mood, adjustedMood, this.player);
+        return DepressionTraitService.depressionAdjustedMood(
+                this.mood,
+                adjustedMood,
+                TraitPlayerComponent.KEY.get(this.player).getActiveTraitIds()
+        );
     }
 
     @Inject(method = {"isLowerThanMid", "isLowerThanDepressed"}, at = @At("HEAD"), cancellable = true)
     private void sparktraits$wellTrainedIgnoresLowMood(CallbackInfoReturnable<Boolean> cir) {
         if (VigilanteVeteranTraitService.ignoresLowMood(this.player)) {
+            cir.setReturnValue(false);
+        }
+    }
+
+    @Inject(method = "isLowerThanDepressed", at = @At("HEAD"), cancellable = true)
+    private void sparktraits$depressionPsychoIgnoresSprintBlock(CallbackInfoReturnable<Boolean> cir) {
+        if (DepressionTraitService.shouldAllowLowMoodSprint(this.player)) {
             cir.setReturnValue(false);
         }
     }

@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.impl.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.ImpostorRevolverService;
 import dev.doctor4t.wathe.index.tag.WatheItemTags;
 import net.minecraft.entity.player.PlayerEntity;
@@ -40,6 +41,9 @@ public abstract class PlayerInventoryMixin {
     private boolean sparktraits$shouldBlockNonShopGunAcquisition(ItemStack stack) {
         if (player == null || player.isCreative() || player.getWorld().isClient) {
             return false;
+        }
+        if (DepressionTraitService.shouldBlockInventoryInsert(player, stack)) {
+            return true;
         }
         return ImpostorRevolverService.shouldBlockNonShopGunAcquisition(
                 TraitPlayerComponent.KEY.get(player).getActiveTraitIds(),

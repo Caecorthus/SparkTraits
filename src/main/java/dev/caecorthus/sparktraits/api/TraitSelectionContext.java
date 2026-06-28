@@ -13,10 +13,21 @@ public record TraitSelectionContext(
         GameWorldComponent gameComponent,
         ServerPlayerEntity player,
         Role role,
-        Set<Identifier> selectedTraitIds
+        Set<Identifier> selectedTraitIds,
+        int startingPlayerCount,
+        boolean enforceStartingPlayerCount
 ) {
+    public TraitSelectionContext(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            ServerPlayerEntity player,
+            Role role,
+            Set<Identifier> selectedTraitIds
+    ) {
+        this(world, gameComponent, player, role, selectedTraitIds, 0, false);
+    }
+
     public boolean hasSelectedTrait(Identifier id) {
         return selectedTraitIds.contains(id);
     }
 }
-
