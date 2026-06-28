@@ -136,10 +136,32 @@ public final class LastStandFinalMomentService {
         if (survivorWinStatus != null) {
             return CheckWinCondition.WinResult.allow(survivorWinStatus);
         }
+        // Once the Final Moment Loose End is gone, let the remaining faction resolve normally.
+        // 当终局亡命徒已经阵亡时，放行剩余阵营的正常结算。
+        if (!hasLivingFinalMomentLooseEnd(true, players)) {
+            return null;
+        }
         if (shouldBlockOrdinaryWin(true, currentStatus)) {
             return CheckWinCondition.WinResult.block();
         }
         return null;
+    }
+
+    static boolean hasLivingFinalMomentLooseEnd(
+            boolean finalMomentActive,
+            Collection<PlayerState> players
+    ) {
+        if (!finalMomentActive) {
+            return false;
+        }
+        for (PlayerState player : players) {
+            if (player.alive()
+                    && player.lastStandTriggered()
+                    && isLooseEndRole(player.role())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static @Nullable GameFunctions.WinStatus finalMomentSurvivorWinStatus(

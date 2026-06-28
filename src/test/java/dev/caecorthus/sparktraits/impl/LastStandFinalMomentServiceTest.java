@@ -120,6 +120,44 @@ class LastStandFinalMomentServiceTest {
     }
 
     @Test
+    void activeFinalMomentAllowsKillerWinAfterTriggeredLooseEndDies() {
+        assertNull(LastStandFinalMomentService.activeFinalMomentWinResult(
+                true,
+                GameFunctions.WinStatus.KILLERS,
+                List.of(
+                        state(FIRST, WatheRoles.LOOSE_END, false, true),
+                        state(SECOND, WatheRoles.KILLER, true, false)
+                )
+        ));
+    }
+
+    @Test
+    void activeFinalMomentAllowsPassengerWinAfterTriggeredLooseEndDies() {
+        assertNull(LastStandFinalMomentService.activeFinalMomentWinResult(
+                true,
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(
+                        state(FIRST, WatheRoles.LOOSE_END, false, true),
+                        state(SECOND, WatheRoles.CIVILIAN, true, false)
+                )
+        ));
+    }
+
+    @Test
+    void activeFinalMomentBlocksOrdinaryWinWhileTriggeredLooseEndLives() {
+        CheckWinCondition.WinResult result = LastStandFinalMomentService.activeFinalMomentWinResult(
+                true,
+                GameFunctions.WinStatus.KILLERS,
+                List.of(
+                        state(FIRST, WatheRoles.LOOSE_END, true, true),
+                        state(SECOND, WatheRoles.KILLER, true, false)
+                )
+        );
+
+        assertEquals(GameFunctions.WinStatus.NONE, result.status());
+    }
+
+    @Test
     void finalMomentTriggeredLooseEndKnifeCooldownIsZero() {
         assertEquals(0, LastStandFinalMomentService.finalMomentKnifeCooldown(
                 900,
