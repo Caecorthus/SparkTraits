@@ -58,6 +58,7 @@
   "trait.sparktraits.cornered.description": "Gain money as killer-side allies die, with a bonus when you are the last one left.",
   "announcement.goal.sparktraits.conscience": "Use your abilities to help the innocents survive!",
   "announcement.goal.sparktraits.impostor": "Use your identity to secure victory for the killer team.",
+  "subtitle.sparktraits.final_moment": "The final three minutes begin.",
   "message.sparktraits.silenced_killer.ability": "You are silenced and cannot use abilities.",
   "shop.error.sparktraits.silenced_killer": "You are silenced and cannot buy items.",
   "death_reason.sparktraits.self_realization": "self realization"

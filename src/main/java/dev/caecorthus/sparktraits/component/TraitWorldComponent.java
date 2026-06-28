@@ -41,6 +41,9 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     private final Map<UUID, List<Identifier>> roundTraitSnapshots = new HashMap<>();
     private final Map<UUID, List<Identifier>> deathTraitSnapshots = new HashMap<>();
     private float traitSlotRollChance = TraitSlotRollChance.DEFAULT;
+    // Round-scoped final moment flag used by client highlight overlays.
+    // 本局终局时刻标记，供客户端高亮覆盖使用。
+    private boolean finalMomentActive;
 
     public TraitWorldComponent(World world) {
         this.world = world;
@@ -88,7 +91,19 @@ public class TraitWorldComponent implements AutoSyncedComponent {
         usedUniqueTraits.clear();
         roundTraitSnapshots.clear();
         deathTraitSnapshots.clear();
+        finalMomentActive = false;
         sync();
+    }
+
+    public boolean isFinalMomentActive() {
+        return finalMomentActive;
+    }
+
+    public void setFinalMomentActive(boolean finalMomentActive) {
+        if (this.finalMomentActive != finalMomentActive) {
+            this.finalMomentActive = finalMomentActive;
+            sync();
+        }
     }
 
     public void snapshotRoundTraits(UUID playerUuid, Collection<Identifier> traitIds) {
@@ -127,6 +142,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
             writeIdentifierSet(buf, entry.getValue());
         }
         buf.writeFloat(traitSlotRollChance);
+        buf.writeBoolean(finalMomentActive);
     }
 
     @Override
@@ -146,6 +162,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
         traitSlotRollChance = buf.readableBytes() > 0
                 ? TraitSlotRollChance.normalize(buf.readFloat())
                 : TraitSlotRollChance.DEFAULT;
+        finalMomentActive = buf.readableBytes() > 0 && buf.readBoolean();
     }
 
     @Override
@@ -161,6 +178,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
         traitSlotRollChance = tag.contains(TraitSlotRollChance.NBT_KEY, NbtElement.NUMBER_TYPE)
                 ? TraitSlotRollChance.normalize(tag.getFloat(TraitSlotRollChance.NBT_KEY))
                 : TraitSlotRollChance.DEFAULT;
+        finalMomentActive = false;
     }
 
     private static NbtList toNbt(Collection<Identifier> ids) {

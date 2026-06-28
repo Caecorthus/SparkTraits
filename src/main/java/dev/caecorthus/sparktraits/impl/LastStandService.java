@@ -334,6 +334,10 @@ public final class LastStandService {
         return pendingPlayers.containsKey(uuid);
     }
 
+    public static boolean hasTriggeredThisRound(UUID uuid) {
+        return consumedPlayers.contains(uuid);
+    }
+
     public static boolean isProtectedFromNoellesRoleUtility(Entity entity) {
         return entity instanceof PlayerEntity player && isProtectedFromNoellesRoleUtility(player);
     }

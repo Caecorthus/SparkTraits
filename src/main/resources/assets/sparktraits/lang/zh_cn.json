@@ -58,6 +58,7 @@
   "trait.sparktraits.cornered.description": "杀手阵营同伙死亡时获得金币；成为最后一人时获得额外奖励。",
   "announcement.goal.sparktraits.conscience": "使用你的能力帮助好人生还！",
   "announcement.goal.sparktraits.impostor": "运用你的身份为杀手阵营获取胜利",
+  "subtitle.sparktraits.final_moment": "最后三分钟开始了。",
   "message.sparktraits.silenced_killer.ability": "你被静语，无法使用技能",
   "shop.error.sparktraits.silenced_killer": "你被静语，无法购买物品",
   "death_reason.sparktraits.self_realization": "自我觉悟"

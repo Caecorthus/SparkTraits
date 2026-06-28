@@ -1,12 +1,16 @@
 package dev.caecorthus.sparktraits.client;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.SparkTraitsParticles;
 import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
+import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.client.WatheClient;
+import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.client.particle.PoisonParticle;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
 import net.fabricmc.api.ClientModInitializer;
@@ -17,7 +21,32 @@ public class SparkTraitsClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ParticleFactoryRegistry.getInstance().register(SparkTraitsParticles.BLUE_POISON, PoisonParticle.Factory::new);
+        registerFinalMomentHighlight();
         registerGoingDarkInstinctSkip();
+    }
+
+    private static void registerFinalMomentHighlight() {
+        GetInstinctHighlight.EVENT.register(target -> {
+            PlayerEntity viewer = MinecraftClient.getInstance().player;
+            if (viewer == null || !(target instanceof PlayerEntity targetPlayer)) {
+                return null;
+            }
+            if (!TraitWorldComponent.KEY.get(viewer.getWorld()).isFinalMomentActive()) {
+                return null;
+            }
+            GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
+            if (!game.hasAnyRole(targetPlayer) || !GameFunctions.isPlayerPlayingAndAlive(targetPlayer)) {
+                return null;
+            }
+
+            // Final Moment reveals every living player by faction color until the round ends.
+            // 终局时刻会按阵营颜色高亮所有存活玩家，直到本局结束。
+            Role role = game.getRole(targetPlayer);
+            return GetInstinctHighlight.HighlightResult.always(
+                    LastStandFinalMomentService.finalMomentHighlightColor(role),
+                    GetInstinctHighlight.HighlightResult.PRIORITY_HIGH
+            );
+        });
     }
 
     private static void registerGoingDarkInstinctSkip() {
