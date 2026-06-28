@@ -7,6 +7,7 @@ import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.caecorthus.sparktraits.impl.TraitAssignmentService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.ScoreboardRoleSelectorComponent;
+import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.game.gamemode.MurderGameMode;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -77,6 +78,29 @@ public abstract class MurderGameModeMixin {
     )
     private boolean sparktraits$passiveMoneyOnlyForRealKillers(GameWorldComponent gameComponent, PlayerEntity player) {
         return ConscienceSerialKillerService.shouldReceiveKillerPassiveMoney(gameComponent, player);
+    }
+
+    @Redirect(
+            method = "tickServerGameLoop",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;getGameStatus()Ldev/doctor4t/wathe/cca/GameWorldComponent$GameStatus;"
+            )
+    )
+    private GameWorldComponent.GameStatus sparktraits$blockPendingLastStandRoundEnd(
+            GameWorldComponent gameComponent,
+            ServerWorld serverWorld,
+            GameWorldComponent loopGameComponent
+    ) {
+        GameWorldComponent.GameStatus status = gameComponent.getGameStatus();
+        if (status == GameWorldComponent.GameStatus.ACTIVE
+                && LastStandService.shouldBlockRoundEnd(
+                LastStandService.hasPendingInWorld(serverWorld),
+                GameFunctions.WinStatus.NEUTRAL
+        )) {
+            return GameWorldComponent.GameStatus.INACTIVE;
+        }
+        return status;
     }
 
     @Inject(method = "tickServerGameLoop", at = @At("RETURN"))

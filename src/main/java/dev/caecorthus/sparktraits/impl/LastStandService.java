@@ -93,7 +93,7 @@ public final class LastStandService {
     public static void register() {
         ServerTickEvents.END_WORLD_TICK.register(LastStandService::tickWorld);
         CheckWinCondition.EVENT.register((world, gameComponent, currentStatus) ->
-                currentStatus != GameFunctions.WinStatus.NONE && hasPendingInWorld(world)
+                shouldBlockRoundEnd(hasPendingInWorld(world), currentStatus)
                         ? CheckWinCondition.WinResult.block()
                         : null);
         GetInstinctHighlight.EVENT.register(target -> {
@@ -255,6 +255,10 @@ public final class LastStandService {
 
     static boolean shouldHideFromKillerInstinct(boolean lastStandPending, boolean killerInstinctHidden) {
         return EffectiveTraitService.shouldHideFromKillerInstinct(lastStandPending, killerInstinctHidden);
+    }
+
+    public static boolean shouldBlockRoundEnd(boolean pendingInWorld, GameFunctions.WinStatus winStatus) {
+        return pendingInWorld && winStatus != GameFunctions.WinStatus.NONE;
     }
 
     public static int pendingSpectatorHighlightColor(
@@ -621,7 +625,7 @@ public final class LastStandService {
         return role != null && role.getMoodType() == Role.MoodType.REAL;
     }
 
-    private static boolean hasPendingInWorld(ServerWorld world) {
+    public static boolean hasPendingInWorld(ServerWorld world) {
         for (PendingState state : pendingPlayers.values()) {
             if (state.deathWorldKey().equals(world.getRegistryKey())) {
                 return true;

@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.impl;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.game.GameConstants;
+import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.util.Identifier;
 import org.junit.jupiter.api.Test;
 
@@ -81,6 +82,16 @@ class LastStandServiceTest {
         assertTrue(LastStandService.shouldHideFromKillerInstinct(true, false));
         assertTrue(LastStandService.shouldHideFromKillerInstinct(false, true));
         assertFalse(LastStandService.shouldHideFromKillerInstinct(false, false));
+    }
+
+    @Test
+    void pendingStateBlocksEveryRoundEndStatusExceptNone() {
+        assertTrue(LastStandService.shouldBlockRoundEnd(true, GameFunctions.WinStatus.PASSENGERS));
+        assertTrue(LastStandService.shouldBlockRoundEnd(true, GameFunctions.WinStatus.KILLERS));
+        assertTrue(LastStandService.shouldBlockRoundEnd(true, GameFunctions.WinStatus.TIME));
+        assertTrue(LastStandService.shouldBlockRoundEnd(true, GameFunctions.WinStatus.NEUTRAL));
+        assertFalse(LastStandService.shouldBlockRoundEnd(true, GameFunctions.WinStatus.NONE));
+        assertFalse(LastStandService.shouldBlockRoundEnd(false, GameFunctions.WinStatus.NEUTRAL));
     }
 
     @Test
