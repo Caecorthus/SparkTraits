@@ -4,20 +4,26 @@
   ],
   "passes": [
     {
-      "name": "minecraft:color_convolve",
+      "name": "sparktraits_depression_insanity",
       "intarget": "minecraft:main",
       "outtarget": "swap",
       "uniforms": [
         {
-          "name": "Saturation",
+          "name": "DesaturateFactor",
           "values": [
-            1.0
+            0.0
+          ]
+        },
+        {
+          "name": "SpreadFactor",
+          "values": [
+            0.0
           ]
         }
       ]
     },
     {
-      "name": "minecraft:blit",
+      "name": "blit",
       "intarget": "swap",
       "outtarget": "minecraft:main"
     }

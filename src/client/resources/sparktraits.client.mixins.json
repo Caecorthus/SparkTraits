@@ -6,6 +6,7 @@
   "client": [
     "AssassinScreenMixin",
     "BeveragePlateBluePoisonParticleMixin",
+    "DepressionGameRendererMixin",
     "DepressionPsychoArmSkinMixin",
     "DepressionInGameHudMixin",
     "DepressionPsychoSkinMixin",

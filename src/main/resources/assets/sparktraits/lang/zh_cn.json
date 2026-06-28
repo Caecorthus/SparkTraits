@@ -26,6 +26,8 @@
   "trait.sparktraits.money_tree.description": "如果你的身份使用金钱系统，每30秒获得5金币。",
   "trait.sparktraits.focus.name": "专注",
   "trait.sparktraits.focus.description": "普通好人使用左轮命中目标后，不再因此降低理智。",
+  "trait.sparktraits.depression.name": "抑郁",
+  "trait.sparktraits.depression.description": "理智更快流失，体力更弱；低理智时倒计时可能把你推向自毁，或在被异阵营击杀时坠入疯魔反击。",
   "trait.sparktraits.marksman.name": "精确枪手",
   "trait.sparktraits.marksman.description": "你的左轮手枪和德林加射程提高百分之三十。",
   "trait.sparktraits.fast_reload.name": "快速装填",

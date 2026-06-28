@@ -26,14 +26,17 @@ public final class TraitGameHooks {
         ConscienceSerialKillerService.register();
         ConsciencePoisonerService.register();
         SilencedKillerRestrictionService.register();
+        DepressionTraitService.register();
         ResetPlayer.EVENT.register(player -> {
             ConscienceBombService.clearTimedBomb(player);
             ConscienceSerialKillerService.clearPlayer(player);
             LastStandService.clearPlayer(player);
+            DepressionTraitService.clearPlayer(player);
             TraitPlayerComponent.KEY.get(player).clearActiveTraits(TraitRemovalReason.RESET);
         });
 
         KillPlayer.BEFORE.register(LastStandService::beforeKill);
+        KillPlayer.BEFORE.register(DepressionTraitService::beforeKill);
 
         KillPlayer.AFTER.register((victim, killer, deathReason) -> {
             TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(victim);
@@ -47,8 +50,10 @@ public final class TraitGameHooks {
             KillerTraitService.handleAfterRealKill(victim, killer, deathReason);
             ImpostorBodyguardService.handleAfterKill(victim);
             ConscienceSerialKillerService.handleAfterKill(victim, killer, deathReason);
+            DepressionTraitService.handleAfterKill(victim, killer);
             playerTraits.clearActiveTraits(TraitRemovalReason.DEATH);
             ConscienceSerialKillerService.clearPlayer(victim);
+            DepressionTraitService.clearPlayer(victim);
             syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
         });
 
@@ -59,6 +64,7 @@ public final class TraitGameHooks {
             ConscienceBombService.clearAll();
             ConscienceSerialKillerService.clearAll();
             LastStandService.clearRoundState(serverWorld);
+            DepressionTraitService.clearRoundState(serverWorld);
             clearActiveTraits(serverWorld, gameComponent);
         });
     }

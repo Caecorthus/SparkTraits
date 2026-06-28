@@ -55,6 +55,8 @@ public final class DepressionTraitService {
     public static final float MOOD_DRAIN_MULTIPLIER = 1.5f;
     public static final float STAMINA_MULTIPLIER = 0.8f;
     public static final float GUARANTEED_TRIGGER_MOOD = -0.20f;
+    public static final float FULL_GRAYSCALE_MOOD = 0.0f;
+    public static final double MIN_PSYCHO_COUNTER_CHANCE = 10.0;
     public static final Identifier APPRENTICE_WITCH_ID = Identifier.of("sparkwitch", "apprentice_witch");
     private static final Text PSYCHO_ACTIONBAR = Text.literal("我们今天都会死。一个比另一个晚一点罢了").withColor(ATTACKER_HIGHLIGHT_COLOR);
     private static final Text ATTACKER_ACTIONBAR = Text.literal("！！反击或逃跑！！").withColor(ATTACKER_HIGHLIGHT_COLOR);
@@ -97,14 +99,43 @@ public final class DepressionTraitService {
     }
 
     public static double triggerChance(float mood) {
-        if (mood >= GameConstants.MID_MOOD_THRESHOLD) {
+        return linearChance(mood, GameConstants.MID_MOOD_THRESHOLD, GUARANTEED_TRIGGER_MOOD, 0.0, 100.0);
+    }
+
+    public static double psychoCounterChance(float mood) {
+        if (mood > GameConstants.MID_MOOD_THRESHOLD) {
             return 0.0;
         }
-        if (mood <= GUARANTEED_TRIGGER_MOOD) {
-            return 100.0;
+        return linearChance(mood, GameConstants.MID_MOOD_THRESHOLD, FULL_GRAYSCALE_MOOD, MIN_PSYCHO_COUNTER_CHANCE, 100.0);
+    }
+
+    public static boolean shouldRunSuicideCountdown(float mood) {
+        return triggerChance(mood) > 0.0;
+    }
+
+    public static float depressionScreenEffectStrength(boolean hasDepression, boolean psychoActive, float mood) {
+        if (!hasDepression) {
+            return 0.0f;
         }
-        double span = GameConstants.MID_MOOD_THRESHOLD - GUARANTEED_TRIGGER_MOOD;
-        return ((GameConstants.MID_MOOD_THRESHOLD - mood) / span) * 100.0;
+        if (psychoActive) {
+            return 1.0f;
+        }
+        if (mood >= GameConstants.MID_MOOD_THRESHOLD) {
+            return 0.0f;
+        }
+        if (mood <= FULL_GRAYSCALE_MOOD) {
+            return 1.0f;
+        }
+        return (GameConstants.MID_MOOD_THRESHOLD - mood) / (GameConstants.MID_MOOD_THRESHOLD - FULL_GRAYSCALE_MOOD);
+    }
+
+    public static float depressionScreenEffectStrength(
+            boolean hasDepression,
+            boolean psychoActive,
+            int suicideTicks,
+            float mood
+    ) {
+        return depressionScreenEffectStrength(hasDepression, psychoActive, mood);
     }
 
     public static int depressionStaminaMax(int maxSprintTime, boolean hasDepression) {
@@ -141,7 +172,11 @@ public final class DepressionTraitService {
     }
 
     public static boolean shouldMuteVoice(ServerPlayerEntity player) {
-        return isPsychoActive(player);
+        return shouldMuteVoice(isPsychoActive(player));
+    }
+
+    public static boolean shouldMuteVoice(boolean psychoActive) {
+        return psychoActive;
     }
 
     public static boolean shouldAllowLowMoodSprint(net.minecraft.entity.player.PlayerEntity player) {
@@ -149,7 +184,11 @@ public final class DepressionTraitService {
     }
 
     public static boolean shouldBlockInventoryInsert(ServerPlayerEntity player, ItemStack stack) {
-        return isPsychoActive(player) && !stack.isOf(WatheItems.BAT);
+        return shouldBlockInventoryInsert(isPsychoActive(player), stack.isOf(WatheItems.BAT));
+    }
+
+    public static boolean shouldBlockInventoryInsert(boolean psychoActive, boolean batStack) {
+        return psychoActive && !batStack;
     }
 
     public static boolean shouldBlockInventoryInsert(net.minecraft.entity.player.PlayerEntity player, ItemStack stack) {
@@ -182,7 +221,8 @@ public final class DepressionTraitService {
         if (!victimTraits.hasActiveTrait(GoodTraits.DEPRESSION)) {
             return null;
         }
-        if (PlayerMoodComponent.KEY.get(victim).getMood() >= GameConstants.MID_MOOD_THRESHOLD) {
+        float mood = PlayerMoodComponent.KEY.get(victim).getMood();
+        if (mood > GameConstants.MID_MOOD_THRESHOLD) {
             return null;
         }
         GameWorldComponent game = GameWorldComponent.KEY.get(victim.getWorld());
@@ -192,7 +232,7 @@ public final class DepressionTraitService {
             return null;
         }
         double roll = victim.getRandom().nextDouble() * 100.0;
-        double chance = triggerChance(PlayerMoodComponent.KEY.get(victim).getMood());
+        double chance = psychoCounterChance(mood);
         if (roll >= chance) {
             return null;
         }
@@ -274,7 +314,7 @@ public final class DepressionTraitService {
                 continue;
             }
             PlayerMoodComponent mood = PlayerMoodComponent.KEY.get(player);
-            if (mood.getMood() >= GameConstants.MID_MOOD_THRESHOLD) {
+            if (!shouldRunSuicideCountdown(mood.getMood())) {
                 traits.setDepressionSuicideTicks(-1);
                 continue;
             }
@@ -495,6 +535,17 @@ public final class DepressionTraitService {
 
     private static boolean roleIdentifierEquals(Role role, Identifier id) {
         return role != null && role.identifier().equals(id);
+    }
+
+    private static double linearChance(float mood, float startMood, float fullMood, double startChance, double fullChance) {
+        if (mood >= startMood) {
+            return startChance;
+        }
+        if (mood <= fullMood) {
+            return fullChance;
+        }
+        double progress = (startMood - mood) / (double) (startMood - fullMood);
+        return startChance + (fullChance - startChance) * progress;
     }
 
     private record PendingState(

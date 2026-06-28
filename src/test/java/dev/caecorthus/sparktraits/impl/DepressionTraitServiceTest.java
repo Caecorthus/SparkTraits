@@ -70,6 +70,14 @@ class DepressionTraitServiceTest {
     }
 
     @Test
+    void psychoCounterChanceIsLinearFromTenPercentAtMidMoodToGuaranteedAtZero() {
+        assertEquals(0.0, DepressionTraitService.psychoCounterChance(0.56f), 0.0001);
+        assertEquals(10.0, DepressionTraitService.psychoCounterChance(0.55f), 0.0001);
+        assertEquals(55.0, DepressionTraitService.psychoCounterChance(0.275f), 0.0001);
+        assertEquals(100.0, DepressionTraitService.psychoCounterChance(0.0f), 0.0001);
+    }
+
+    @Test
     void depressionOnlyMultipliesActualMoodDrain() {
         assertEquals(0.25f, DepressionTraitService.depressionAdjustedMood(
                 1.0f,
@@ -97,6 +105,31 @@ class DepressionTraitServiceTest {
         assertEquals(10.2f, DepressionTraitService.depressionRecoveredStamina(10.0f, 10.25f, true), 0.0001f);
         assertEquals(9.0f, DepressionTraitService.depressionRecoveredStamina(10.0f, 9.0f, true), 0.0001f);
         assertEquals(10.25f, DepressionTraitService.depressionRecoveredStamina(10.0f, 10.25f, false), 0.0001f);
+    }
+
+    @Test
+    void suicideCountdownStartsWhenTriggerChanceIsPositive() {
+        assertFalse(DepressionTraitService.shouldRunSuicideCountdown(0.55f));
+        assertTrue(DepressionTraitService.shouldRunSuicideCountdown(0.549f));
+        assertTrue(DepressionTraitService.shouldRunSuicideCountdown(0.25f));
+    }
+
+    @Test
+    void depressionVisualStrengthIsLinearFromMidMoodToZero() {
+        assertEquals(0.0f, DepressionTraitService.depressionScreenEffectStrength(true, false, 0.55f), 0.0001f);
+        assertEquals(0.5f, DepressionTraitService.depressionScreenEffectStrength(true, false, 0.275f), 0.0001f);
+        assertEquals(1.0f, DepressionTraitService.depressionScreenEffectStrength(true, false, 0.0f), 0.0001f);
+        assertEquals(1.0f, DepressionTraitService.depressionScreenEffectStrength(true, true, -1, 0.5f), 0.0001f);
+        assertEquals(0.0f, DepressionTraitService.depressionScreenEffectStrength(false, true, 100, -0.2f), 0.0001f);
+    }
+
+    @Test
+    void psychoRestrictionsOnlyApplyWhileDepressionPsychoIsActive() {
+        assertFalse(DepressionTraitService.shouldMuteVoice(false));
+        assertTrue(DepressionTraitService.shouldMuteVoice(true));
+        assertFalse(DepressionTraitService.shouldBlockInventoryInsert(false, false));
+        assertFalse(DepressionTraitService.shouldBlockInventoryInsert(true, true));
+        assertTrue(DepressionTraitService.shouldBlockInventoryInsert(true, false));
     }
 
     private static Role sparkWitchRole(String path) {

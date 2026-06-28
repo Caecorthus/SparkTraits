@@ -26,6 +26,8 @@
   "trait.sparktraits.money_tree.description": "If your role uses money, gain 5 money every 30 seconds.",
   "trait.sparktraits.focus.name": "Focus",
   "trait.sparktraits.focus.description": "After hitting with a revolver, ordinary good roles keep their sanity.",
+  "trait.sparktraits.depression.name": "Depression",
+  "trait.sparktraits.depression.description": "Sanity drains faster and stamina is weaker. At low sanity, a countdown may push you toward self-destruction, or an opposing-faction kill may send you into a frenzied counterattack.",
   "trait.sparktraits.marksman.name": "Marksman",
   "trait.sparktraits.marksman.description": "Your revolver and derringer reach thirty percent farther.",
   "trait.sparktraits.fast_reload.name": "Fast Reload",

@@ -1,7 +1,6 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.client.DepressionHud;
-import dev.caecorthus.sparktraits.client.DepressionScreenEffects;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -16,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Adds Depression's private HUD timer and grayscale post effect to Wathe's in-game HUD.
- * 将抑郁的私有倒计时与灰阶后处理接入 wathe 游戏 HUD。
+ * Adds Depression's private HUD timer to Wathe's in-game HUD.
+ * 将抑郁的私有倒计时接入 wathe 游戏 HUD。
  */
 @Mixin(InGameHud.class)
 public abstract class DepressionInGameHudMixin {
@@ -32,7 +31,6 @@ public abstract class DepressionInGameHudMixin {
             return;
         }
         float delta = tickCounter.getTickDelta(true);
-        DepressionScreenEffects.render(player, delta);
         TextRenderer renderer = this.client.textRenderer;
         DepressionHud.render(renderer, player, context, delta);
     }

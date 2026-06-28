@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.client;
 import com.google.gson.JsonSyntaxException;
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.impl.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.GoodTraits;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import net.minecraft.client.MinecraftClient;
@@ -10,16 +11,17 @@ import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gl.PostEffectProcessor;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
 
 import java.io.IOException;
 
 /**
- * Client-only grayscale post effect for the Depression trait.
- * 抑郁天赋的客户端灰阶后处理；理智越低，饱和度越低。
+ * Client-only StarRailExpress-style grayscale post effect for the Depression trait.
+ * 抑郁天赋的 StarRailExpress 风格客户端灰阶后处理；理智越低，视角越灰白。
  */
 public final class DepressionScreenEffects {
-    private static final Identifier GRAYSCALE_SHADER = SparkTraits.id("shaders/post/depression_grayscale.json");
+    private static final Identifier GRAYSCALE_SHADER = SparkTraits.id("shaders/post/depression_insanity.json");
+    private static final float DESATURATE_FACTOR = 0.69f;
+    private static final float SPREAD_FACTOR = 1.43f;
     private static PostEffectProcessor processor;
     private static int processorWidth = -1;
     private static int processorHeight = -1;
@@ -40,18 +42,23 @@ public final class DepressionScreenEffects {
             return;
         }
 
-        activeProcessor.setUniforms("Saturation", 1.0f - strength);
+        activeProcessor.setUniforms("DesaturateFactor", strength * DESATURATE_FACTOR);
+        activeProcessor.setUniforms("SpreadFactor", strength * SPREAD_FACTOR);
         activeProcessor.render(delta);
         client.getFramebuffer().beginWrite(false);
     }
 
     private static float grayscaleStrength(ClientPlayerEntity player) {
-        TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
-        if (!traits.hasActiveTrait(GoodTraits.DEPRESSION)) {
+        if (player.isCreative() || player.isSpectator()) {
             return 0.0f;
         }
+        TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
         float mood = PlayerMoodComponent.KEY.get(player).getMood();
-        return MathHelper.clamp(1.0f - mood, 0.0f, 1.0f);
+        return DepressionTraitService.depressionScreenEffectStrength(
+                traits.hasActiveTrait(GoodTraits.DEPRESSION),
+                traits.isDepressionPsychoActive(),
+                mood
+        );
     }
 
     private static PostEffectProcessor ensureProcessor(MinecraftClient client) {

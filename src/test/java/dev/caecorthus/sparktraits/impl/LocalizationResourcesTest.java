@@ -68,11 +68,17 @@ class LocalizationResourcesTest {
         assertEquals("Introverted", english.get("trait.sparktraits.introverted.name").getAsString());
         assertEquals("Money Tree", english.get("trait.sparktraits.money_tree.name").getAsString());
         assertEquals("Focus", english.get("trait.sparktraits.focus.name").getAsString());
+        assertEquals("Depression", english.get("trait.sparktraits.depression.name").getAsString());
 
         assertEquals("外向", chinese.get("trait.sparktraits.extroverted.name").getAsString());
         assertEquals("内向", chinese.get("trait.sparktraits.introverted.name").getAsString());
         assertEquals("摇钱树", chinese.get("trait.sparktraits.money_tree.name").getAsString());
         assertEquals("专注", chinese.get("trait.sparktraits.focus.name").getAsString());
+        assertEquals("抑郁", chinese.get("trait.sparktraits.depression.name").getAsString());
+        assertEquals(
+                "理智更快流失，体力更弱；低理智时倒计时可能把你推向自毁，或在被异阵营击杀时坠入疯魔反击。",
+                chinese.get("trait.sparktraits.depression.description").getAsString()
+        );
     }
 
     private static JsonObject readLanguageFile(String language) throws IOException {
