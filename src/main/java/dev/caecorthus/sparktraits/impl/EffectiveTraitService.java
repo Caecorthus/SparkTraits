@@ -232,11 +232,27 @@ public final class EffectiveTraitService {
     }
 
     public static int effectiveKillerInstinctColor(Role targetRole, Collection<Identifier> targetTraits) {
-        return effectiveKillerInstinctColor(targetRole, hasConscience(targetTraits), hasImpostor(targetTraits));
+        return effectiveKillerInstinctColor(
+                appearsAsKillerToKillerInstinct(targetRole, isOriginalKiller(targetRole)),
+                hasConscience(targetTraits),
+                hasImpostor(targetTraits)
+        );
     }
 
     public static int effectiveKillerInstinctColor(
             Role targetRole,
+            boolean targetHasConscience,
+            boolean targetHasImpostor
+    ) {
+        return effectiveKillerInstinctColor(
+                appearsAsKillerToKillerInstinct(targetRole, isOriginalKiller(targetRole)),
+                targetHasConscience,
+                targetHasImpostor
+        );
+    }
+
+    public static int effectiveKillerInstinctColor(
+            boolean targetAppearsAsKiller,
             boolean targetHasConscience,
             boolean targetHasImpostor
     ) {
@@ -246,7 +262,13 @@ public final class EffectiveTraitService {
         if (targetHasConscience) {
             return CIVILIAN_INSTINCT_COLOR;
         }
-        return isOriginalKiller(targetRole) ? KILLER_INSTINCT_COLOR : CIVILIAN_INSTINCT_COLOR;
+        return targetAppearsAsKiller ? KILLER_INSTINCT_COLOR : CIVILIAN_INSTINCT_COLOR;
+    }
+
+    /** Mirrors NoellesRoles' Undercover deception for SparkTraits' Impostor instinct.
+     *  为 SparkTraits 的内鬼本能同步 NoellesRoles 卧底伪装成杀手同伙的规则。 */
+    public static boolean appearsAsKillerToKillerInstinct(Role targetRole, boolean targetCanUseKillerFeatures) {
+        return targetCanUseKillerFeatures || isUndercover(targetRole);
     }
 
     public static Boolean conscienceMorphlingCohortOverride(
@@ -532,6 +554,9 @@ public final class EffectiveTraitService {
             return Boolean.FALSE;
         }
         if (hasImpostor(targetTraits)) {
+            return Boolean.TRUE;
+        }
+        if (hasImpostor(viewerTraits) && isUndercover(targetRole)) {
             return Boolean.TRUE;
         }
         return null;

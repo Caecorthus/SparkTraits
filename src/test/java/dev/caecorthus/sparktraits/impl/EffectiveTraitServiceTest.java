@@ -168,6 +168,19 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void impostorSeesUndercoverAsKillerCohort() {
+        assertEquals(
+                Boolean.TRUE,
+                EffectiveTraitService.cohortOverride(
+                        WatheRoles.CIVILIAN,
+                        Set.of(ImpostorTrait.ID),
+                        Noellesroles.UNDERCOVER,
+                        Set.of()
+                )
+        );
+    }
+
+    @Test
     void blackoutCooldownGroupsSeparateConscienceFromRealKillers() {
         assertTrue(EffectiveTraitService.sharesBlackoutCooldown(
                 WatheRoles.KILLER,
@@ -362,6 +375,29 @@ class EffectiveTraitServiceTest {
         assertEquals(
                 EffectiveTraitService.CIVILIAN_INSTINCT_COLOR,
                 EffectiveTraitService.effectiveKillerInstinctColor(WatheRoles.CIVILIAN, Set.of())
+        );
+    }
+
+    @Test
+    void undercoverAppearsAsKillerForImpostorInstinctColor() {
+        assertTrue(EffectiveTraitService.appearsAsKillerToKillerInstinct(Noellesroles.UNDERCOVER, false));
+        assertFalse(EffectiveTraitService.appearsAsKillerToKillerInstinct(WatheRoles.CIVILIAN, false));
+
+        assertEquals(
+                EffectiveTraitService.KILLER_INSTINCT_COLOR,
+                EffectiveTraitService.effectiveKillerInstinctColor(true, false, false)
+        );
+        assertEquals(
+                EffectiveTraitService.CIVILIAN_INSTINCT_COLOR,
+                EffectiveTraitService.effectiveKillerInstinctColor(false, false, false)
+        );
+        assertEquals(
+                EffectiveTraitService.CIVILIAN_INSTINCT_COLOR,
+                EffectiveTraitService.effectiveKillerInstinctColor(true, true, false)
+        );
+        assertEquals(
+                EffectiveTraitService.IMPOSTOR_INSTINCT_COLOR,
+                EffectiveTraitService.effectiveKillerInstinctColor(false, false, true)
         );
     }
 

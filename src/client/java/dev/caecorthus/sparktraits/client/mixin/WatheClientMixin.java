@@ -200,9 +200,14 @@ public abstract class WatheClientMixin {
         } else if (EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget)) {
             cir.setReturnValue(EffectiveTraitService.CIVILIAN_INSTINCT_COLOR);
         } else if (EffectiveTraitService.hasImpostor(viewer)) {
-            cir.setReturnValue(EffectiveTraitService.isRealOriginalKiller(playerTarget, game)
-                    ? EffectiveTraitService.KILLER_INSTINCT_COLOR
-                    : EffectiveTraitService.CIVILIAN_INSTINCT_COLOR);
+            cir.setReturnValue(EffectiveTraitService.effectiveKillerInstinctColor(
+                    EffectiveTraitService.appearsAsKillerToKillerInstinct(
+                            game.getRole(playerTarget),
+                            game.canUseKillerFeatures(playerTarget)
+                    ),
+                    false,
+                    false
+            ));
         }
     }
 
