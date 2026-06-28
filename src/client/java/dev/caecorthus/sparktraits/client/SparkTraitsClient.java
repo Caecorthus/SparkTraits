@@ -1,9 +1,7 @@
 package dev.caecorthus.sparktraits.client;
 
-import dev.caecorthus.sparktraits.component.RoleEnhancementPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
-import dev.caecorthus.sparktraits.impl.DetectiveCriminologistService;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.SparkTraitsParticles;
@@ -24,9 +22,7 @@ public class SparkTraitsClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ParticleFactoryRegistry.getInstance().register(SparkTraitsParticles.BLUE_POISON, PoisonParticle.Factory::new);
-        RoleEnhancementClient.register();
         registerFinalMomentHighlight();
-        registerCriminologistHighlight();
         registerGoingDarkInstinctSkip();
         ClientTickEvents.END_CLIENT_TICK.register(client -> DepressionHud.tick());
     }
@@ -50,26 +46,6 @@ public class SparkTraitsClient implements ClientModInitializer {
             Role role = game.getRole(targetPlayer);
             return GetInstinctHighlight.HighlightResult.always(
                     LastStandFinalMomentService.finalMomentHighlightColor(role),
-                    GetInstinctHighlight.HighlightResult.PRIORITY_HIGH
-            );
-        });
-    }
-
-    private static void registerCriminologistHighlight() {
-        GetInstinctHighlight.EVENT.register(target -> {
-            PlayerEntity viewer = MinecraftClient.getInstance().player;
-            if (viewer == null || !(target instanceof PlayerEntity targetPlayer)) {
-                return null;
-            }
-            RoleEnhancementPlayerComponent component = RoleEnhancementPlayerComponent.KEY.get(viewer);
-            if (!component.isCriminologistRevealActive() || component.getCriminologistTargetUuid() == null) {
-                return null;
-            }
-            if (!component.getCriminologistTargetUuid().equals(targetPlayer.getUuid())) {
-                return null;
-            }
-            return GetInstinctHighlight.HighlightResult.always(
-                    DetectiveCriminologistService.TRACKING_HIGHLIGHT_COLOR,
                     GetInstinctHighlight.HighlightResult.PRIORITY_HIGH
             );
         });

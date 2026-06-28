@@ -17,7 +17,6 @@
     "FastReloadCooldownMixin",
     "FineDrinkItemMixin",
     "GameFunctionsMixin",
-    "GameFunctionsBodyRecordMixin",
     "GameRoundEndComponentMixin",
     "GameWorldComponentAccessor",
     "GunShootPayloadMixin",

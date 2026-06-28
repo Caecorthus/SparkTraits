@@ -10,7 +10,6 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies that localized SparkTraits resources stay complete.
@@ -74,15 +73,6 @@ class LocalizationResourcesTest {
         assertEquals("内向", chinese.get("trait.sparktraits.introverted.name").getAsString());
         assertEquals("摇钱树", chinese.get("trait.sparktraits.money_tree.name").getAsString());
         assertEquals("专注", chinese.get("trait.sparktraits.focus.name").getAsString());
-    }
-
-    @Test
-    void roleEnhancementItemResourcesExist() {
-        Path assets = Path.of("src/main/resources/assets/sparktraits");
-
-        assertTrue(Files.exists(assets.resolve("models/item/capsule.json")));
-        assertTrue(Files.exists(assets.resolve("models/item/flashlight.json")));
-        assertTrue(Files.exists(assets.resolve("textures/item/capsule.png")));
     }
 
     private static JsonObject readLanguageFile(String language) throws IOException {
