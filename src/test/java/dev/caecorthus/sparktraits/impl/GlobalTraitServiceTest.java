@@ -101,6 +101,11 @@ class GlobalTraitServiceTest {
     }
 
     @Test
+    void childishScaleShrinksPlayersToEightyFivePercent() {
+        assertEquals(-0.15D, GlobalTraitService.CHILDISH_SCALE_MODIFIER_VALUE, 0.0001D);
+    }
+
+    @Test
     void excellentPhysiqueRequiresOriginalFiniteStamina() {
         assertTrue(GlobalTraitService.canSelectExcellentPhysique(WatheRoles.CIVILIAN));
         assertTrue(GlobalTraitService.canSelectExcellentPhysique(WatheRoles.VIGILANTE));

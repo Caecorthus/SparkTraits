@@ -80,7 +80,7 @@ public final class TraitSelector {
         List<Trait> candidates = new ArrayList<>();
         TraitSelectionContext context = new TraitSelectionContext(world, gameComponent, player, role, selected, startingPlayerCount, true);
         for (Trait trait : TraitRegistry.values()) {
-            if (trait.weight() <= 0) {
+            if (trait.rollWeight() <= 0.0D) {
                 continue;
             }
             if (!traitWorld.isTraitEnabled(trait.id())) {
@@ -108,16 +108,16 @@ public final class TraitSelector {
         return candidates;
     }
 
-    private static Trait pickWeighted(List<Trait> candidates, RandomGenerator random) {
-        int totalWeight = 0;
+    static Trait pickWeighted(List<Trait> candidates, RandomGenerator random) {
+        double totalWeight = 0.0D;
         for (Trait candidate : candidates) {
-            totalWeight += candidate.weight();
+            totalWeight += candidate.rollWeight();
         }
 
-        int roll = random.nextInt(totalWeight);
+        double roll = random.nextDouble() * totalWeight;
         for (Trait candidate : candidates) {
-            roll -= candidate.weight();
-            if (roll < 0) {
+            roll -= candidate.rollWeight();
+            if (roll < 0.0D) {
                 return candidate;
             }
         }

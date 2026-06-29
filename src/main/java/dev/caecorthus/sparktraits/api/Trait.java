@@ -19,6 +19,14 @@ public interface Trait {
         return 100;
     }
 
+    /**
+     * Fractional weight used only for random rolling.
+     * 仅用于随机抽取的小数权重；旧整数权重仍保留给兼容调用方。
+     */
+    default double rollWeight() {
+        return weight();
+    }
+
     default boolean uniquePerGame() {
         return false;
     }

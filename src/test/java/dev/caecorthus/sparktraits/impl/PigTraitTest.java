@@ -44,7 +44,8 @@ class PigTraitTest {
         assertNotNull(pig);
         assertEquals(PigTraitService.COLOR, pig.color());
         assertEquals(TraitAudience.UNIVERSAL, pig.audience());
-        assertEquals(25, pig.weight());
+        assertEquals(13, pig.weight());
+        assertEquals(12.5D, pig.rollWeight(), 0.0001D);
         assertFalse(pig.uniquePerGame());
     }
 
@@ -53,7 +54,17 @@ class PigTraitTest {
         Trait childish = TraitRegistry.get(ChildishTrait.ID);
 
         assertNotNull(childish);
-        assertEquals(25, childish.weight());
+        assertEquals(13, childish.weight());
+        assertEquals(12.5D, childish.rollWeight(), 0.0001D);
+    }
+
+    @Test
+    void pigAndChildishAreMutuallyExclusive() {
+        Trait pig = TraitRegistry.get(PigTrait.ID);
+        Trait childish = TraitRegistry.get(ChildishTrait.ID);
+
+        assertTrue(TraitRules.areIncompatible(pig, childish));
+        assertFalse(TraitRules.canApplyAll(null, null, null, WatheRoles.CIVILIAN, Set.of(PigTrait.ID, ChildishTrait.ID)));
     }
 
     @Test
@@ -76,12 +87,12 @@ class PigTraitTest {
     }
 
     @Test
-    void pigCollisionKeepsAdultPigHeightButUsesPlayerWidth() throws IOException {
+    void pigCollisionUsesRaisedPigHeadHeightAndPlayerWidth() throws IOException {
         EntityDimensions dimensions = PigTraitService.pigDimensions();
         String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/PigTraitService.java"));
 
         assertEquals(0.6F, PigTraitService.PIG_COLLISION_WIDTH);
-        assertEquals(0.9F, PigTraitService.PIG_COLLISION_HEIGHT);
+        assertEquals(1.2F, PigTraitService.PIG_COLLISION_HEIGHT);
         assertEquals(PigTraitService.PIG_COLLISION_WIDTH, dimensions.width());
         assertEquals(PigTraitService.PIG_COLLISION_HEIGHT, dimensions.height());
         assertFalse(source.contains("EntityType.PIG.getDimensions()"));

@@ -18,10 +18,11 @@ import net.minecraft.util.Identifier;
  */
 public final class PigTraitService {
     public static final int COLOR = 0xF4A7B9;
-    public static final int WEIGHT = 25;
+    public static final int WEIGHT = 13;
+    public static final double ROLL_WEIGHT = 12.5D;
     public static final int RESET_AMBIENT_SOUND_CHANCE = -80;
     public static final float PIG_COLLISION_WIDTH = 0.6F;
-    public static final float PIG_COLLISION_HEIGHT = 0.9F;
+    public static final float PIG_COLLISION_HEIGHT = 1.2F;
     public static final Identifier PIG_GOD_ROLE_ID = Identifier.of("sparkwitch", "pig_god");
     private static final int AMBIENT_SOUND_RANDOM_BOUND = 1000;
 

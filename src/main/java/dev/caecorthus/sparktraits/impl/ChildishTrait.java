@@ -7,9 +7,11 @@ import dev.caecorthus.sparktraits.api.TraitRemovalReason;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 
+import java.util.Set;
+
 /**
- * Global trait that scales the whole player body down to three quarters.
- * 全局天赋：将玩家整体体型缩小到四分之三。
+ * Global trait that scales the whole player body down to eighty-five percent.
+ * 全局天赋：将玩家整体体型缩小到百分之八十五。
  */
 public final class ChildishTrait implements Trait {
     public static final Identifier ID = SparkTraits.id("childish");
@@ -27,6 +29,16 @@ public final class ChildishTrait implements Trait {
     @Override
     public int weight() {
         return PigTraitService.WEIGHT;
+    }
+
+    @Override
+    public double rollWeight() {
+        return PigTraitService.ROLL_WEIGHT;
+    }
+
+    @Override
+    public Set<Identifier> incompatibleTraits() {
+        return Set.of(PigTrait.ID);
     }
 
     @Override

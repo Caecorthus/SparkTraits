@@ -7,6 +7,8 @@ import dev.caecorthus.sparktraits.api.TraitRemovalReason;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 
+import java.util.Set;
+
 /**
  * Universal trait that reshapes the player into a pig body with their own head.
  * 通用猪天赋：将玩家重塑为猪身体，并保留玩家自己的头。
@@ -27,6 +29,16 @@ public final class PigTrait implements Trait {
     @Override
     public int weight() {
         return PigTraitService.WEIGHT;
+    }
+
+    @Override
+    public double rollWeight() {
+        return PigTraitService.ROLL_WEIGHT;
+    }
+
+    @Override
+    public Set<Identifier> incompatibleTraits() {
+        return Set.of(ChildishTrait.ID);
     }
 
     @Override
