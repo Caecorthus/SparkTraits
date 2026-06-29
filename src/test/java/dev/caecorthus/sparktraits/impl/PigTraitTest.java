@@ -7,6 +7,7 @@ import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
+import net.minecraft.entity.EntityDimensions;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.BeforeAll;
@@ -72,6 +73,28 @@ class PigTraitTest {
         assertFalse(PigTraitService.shouldPlayAmbientSound(true, false, false, 10, 0));
         assertFalse(PigTraitService.shouldPlayAmbientSound(true, true, true, 10, 0));
         assertTrue(PigTraitService.shouldPlayAmbientSound(true, true, false, 10, 9));
+    }
+
+    @Test
+    void pigCollisionKeepsAdultPigHeightButUsesPlayerWidth() throws IOException {
+        EntityDimensions dimensions = PigTraitService.pigDimensions();
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/PigTraitService.java"));
+
+        assertEquals(0.6F, PigTraitService.PIG_COLLISION_WIDTH);
+        assertEquals(0.9F, PigTraitService.PIG_COLLISION_HEIGHT);
+        assertEquals(PigTraitService.PIG_COLLISION_WIDTH, dimensions.width());
+        assertEquals(PigTraitService.PIG_COLLISION_HEIGHT, dimensions.height());
+        assertFalse(source.contains("EntityType.PIG.getDimensions()"));
+    }
+
+    @Test
+    void pigRendererForcesModelsToAdultSize() throws IOException {
+        String source = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/PigPlayerRenderer.java"));
+
+        assertTrue(source.contains("forceAdultModels(models)"));
+        assertTrue(source.contains("models.pig().child = false"));
+        assertTrue(source.contains("models.head().child = false"));
+        assertTrue(source.contains("models.outerArmor().child = false"));
     }
 
     @Test

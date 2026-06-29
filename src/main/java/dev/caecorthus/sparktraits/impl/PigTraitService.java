@@ -5,7 +5,6 @@ import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityPose;
-import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
@@ -21,6 +20,8 @@ public final class PigTraitService {
     public static final int COLOR = 0xF4A7B9;
     public static final int WEIGHT = 25;
     public static final int RESET_AMBIENT_SOUND_CHANCE = -80;
+    public static final float PIG_COLLISION_WIDTH = 0.6F;
+    public static final float PIG_COLLISION_HEIGHT = 0.9F;
     public static final Identifier PIG_GOD_ROLE_ID = Identifier.of("sparkwitch", "pig_god");
     private static final int AMBIENT_SOUND_RANDOM_BOUND = 1000;
 
@@ -40,7 +41,7 @@ public final class PigTraitService {
     }
 
     public static EntityDimensions pigDimensions() {
-        return EntityType.PIG.getDimensions();
+        return EntityDimensions.changing(PIG_COLLISION_WIDTH, PIG_COLLISION_HEIGHT);
     }
 
     public static SoundEvent ambientSound() {

@@ -49,6 +49,7 @@ public final class PigPlayerRenderer {
             int light
     ) {
         Models models = models(player);
+        forceAdultModels(models);
         float bodyYaw = MathHelper.lerpAngleDegrees(tickDelta, player.prevBodyYaw, player.bodyYaw);
         float headYaw = MathHelper.lerpAngleDegrees(tickDelta, player.prevHeadYaw, player.headYaw);
         float relativeHeadYaw = headYaw - bodyYaw;
@@ -135,6 +136,14 @@ public final class PigPlayerRenderer {
         target.copyTransform(source);
         target.yaw = relativeHeadYaw * MathHelper.RADIANS_PER_DEGREE;
         target.pitch = pitch * MathHelper.RADIANS_PER_DEGREE;
+    }
+
+    private static void forceAdultModels(Models models) {
+        // Keep Pig trait visuals adult-sized; EntityModel defaults to child mode.
+        // 保持猪天赋外观为成年体型；EntityModel 默认会以幼年模式渲染。
+        models.pig().child = false;
+        models.head().child = false;
+        models.outerArmor().child = false;
     }
 
     private static Models models(AbstractClientPlayerEntity player) {
