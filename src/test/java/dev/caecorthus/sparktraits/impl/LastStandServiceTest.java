@@ -7,6 +7,9 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.util.Identifier;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
@@ -92,6 +95,23 @@ class LastStandServiceTest {
         assertTrue(LastStandService.shouldBlockRoundEnd(true, GameFunctions.WinStatus.NEUTRAL));
         assertFalse(LastStandService.shouldBlockRoundEnd(true, GameFunctions.WinStatus.NONE));
         assertFalse(LastStandService.shouldBlockRoundEnd(false, GameFunctions.WinStatus.NEUTRAL));
+    }
+
+    @Test
+    void roundScopedTriggerStateKeepsFinalMomentQualificationWhenRuntimeSetIsCleared() {
+        assertTrue(LastStandService.hasTriggeredThisRound(false, true));
+        assertTrue(LastStandService.hasTriggeredThisRound(true, false));
+        assertFalse(LastStandService.hasTriggeredThisRound(false, false));
+    }
+
+    @Test
+    void worldComponentClearsLastStandTriggerQualificationOnlyWithRoundState() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/component/TraitWorldComponent.java"));
+
+        assertTrue(source.contains("lastStandTriggeredPlayers"));
+        assertTrue(source.contains("lastStandTriggeredPlayers.clear();"));
+        assertTrue(source.contains("markLastStandTriggered(UUID playerUuid)"));
+        assertTrue(source.contains("hasLastStandTriggered(UUID playerUuid)"));
     }
 
     @Test

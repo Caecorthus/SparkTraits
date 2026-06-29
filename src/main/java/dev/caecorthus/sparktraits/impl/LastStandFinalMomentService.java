@@ -203,7 +203,7 @@ public final class LastStandFinalMomentService {
                 duration,
                 TraitWorldComponent.KEY.get(world).isFinalMomentActive(),
                 GameWorldComponent.KEY.get(world).getRole(player),
-                LastStandService.hasTriggeredThisRound(player.getUuid()),
+                LastStandService.hasTriggeredThisRound(world, player.getUuid()),
                 item == WatheItems.KNIFE
         );
     }
@@ -270,7 +270,7 @@ public final class LastStandFinalMomentService {
         if (!isFinalMomentLooseEndBlackoutImmune(
                 TraitWorldComponent.KEY.get(world).isFinalMomentActive(),
                 gameComponent.getRole(player),
-                LastStandService.hasTriggeredThisRound(player.getUuid())
+                LastStandService.hasTriggeredThisRound(world, player.getUuid())
         )) {
             return null;
         }
@@ -300,7 +300,7 @@ public final class LastStandFinalMomentService {
                     gameComponent.getRole(player),
                     TraitPlayerComponent.KEY.get(player).getActiveTraitIds(),
                     gameComponent.hasAnyRole(player) && GameFunctions.isPlayerPlayingAndAlive(player),
-                    LastStandService.hasTriggeredThisRound(uuid)
+                    LastStandService.hasTriggeredThisRound(world, uuid)
             ));
         }
         return players;

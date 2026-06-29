@@ -40,6 +40,9 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     // 服务端本局天赋快照，用于玩家离线后仍能正确生成回合结束数据。
     private final Map<UUID, List<Identifier>> roundTraitSnapshots = new HashMap<>();
     private final Map<UUID, List<Identifier>> deathTraitSnapshots = new HashMap<>();
+    // Round-scoped Last Stand trigger memory survives player-level resets.
+    // 本局背水一战触发记录会保留到回合清理，不随玩家级 reset 丢失。
+    private final LinkedHashSet<UUID> lastStandTriggeredPlayers = new LinkedHashSet<>();
     private final LinkedHashSet<UUID> finalMomentLooseEnds = new LinkedHashSet<>();
     private float traitSlotRollChance = TraitSlotRollChance.DEFAULT;
     // Round-scoped final moment flag used by client highlight overlays.
@@ -92,9 +95,20 @@ public class TraitWorldComponent implements AutoSyncedComponent {
         usedUniqueTraits.clear();
         roundTraitSnapshots.clear();
         deathTraitSnapshots.clear();
+        lastStandTriggeredPlayers.clear();
         finalMomentLooseEnds.clear();
         finalMomentActive = false;
         sync();
+    }
+
+    public void markLastStandTriggered(UUID playerUuid) {
+        if (playerUuid != null) {
+            lastStandTriggeredPlayers.add(playerUuid);
+        }
+    }
+
+    public boolean hasLastStandTriggered(UUID playerUuid) {
+        return playerUuid != null && lastStandTriggeredPlayers.contains(playerUuid);
     }
 
     public boolean isFinalMomentActive() {

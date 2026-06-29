@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.impl;
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.api.TraitRemovalReason;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.mixin.GameWorldComponentAccessor;
 import dev.doctor4t.wathe.api.Faction;
 import dev.doctor4t.wathe.api.Role;
@@ -196,7 +197,7 @@ public final class LastStandService {
         if (!approvedLastStandDeaths.remove(uuid)) {
             return false;
         }
-        if (pendingPlayers.containsKey(uuid) || consumedPlayers.contains(uuid)) {
+        if (pendingPlayers.containsKey(uuid)) {
             return false;
         }
         TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(victim);
@@ -206,8 +207,11 @@ public final class LastStandService {
         if (!(victim.getWorld() instanceof ServerWorld world)) {
             return false;
         }
+        if (hasTriggeredThisRound(world, uuid)) {
+            return false;
+        }
 
-        consumedPlayers.add(uuid);
+        markTriggeredThisRound(world, uuid);
         startPending(world, victim, deathReason);
         return true;
     }
@@ -310,6 +314,9 @@ public final class LastStandService {
         if (!(victim.getWorld() instanceof ServerWorld world)) {
             return false;
         }
+        if (hasTriggeredThisRound(world, uuid)) {
+            return false;
+        }
 
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
         Role victimRole = game.getRole(victim);
@@ -356,6 +363,22 @@ public final class LastStandService {
 
     public static boolean hasTriggeredThisRound(UUID uuid) {
         return consumedPlayers.contains(uuid);
+    }
+
+    public static boolean hasTriggeredThisRound(ServerWorld world, UUID uuid) {
+        return hasTriggeredThisRound(
+                consumedPlayers.contains(uuid),
+                world != null && TraitWorldComponent.KEY.get(world).hasLastStandTriggered(uuid)
+        );
+    }
+
+    static boolean hasTriggeredThisRound(boolean runtimeTriggered, boolean roundStateTriggered) {
+        return runtimeTriggered || roundStateTriggered;
+    }
+
+    private static void markTriggeredThisRound(ServerWorld world, UUID uuid) {
+        consumedPlayers.add(uuid);
+        TraitWorldComponent.KEY.get(world).markLastStandTriggered(uuid);
     }
 
     public static boolean isProtectedFromNoellesRoleUtility(Entity entity) {
