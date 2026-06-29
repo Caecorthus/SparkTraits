@@ -37,6 +37,56 @@ class TraitAssignmentServiceTest {
     }
 
     @Test
+    void requiredTraitFillsOpenSlotWithoutDroppingExistingTraits() {
+        Identifier locked = Identifier.of("sparktraits_test", "locked");
+        Identifier random = Identifier.of("sparktraits_test", "random");
+        Identifier required = Identifier.of("sparktraits_test", "required");
+
+        TraitAssignmentService.ForcedTraitPlan plan = TraitAssignmentService.forceRequiredTraitPlan(
+                List.of(locked),
+                List.of(random),
+                required
+        );
+
+        assertEquals(List.of(locked), plan.lockedTraits());
+        assertEquals(List.of(random, required), plan.randomTraits());
+    }
+
+    @Test
+    void requiredTraitReplacesLastRandomTraitBeforeLockedTraits() {
+        Identifier locked = Identifier.of("sparktraits_test", "locked");
+        Identifier firstRandom = Identifier.of("sparktraits_test", "first_random");
+        Identifier lastRandom = Identifier.of("sparktraits_test", "last_random");
+        Identifier required = Identifier.of("sparktraits_test", "required");
+
+        TraitAssignmentService.ForcedTraitPlan plan = TraitAssignmentService.forceRequiredTraitPlan(
+                List.of(locked),
+                List.of(firstRandom, lastRandom),
+                required
+        );
+
+        assertEquals(List.of(locked), plan.lockedTraits());
+        assertEquals(List.of(firstRandom, required), plan.randomTraits());
+    }
+
+    @Test
+    void requiredTraitReplacesLastLockedTraitWhenAllSlotsAreLocked() {
+        Identifier firstLocked = Identifier.of("sparktraits_test", "first_locked");
+        Identifier middleLocked = Identifier.of("sparktraits_test", "middle_locked");
+        Identifier lastLocked = Identifier.of("sparktraits_test", "last_locked");
+        Identifier required = Identifier.of("sparktraits_test", "required");
+
+        TraitAssignmentService.ForcedTraitPlan plan = TraitAssignmentService.forceRequiredTraitPlan(
+                List.of(firstLocked, middleLocked, lastLocked),
+                List.of(),
+                required
+        );
+
+        assertEquals(List.of(firstLocked, middleLocked), plan.lockedTraits());
+        assertEquals(List.of(required), plan.randomTraits());
+    }
+
+    @Test
     void conscienceCompensationUsesWatheKillerDebtWithinPriorityBucket() {
         CompensationCandidate lowDebt = new CompensationCandidate("low", 0, -1.0);
         CompensationCandidate highDebt = new CompensationCandidate("high", 0, 1.0);

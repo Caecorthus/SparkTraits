@@ -117,6 +117,7 @@ public final class TraitAssignmentService {
         }
 
         addExtraKillersForConscience(world, gameComponent, players, plans, publicKillerCount, protectedLockedRolePlayers, random);
+        forceArrogantAsfOntoCorruptCop(gameComponent, traitWorld, plans);
 
         traitWorld.clearRoundState();
         for (PlayerPlan plan : plans) {
@@ -495,6 +496,55 @@ public final class TraitAssignmentService {
         return count;
     }
 
+    /**
+     * Gives Corrupt Cop its signature trait after all role-changing assignment steps settle.
+     * 在所有可能改写身份的分配步骤完成后，为黑警补上专属天赋。
+     */
+    private static void forceArrogantAsfOntoCorruptCop(
+            GameWorldComponent gameComponent,
+            TraitWorldComponent traitWorld,
+            List<PlayerPlan> plans
+    ) {
+        if (!traitWorld.isTraitEnabled(ArrogantAsfTrait.ID)) {
+            SparkTraits.LOGGER.warn("Skipping forced Arrogant ASF because sparktraits:arrogant_asf is disabled.");
+            return;
+        }
+        for (PlayerPlan plan : plans) {
+            Role role = gameComponent.getRole(plan.player());
+            if (CorruptCopTraitService.canSelectArrogantAsf(role)) {
+                plan.forceRequiredTrait(ArrogantAsfTrait.ID);
+            }
+        }
+    }
+
+    static ForcedTraitPlan forceRequiredTraitPlan(
+            Collection<Identifier> lockedTraits,
+            Collection<Identifier> randomTraits,
+            Identifier requiredTrait
+    ) {
+        List<Identifier> locked = new ArrayList<>(lockedTraits);
+        List<Identifier> random = new ArrayList<>(randomTraits);
+        if (requiredTrait == null || locked.contains(requiredTrait) || random.contains(requiredTrait)) {
+            return new ForcedTraitPlan(List.copyOf(locked), List.copyOf(random));
+        }
+        while (locked.size() + random.size() >= TraitPlayerComponent.MAX_TRAITS) {
+            if (!random.isEmpty()) {
+                random.removeLast();
+                continue;
+            }
+            if (!locked.isEmpty()) {
+                locked.removeLast();
+                continue;
+            }
+            break;
+        }
+        random.add(requiredTrait);
+        return new ForcedTraitPlan(List.copyOf(locked), List.copyOf(random));
+    }
+
+    record ForcedTraitPlan(List<Identifier> lockedTraits, List<Identifier> randomTraits) {
+    }
+
     private static void markUniqueTraits(TraitWorldComponent traitWorld, Collection<Identifier> traits) {
         for (Identifier traitId : traits) {
             Trait trait = TraitRegistry.get(traitId);
@@ -581,6 +631,14 @@ public final class TraitAssignmentService {
 
         void clearRandomTraits() {
             randomTraits.clear();
+        }
+
+        void forceRequiredTrait(Identifier traitId) {
+            ForcedTraitPlan plan = forceRequiredTraitPlan(lockedTraits, randomTraits, traitId);
+            lockedTraits.clear();
+            lockedTraits.addAll(plan.lockedTraits());
+            randomTraits.clear();
+            randomTraits.addAll(plan.randomTraits());
         }
 
         private boolean isCompatibleWithLockedTraits(Trait trait) {

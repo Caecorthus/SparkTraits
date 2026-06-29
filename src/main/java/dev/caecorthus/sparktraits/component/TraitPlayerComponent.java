@@ -11,6 +11,7 @@ import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.ArrogantAsfTrait;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -75,6 +76,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     private boolean depressionPsychoActive;
     private UUID depressionPsychoAttacker;
     private UUID depressionCounterTarget;
+    // Owner-visible active-skill state for Arrogant ASF speed.
+    // “展示豪度”的主动技能开关状态，同步给本人用于移动预测。
+    private boolean arrogantAsfActive;
 
     public TraitPlayerComponent(PlayerEntity player) {
         this.player = player;
@@ -171,6 +175,18 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     public UUID getDepressionCounterTarget() {
         return depressionCounterTarget;
+    }
+
+    public boolean isArrogantAsfActive() {
+        return activeTraits.contains(ArrogantAsfTrait.ID) && arrogantAsfActive;
+    }
+
+    public void setArrogantAsfActive(boolean active) {
+        boolean normalizedActive = active && activeTraits.contains(ArrogantAsfTrait.ID);
+        if (this.arrogantAsfActive != normalizedActive) {
+            this.arrogantAsfActive = normalizedActive;
+            sync();
+        }
     }
 
     public void setDepressionSuicideTicks(int ticks) {
@@ -295,7 +311,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 && !conscienceInstinctVisible && !impostorInstinctVisible && serialKillerMurdererRole == null
                 && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid
                 && depressionSuicideTicks <= 0 && !depressionPsychoActive
-                && depressionPsychoAttacker == null && depressionCounterTarget == null) {
+                && depressionPsychoAttacker == null && depressionCounterTarget == null && !arrogantAsfActive) {
             return;
         }
         if (player instanceof ServerPlayerEntity serverPlayer) {
@@ -324,6 +340,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionPsychoActive = false;
         depressionPsychoAttacker = null;
         depressionCounterTarget = null;
+        arrogantAsfActive = false;
         sync();
     }
 
@@ -402,6 +419,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         buf.writeBoolean(depressionPsychoActive);
         writeOptionalUuid(buf, owner ? depressionPsychoAttacker : null);
         writeOptionalUuid(buf, owner ? depressionCounterTarget : null);
+        buf.writeBoolean(owner && isArrogantAsfActive());
     }
 
     @Override
@@ -427,6 +445,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionPsychoActive = buf.readableBytes() > 0 && buf.readBoolean();
         depressionPsychoAttacker = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;
         depressionCounterTarget = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;
+        arrogantAsfActive = buf.readableBytes() > 0 && buf.readBoolean();
     }
 
     @Override
@@ -471,6 +490,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionPsychoActive = false;
         depressionPsychoAttacker = null;
         depressionCounterTarget = null;
+        arrogantAsfActive = false;
         fromNbt(tag.getList("ActiveTraits", NbtElement.STRING_TYPE), activeTraits);
         fromNbt(tag.getList("PendingTraits", NbtElement.STRING_TYPE), pendingTraits);
         fromNbt(tag.getList("RevealedTraits", NbtElement.STRING_TYPE), revealedTraits);
