@@ -5,6 +5,7 @@ import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.math.Vec3d;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
 
@@ -14,7 +15,7 @@ import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
  */
 public final class CorruptCopTraitService {
     public static final int ARROGANT_ASF_COLOR = 0x193264;
-    public static final float ARROGANT_ASF_HORIZONTAL_SPEED_MULTIPLIER = 3.0f;
+    public static final double ARROGANT_ASF_LATERAL_INPUT_MULTIPLIER = 3.0d;
 
     private CorruptCopTraitService() {
     }
@@ -40,21 +41,21 @@ public final class CorruptCopTraitService {
         return true;
     }
 
-    public static float horizontalMovementSpeed(
-            float original,
+    public static Vec3d lateralMovementInput(
+            Vec3d original,
             boolean hasArrogantAsf,
             boolean arrogantAsfActive,
             boolean aliveSurvival
     ) {
-        if (!hasArrogantAsf || !arrogantAsfActive || !aliveSurvival) {
+        if (original == null || !hasArrogantAsf || !arrogantAsfActive || !aliveSurvival) {
             return original;
         }
-        return original * ARROGANT_ASF_HORIZONTAL_SPEED_MULTIPLIER;
+        return new Vec3d(original.x * ARROGANT_ASF_LATERAL_INPUT_MULTIPLIER, original.y, original.z);
     }
 
-    public static float horizontalMovementSpeed(PlayerEntity player, float original) {
+    public static Vec3d lateralMovementInput(PlayerEntity player, Vec3d original) {
         TraitPlayerComponent traits = player == null ? null : TraitPlayerComponent.KEY.get(player);
-        return horizontalMovementSpeed(
+        return lateralMovementInput(
                 original,
                 traits != null && traits.hasActiveTrait(ArrogantAsfTrait.ID),
                 traits != null && traits.isArrogantAsfActive(),

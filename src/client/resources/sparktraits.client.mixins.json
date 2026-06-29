@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ArmorFeatureRendererInvoker",
+    "ArrogantAsfInGameHudMixin",
     "AssassinScreenMixin",
     "BeveragePlateBluePoisonParticleMixin",
     "DepressionGameRendererMixin",

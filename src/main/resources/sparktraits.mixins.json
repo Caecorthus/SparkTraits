@@ -4,7 +4,7 @@
   "package": "dev.caecorthus.sparktraits.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ArrogantAsfMovementSpeedMixin",
+    "ArrogantAsfMovementInputMixin",
     "BomberPlayerComponentMixin",
     "BeveragePlateBlockEntityMixin",
     "BloodthirstyCooldownMixin",

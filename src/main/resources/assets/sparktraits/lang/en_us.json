@@ -18,6 +18,8 @@
   "trait.sparktraits.pig.description": "You have a pig body with your own head.",
   "trait.sparktraits.arrogant_asf.name": "Arrogant ASF",
   "trait.sparktraits.arrogant_asf.description": "Use your ability key to toggle triple horizontal movement speed.",
+  "tip.sparktraits.arrogant_asf.active": "Arrogant ASF: ON (%s to turn off)",
+  "tip.sparktraits.arrogant_asf.inactive": "Arrogant ASF: OFF (%s to turn on)",
   "trait.sparktraits.steady.name": "Steady",
   "trait.sparktraits.steady.description": "Your real sanity can rise above the normal limit.",
   "trait.sparktraits.excellent_physique.name": "Excellent Physique",
