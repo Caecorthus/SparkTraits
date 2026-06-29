@@ -5,7 +5,6 @@ import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.Vec3d;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
 
@@ -41,22 +40,22 @@ public final class CorruptCopTraitService {
         return true;
     }
 
-    public static Vec3d lateralMovementInput(
-            Vec3d original,
+    public static double lateralSidewaysInput(
+            double sideways,
             boolean hasArrogantAsf,
             boolean arrogantAsfActive,
             boolean aliveSurvival
     ) {
-        if (original == null || !hasArrogantAsf || !arrogantAsfActive || !aliveSurvival) {
-            return original;
+        if (!hasArrogantAsf || !arrogantAsfActive || !aliveSurvival) {
+            return sideways;
         }
-        return new Vec3d(original.x * ARROGANT_ASF_LATERAL_INPUT_MULTIPLIER, original.y, original.z);
+        return sideways * ARROGANT_ASF_LATERAL_INPUT_MULTIPLIER;
     }
 
-    public static Vec3d lateralMovementInput(PlayerEntity player, Vec3d original) {
+    public static double lateralSidewaysInput(PlayerEntity player, double sideways) {
         TraitPlayerComponent traits = player == null ? null : TraitPlayerComponent.KEY.get(player);
-        return lateralMovementInput(
-                original,
+        return lateralSidewaysInput(
+                sideways,
                 traits != null && traits.hasActiveTrait(ArrogantAsfTrait.ID),
                 traits != null && traits.isArrogantAsfActive(),
                 player != null && GameFunctions.isPlayerAliveAndSurvival(player)

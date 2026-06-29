@@ -7,7 +7,6 @@ import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.doctor4t.wathe.api.WatheRoles;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.Vec3d;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -64,29 +63,27 @@ class ArrogantAsfTraitTest {
     }
 
     @Test
-    void lateralInputIsTripledOnlyWhileArrogantAsfIsActive() {
-        Vec3d input = new Vec3d(0.07d, 0.08d, 0.12d);
-        Vec3d boosted = CorruptCopTraitService.lateralMovementInput(input, true, true, true);
+    void sidewaysInputIsTripledOnlyWhileArrogantAsfIsActive() {
+        assertEquals(0.21d, CorruptCopTraitService.lateralSidewaysInput(0.07d, true, true, true), 0.0001d);
 
-        assertEquals(0.21d, boosted.x, 0.0001d);
-        assertEquals(0.08d, boosted.y, 0.0001d);
-        assertEquals(0.12d, boosted.z, 0.0001d);
-
-        assertEquals(input, CorruptCopTraitService.lateralMovementInput(input, true, false, true));
-        assertEquals(input, CorruptCopTraitService.lateralMovementInput(input, false, true, true));
-        assertEquals(input, CorruptCopTraitService.lateralMovementInput(input, true, true, false));
+        assertEquals(0.07d, CorruptCopTraitService.lateralSidewaysInput(0.07d, true, false, true), 0.0001d);
+        assertEquals(0.07d, CorruptCopTraitService.lateralSidewaysInput(0.07d, false, true, true), 0.0001d);
+        assertEquals(0.07d, CorruptCopTraitService.lateralSidewaysInput(0.07d, true, true, false), 0.0001d);
     }
 
     @Test
     void arrogantAsfMixinIsRegistered() throws IOException {
         String mainMixins = Files.readString(MAIN_RESOURCES.resolve("sparktraits.mixins.json"));
         String source = Files.readString(Path.of(
-                "src/main/java/dev/caecorthus/sparktraits/mixin/ArrogantAsfMovementInputMixin.java"
+                "src/main/java/dev/caecorthus/sparktraits/mixin/ArrogantAsfSidewaysSpeedMixin.java"
         ));
 
-        assertTrue(mainMixins.contains("\"ArrogantAsfMovementInputMixin\""));
+        assertTrue(mainMixins.contains("\"ArrogantAsfSidewaysSpeedMixin\""));
+        assertFalse(mainMixins.contains("\"ArrogantAsfMovementInputMixin\""));
         assertFalse(mainMixins.contains("\"ArrogantAsfMovementSpeedMixin\""));
-        assertTrue(source.contains("method = \"travel\""));
+        assertTrue(source.contains("method = \"tickMovement\""));
+        assertTrue(source.contains("target = \"Lnet/minecraft/util/math/Vec3d;<init>(DDD)V\""));
+        assertTrue(source.contains("index = 0"));
         assertFalse(source.contains("getMovementSpeed"));
     }
 
