@@ -118,6 +118,7 @@ public final class TraitAssignmentService {
 
         addExtraKillersForConscience(world, gameComponent, players, plans, publicKillerCount, protectedLockedRolePlayers, random);
         forceArrogantAsfOntoCorruptCop(gameComponent, traitWorld, plans);
+        forcePigOntoPigGod(gameComponent, traitWorld, plans);
 
         traitWorld.clearRoundState();
         for (PlayerPlan plan : plans) {
@@ -515,6 +516,31 @@ public final class TraitAssignmentService {
                 plan.forceRequiredTrait(ArrogantAsfTrait.ID);
             }
         }
+    }
+
+    /**
+     * Gives Pig God its required public Pig trait after role-changing assignment steps settle.
+     * 在所有可能改写身份的分配步骤完成后，为 Pig God 补上必定拥有的猪天赋。
+     */
+    private static void forcePigOntoPigGod(
+            GameWorldComponent gameComponent,
+            TraitWorldComponent traitWorld,
+            List<PlayerPlan> plans
+    ) {
+        if (!traitWorld.isTraitEnabled(PigTrait.ID)) {
+            SparkTraits.LOGGER.warn("Skipping forced Pig because sparktraits:pig is disabled.");
+            return;
+        }
+        for (PlayerPlan plan : plans) {
+            Role role = gameComponent.getRole(plan.player());
+            if (shouldForcePigOntoPigGod(role)) {
+                plan.forceRequiredTrait(PigTrait.ID);
+            }
+        }
+    }
+
+    static boolean shouldForcePigOntoPigGod(Role role) {
+        return PigTraitService.canSelectRequiredPig(role);
     }
 
     static ForcedTraitPlan forceRequiredTraitPlan(

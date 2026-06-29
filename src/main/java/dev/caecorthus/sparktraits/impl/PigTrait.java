@@ -8,11 +8,11 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 
 /**
- * Global trait that scales the whole player body down to three quarters.
- * 全局天赋：将玩家整体体型缩小到四分之三。
+ * Universal trait that reshapes the player into a pig body with their own head.
+ * 通用猪天赋：将玩家重塑为猪身体，并保留玩家自己的头。
  */
-public final class ChildishTrait implements Trait {
-    public static final Identifier ID = SparkTraits.id("childish");
+public final class PigTrait implements Trait {
+    public static final Identifier ID = SparkTraits.id("pig");
 
     @Override
     public Identifier id() {
@@ -21,7 +21,7 @@ public final class ChildishTrait implements Trait {
 
     @Override
     public int color() {
-        return GlobalTraitService.CHILDISH_COLOR;
+        return PigTraitService.COLOR;
     }
 
     @Override
@@ -31,11 +31,11 @@ public final class ChildishTrait implements Trait {
 
     @Override
     public void onAssigned(ServerPlayerEntity player, TraitAssignmentReason reason) {
-        GlobalTraitService.applyChildishScale(player);
+        PigTraitService.applyPigDimensions(player);
     }
 
     @Override
     public void onRemoved(ServerPlayerEntity player, TraitRemovalReason reason) {
-        GlobalTraitService.removeChildishScale(player);
+        PigTraitService.removePigDimensions(player);
     }
 }

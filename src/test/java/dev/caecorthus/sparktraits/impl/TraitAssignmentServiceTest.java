@@ -87,6 +87,15 @@ class TraitAssignmentServiceTest {
     }
 
     @Test
+    void pigGodRequiresPigTrait() {
+        assertTrue(TraitAssignmentService.shouldForcePigOntoPigGod(sparkWitchRole("pig_god")));
+        assertFalse(TraitAssignmentService.shouldForcePigOntoPigGod(sparkWitchRole("grand_witch")));
+        assertFalse(TraitAssignmentService.shouldForcePigOntoPigGod(role("otheraddon", "pig_god")));
+        assertFalse(TraitAssignmentService.shouldForcePigOntoPigGod(WatheRoles.CIVILIAN));
+        assertFalse(TraitAssignmentService.shouldForcePigOntoPigGod(null));
+    }
+
+    @Test
     void conscienceCompensationUsesWatheKillerDebtWithinPriorityBucket() {
         CompensationCandidate lowDebt = new CompensationCandidate("low", 0, -1.0);
         CompensationCandidate highDebt = new CompensationCandidate("high", 0, 1.0);
@@ -339,5 +348,21 @@ class TraitAssignmentServiceTest {
                 return values[index++];
             }
         };
+    }
+
+    private static Role sparkWitchRole(String path) {
+        return role("sparkwitch", path);
+    }
+
+    private static Role role(String namespace, String path) {
+        return new Role(
+                Identifier.of(namespace, path),
+                0xFFFFFF,
+                true,
+                false,
+                Role.MoodType.REAL,
+                200,
+                false
+        );
     }
 }

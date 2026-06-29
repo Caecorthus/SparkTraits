@@ -4,6 +4,7 @@
   "package": "dev.caecorthus.sparktraits.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "ArmorFeatureRendererInvoker",
     "AssassinScreenMixin",
     "BeveragePlateBluePoisonParticleMixin",
     "DepressionGameRendererMixin",
@@ -15,6 +16,7 @@
     "MarksmanDerringerMixin",
     "MarksmanRevolverMixin",
     "MoodRendererMixin",
+    "PigPlayerRendererMixin",
     "RoundTextRendererMixin",
     "TrimmedBedBluePoisonParticleMixin",
     "TraitInventoryScreenMixin",

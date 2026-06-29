@@ -37,6 +37,8 @@
     "PoisonGasCloudEntityMixin",
     "PoisonUtilsMixin",
     "PlayerBodyEntityEquipmentMixin",
+    "PigPlayerDimensionsMixin",
+    "PigPlayerSoundMixin",
     "PlayerShopComponentMixin",
     "PlayerMoodComponentMixin",
     "PlayerPoisonComponentMixin",

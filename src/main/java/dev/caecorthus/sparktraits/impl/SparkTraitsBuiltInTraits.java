@@ -18,6 +18,7 @@ public final class SparkTraitsBuiltInTraits {
         TraitRegistry.register(new TaskMasterTrait());
         TraitRegistry.register(new FastHandsTrait());
         TraitRegistry.register(new ChildishTrait());
+        TraitRegistry.register(new PigTrait());
         TraitRegistry.register(new SteadyTrait());
         TraitRegistry.register(new ExcellentPhysiqueTrait());
         TraitRegistry.register(new ArrogantAsfTrait());

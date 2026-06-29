@@ -12,6 +12,7 @@ import dev.caecorthus.sparktraits.impl.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.ArrogantAsfTrait;
+import dev.caecorthus.sparktraits.impl.PigTrait;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -76,9 +77,15 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     private boolean depressionPsychoActive;
     private UUID depressionPsychoAttacker;
     private UUID depressionCounterTarget;
+    // Public Pig shape flag lets regular clients render and size Pig players.
+    // 公开猪形态标记用于让普通客户端渲染并计算猪玩家体积。
+    private boolean pigActive;
     // Owner-visible active-skill state for Arrogant ASF speed.
     // “展示豪度”的主动技能开关状态，同步给本人用于移动预测。
     private boolean arrogantAsfActive;
+    // Runtime-only Pig ambient cadence, mirroring vanilla pig sound delay.
+    // 运行期猪哼声节奏计数，模拟原版猪的环境音延迟。
+    private int pigAmbientSoundChance;
 
     public TraitPlayerComponent(PlayerEntity player) {
         this.player = player;
@@ -177,6 +184,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         return depressionCounterTarget;
     }
 
+    public boolean isPigActive() {
+        return activeTraits.contains(PigTrait.ID) || pigActive;
+    }
+
     public boolean isArrogantAsfActive() {
         return activeTraits.contains(ArrogantAsfTrait.ID) && arrogantAsfActive;
     }
@@ -187,6 +198,18 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             this.arrogantAsfActive = normalizedActive;
             sync();
         }
+    }
+
+    public int getPigAmbientSoundChance() {
+        return pigAmbientSoundChance;
+    }
+
+    public void setPigAmbientSoundChance(int pigAmbientSoundChance) {
+        this.pigAmbientSoundChance = pigAmbientSoundChance;
+    }
+
+    public void resetPigAmbientSoundChance() {
+        this.pigAmbientSoundChance = 0;
     }
 
     public void setDepressionSuicideTicks(int ticks) {
@@ -311,9 +334,13 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 && !conscienceInstinctVisible && !impostorInstinctVisible && serialKillerMurdererRole == null
                 && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid
                 && depressionSuicideTicks <= 0 && !depressionPsychoActive
-                && depressionPsychoAttacker == null && depressionCounterTarget == null && !arrogantAsfActive) {
+                && depressionPsychoAttacker == null && depressionCounterTarget == null
+                && !pigActive && !arrogantAsfActive) {
             return;
         }
+        // Pig dimensions read the active trait set, so reset once after the set is cleared.
+        // 猪体积依赖当前激活天赋集合，因此清空集合后需要再重算一次。
+        boolean hadPigActive = isPigActive();
         if (player instanceof ServerPlayerEntity serverPlayer) {
             for (Identifier traitId : activeTraits) {
                 Trait trait = TraitRegistry.get(traitId);
@@ -340,7 +367,12 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionPsychoActive = false;
         depressionPsychoAttacker = null;
         depressionCounterTarget = null;
+        pigActive = false;
         arrogantAsfActive = false;
+        resetPigAmbientSoundChance();
+        if (hadPigActive) {
+            player.calculateDimensions();
+        }
         sync();
     }
 
@@ -419,11 +451,13 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         buf.writeBoolean(depressionPsychoActive);
         writeOptionalUuid(buf, owner ? depressionPsychoAttacker : null);
         writeOptionalUuid(buf, owner ? depressionCounterTarget : null);
+        buf.writeBoolean(activeTraits.contains(PigTrait.ID));
         buf.writeBoolean(owner && isArrogantAsfActive());
     }
 
     @Override
     public void applySyncPacket(RegistryByteBuf buf) {
+        boolean wasPigActive = isPigActive();
         readIdentifierSet(buf, activeTraits);
         readIdentifierSet(buf, pendingTraits);
         readIdentifierSet(buf, revealedTraits);
@@ -445,7 +479,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionPsychoActive = buf.readableBytes() > 0 && buf.readBoolean();
         depressionPsychoAttacker = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;
         depressionCounterTarget = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;
+        pigActive = buf.readableBytes() > 0 && buf.readBoolean();
         arrogantAsfActive = buf.readableBytes() > 0 && buf.readBoolean();
+        if (wasPigActive != isPigActive()) {
+            player.calculateDimensions();
+        }
     }
 
     @Override
@@ -490,7 +528,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionPsychoActive = false;
         depressionPsychoAttacker = null;
         depressionCounterTarget = null;
+        pigActive = false;
         arrogantAsfActive = false;
+        resetPigAmbientSoundChance();
         fromNbt(tag.getList("ActiveTraits", NbtElement.STRING_TYPE), activeTraits);
         fromNbt(tag.getList("PendingTraits", NbtElement.STRING_TYPE), pendingTraits);
         fromNbt(tag.getList("RevealedTraits", NbtElement.STRING_TYPE), revealedTraits);
