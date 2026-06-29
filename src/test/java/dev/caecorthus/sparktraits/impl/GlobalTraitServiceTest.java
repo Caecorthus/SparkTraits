@@ -92,6 +92,15 @@ class GlobalTraitServiceTest {
     }
 
     @Test
+    void cautiousStepSuppressionOnlyCancelsSuppressedPlayers() {
+        assertTrue(GlobalTraitService.shouldSuppressCautiousStepSounds(true, true));
+
+        assertFalse(GlobalTraitService.shouldSuppressCautiousStepSounds(true, false));
+        assertFalse(GlobalTraitService.shouldSuppressCautiousStepSounds(false, true));
+        assertFalse(GlobalTraitService.shouldSuppressCautiousStepSounds(false, false));
+    }
+
+    @Test
     void excellentPhysiqueRequiresOriginalFiniteStamina() {
         assertTrue(GlobalTraitService.canSelectExcellentPhysique(WatheRoles.CIVILIAN));
         assertTrue(GlobalTraitService.canSelectExcellentPhysique(WatheRoles.VIGILANTE));

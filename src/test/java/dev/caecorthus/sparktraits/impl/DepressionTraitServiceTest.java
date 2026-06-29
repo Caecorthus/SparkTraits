@@ -146,6 +146,31 @@ class DepressionTraitServiceTest {
     }
 
     @Test
+    void lowMoodSprintIsAllowedBySyncedPsychoStateOrRuntimeState() {
+        assertFalse(DepressionTraitService.shouldAllowLowMoodSprint(false, false));
+        assertTrue(DepressionTraitService.shouldAllowLowMoodSprint(true, false));
+        assertTrue(DepressionTraitService.shouldAllowLowMoodSprint(false, true));
+        assertTrue(DepressionTraitService.shouldAllowLowMoodSprint(true, true));
+    }
+
+    @Test
+    void postPsychoStaminaRestoresFullFiniteStaminaAndKeepsInfiniteStamina() {
+        DepressionTraitService.PostPsychoStaminaState finite =
+                DepressionTraitService.postPsychoStaminaState(200, 160);
+
+        assertEquals(160, finite.maxSprintTime());
+        assertEquals(160.0f, finite.sprintingTicks(), 0.0001f);
+        assertFalse(finite.exhausted());
+
+        DepressionTraitService.PostPsychoStaminaState infinite =
+                DepressionTraitService.postPsychoStaminaState(-1, 160);
+
+        assertEquals(-1, infinite.maxSprintTime());
+        assertEquals(Integer.MAX_VALUE, infinite.sprintingTicks(), 0.0001f);
+        assertFalse(infinite.exhausted());
+    }
+
+    @Test
     void playerBodyEquipmentMixinIsRegistered() throws Exception {
         try (InputStream stream = DepressionTraitServiceTest.class
                 .getClassLoader()

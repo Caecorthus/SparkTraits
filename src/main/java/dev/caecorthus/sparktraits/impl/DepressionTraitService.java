@@ -227,7 +227,29 @@ public final class DepressionTraitService {
     }
 
     public static boolean shouldAllowLowMoodSprint(net.minecraft.entity.player.PlayerEntity player) {
-        return isPsychoActive(player);
+        if (player == null) {
+            return false;
+        }
+        return shouldAllowLowMoodSprint(
+                TraitPlayerComponent.KEY.get(player).isDepressionPsychoActive(),
+                isPsychoActive(player)
+        );
+    }
+
+    public static boolean shouldAllowLowMoodSprint(boolean syncedPsychoActive, boolean runtimePsychoActive) {
+        return syncedPsychoActive || runtimePsychoActive;
+    }
+
+    /**
+     * Restores post-psycho stamina without forcing finite-role players into exhaustion.
+     * 疯魔结束后恢复体力，避免有限体力角色被重置到 0 体力并立即疲惫。
+     */
+    public static PostPsychoStaminaState postPsychoStaminaState(int roleMaxSprintTime, int effectiveMaxSprintTime) {
+        if (roleMaxSprintTime < 0) {
+            return new PostPsychoStaminaState(-1, Integer.MAX_VALUE, false);
+        }
+        int maxSprintTime = Math.max(1, effectiveMaxSprintTime);
+        return new PostPsychoStaminaState(maxSprintTime, maxSprintTime, false);
     }
 
     public static boolean shouldBlockInventoryInsert(ServerPlayerEntity player, ItemStack stack) {
@@ -528,12 +550,26 @@ public final class DepressionTraitService {
         if (restoreInventory) {
             state.inventory().restore(player);
         }
-        PlayerStaminaComponent.KEY.get(player).reset();
+        restorePostPsychoStamina(player);
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(false, null);
         ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
         if (attacker != null) {
             TraitPlayerComponent.KEY.get(attacker).setDepressionCounterTarget(null);
         }
+    }
+
+    private static void restorePostPsychoStamina(ServerPlayerEntity player) {
+        GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
+        Role role = game == null ? null : game.getRole(player);
+        int roleMaxSprintTime = role == null ? -1 : role.getMaxSprintTime();
+        EntityAttributeInstance sprintAttribute = player.getAttributeInstance(WatheAttributes.MAX_SPRINT_TIME);
+        int effectiveMaxSprintTime = sprintAttribute == null ? roleMaxSprintTime : (int) sprintAttribute.getValue();
+        PostPsychoStaminaState state = postPsychoStaminaState(roleMaxSprintTime, effectiveMaxSprintTime);
+        PlayerStaminaComponent stamina = PlayerStaminaComponent.KEY.get(player);
+        stamina.setMaxSprintTime(state.maxSprintTime());
+        stamina.setSprintingTicks(state.sprintingTicks());
+        stamina.setExhausted(state.exhausted());
+        stamina.sync();
     }
 
     private static void clearPending(ServerPlayerEntity player) {
@@ -609,6 +645,9 @@ public final class DepressionTraitService {
     }
 
     private record ActiveState(UUID playerUuid, UUID attackerUuid, InventorySnapshot inventory) {
+    }
+
+    public record PostPsychoStaminaState(int maxSprintTime, float sprintingTicks, boolean exhausted) {
     }
 
     private record EffectSnapshot(List<StatusEffectInstance> effects) {

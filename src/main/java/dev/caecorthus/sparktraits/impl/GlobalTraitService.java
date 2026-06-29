@@ -159,6 +159,21 @@ public final class GlobalTraitService {
     }
 
     /**
+     * Cancels only player-generated step sounds for Cautious, leaving other entity sounds untouched.
+     * 只取消小心翼翼玩家产生的脚步音，避免误伤其他实体或其他动作音。
+     */
+    public static boolean shouldSuppressCautiousStepSounds(Entity entity) {
+        if (!(entity instanceof PlayerEntity player)) {
+            return false;
+        }
+        return shouldSuppressCautiousStepSounds(true, shouldSuppressCautiousSounds(player));
+    }
+
+    static boolean shouldSuppressCautiousStepSounds(boolean playerEntity, boolean cautiousSoundsSuppressed) {
+        return playerEntity && cautiousSoundsSuppressed;
+    }
+
+    /**
      * Removes movement audio while preserving movement game events.
      * 移除移动声音，同时保留移动相关的 game event。
      */

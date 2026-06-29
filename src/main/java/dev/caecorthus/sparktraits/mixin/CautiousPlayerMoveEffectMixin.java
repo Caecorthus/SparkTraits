@@ -1,11 +1,14 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.impl.GlobalTraitService;
+import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.BlockPos;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -14,6 +17,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(PlayerEntity.class)
 public abstract class CautiousPlayerMoveEffectMixin {
+    @Inject(method = "playStepSound", at = @At("HEAD"), cancellable = true)
+    private void sparktraits$skipCautiousPlayerStepSound(BlockPos pos, BlockState state, CallbackInfo ci) {
+        if (GlobalTraitService.shouldSuppressCautiousStepSounds((PlayerEntity) (Object) this)) {
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "getMoveEffect", at = @At("RETURN"), cancellable = true)
     private void sparktraits$skipCautiousMovementSounds(CallbackInfoReturnable<Entity.MoveEffect> cir) {
         PlayerEntity player = (PlayerEntity) (Object) this;
