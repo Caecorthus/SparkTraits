@@ -17,7 +17,7 @@
   "trait.sparktraits.pig.name": "猪",
   "trait.sparktraits.pig.description": "你拥有猪的身体，并保留自己的头。",
   "trait.sparktraits.arrogant_asf.name": "展示豪度",
-  "trait.sparktraits.arrogant_asf.description": "使用技能键开关横向移动速度变为原来的 3 倍。",
+  "trait.sparktraits.arrogant_asf.description": "使用技能键开关横向移动速度变为原来的 1.5 倍。",
   "tip.sparktraits.arrogant_asf.active": "展示豪度：开启（按 %s 关闭）",
   "tip.sparktraits.arrogant_asf.inactive": "展示豪度：关闭（按 %s 开启）",
   "trait.sparktraits.steady.name": "沉稳",

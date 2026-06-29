@@ -64,7 +64,7 @@ class ArrogantAsfTraitTest {
     }
 
     @Test
-    void activeArrogantAsfTriplesPureSidewaysVelocity() {
+    void activeArrogantAsfScalesPureSidewaysVelocity() {
         Vec3d bonus = CorruptCopTraitService.arrogantAsfLateralVelocityBonus(
                 new Vec3d(3.0d, 0.0d, 0.0d),
                 0.07f,
@@ -74,7 +74,7 @@ class ArrogantAsfTraitTest {
                 true
         );
 
-        assertVectorEquals(new Vec3d(0.14d, 0.0d, 0.0d), bonus);
+        assertVectorEquals(new Vec3d(0.035d, 0.0d, 0.0d), bonus);
     }
 
     @Test
@@ -102,7 +102,7 @@ class ArrogantAsfTraitTest {
                 true
         );
 
-        assertVectorEquals(new Vec3d(0.098994949f, 0.0d, 0.0d), bonus);
+        assertVectorEquals(new Vec3d(0.024748737d, 0.0d, 0.0d), bonus);
     }
 
     @Test
@@ -116,7 +116,7 @@ class ArrogantAsfTraitTest {
                 true
         );
 
-        assertVectorEquals(new Vec3d(0.0d, 0.0d, -0.14d), bonus);
+        assertVectorEquals(new Vec3d(0.0d, 0.0d, -0.035d), bonus);
     }
 
     @Test
@@ -182,10 +182,10 @@ class ArrogantAsfTraitTest {
         JsonObject chinese = readLanguageFile("zh_cn");
 
         assertEquals("Arrogant ASF", english.get("trait.sparktraits.arrogant_asf.name").getAsString());
-        assertEquals("Use your ability key to toggle triple horizontal movement speed.",
+        assertEquals("Use your ability key to toggle 1.5x lateral movement speed.",
                 english.get("trait.sparktraits.arrogant_asf.description").getAsString());
         assertEquals("展示豪度", chinese.get("trait.sparktraits.arrogant_asf.name").getAsString());
-        assertEquals("使用技能键开关横向移动速度变为原来的 3 倍。",
+        assertEquals("使用技能键开关横向移动速度变为原来的 1.5 倍。",
                 chinese.get("trait.sparktraits.arrogant_asf.description").getAsString());
         assertEquals("Arrogant ASF: ON (%s to turn off)",
                 english.get("tip.sparktraits.arrogant_asf.active").getAsString());
