@@ -14,7 +14,8 @@ import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
  */
 public final class CorruptCopTraitService {
     public static final int ARROGANT_ASF_COLOR = 0x193264;
-    public static final double ARROGANT_ASF_LATERAL_INPUT_MULTIPLIER = 3.0d;
+    public static final float ARROGANT_ASF_LATERAL_SPEED_MULTIPLIER = 3.0f;
+    private static final double MOVEMENT_INPUT_EPSILON = 1.0E-5d;
 
     private CorruptCopTraitService() {
     }
@@ -40,25 +41,31 @@ public final class CorruptCopTraitService {
         return true;
     }
 
-    public static double lateralSidewaysInput(
-            double sideways,
-            boolean hasArrogantAsf,
-            boolean arrogantAsfActive,
-            boolean aliveSurvival
-    ) {
-        if (!hasArrogantAsf || !arrogantAsfActive || !aliveSurvival) {
-            return sideways;
-        }
-        return sideways * ARROGANT_ASF_LATERAL_INPUT_MULTIPLIER;
+    public static boolean isPureSidewaysInput(double sideways, double forward) {
+        return Math.abs(sideways) > MOVEMENT_INPUT_EPSILON && Math.abs(forward) <= MOVEMENT_INPUT_EPSILON;
     }
 
-    public static double lateralSidewaysInput(PlayerEntity player, double sideways) {
+    public static float lateralMovementSpeed(
+            float original,
+            boolean hasArrogantAsf,
+            boolean arrogantAsfActive,
+            boolean aliveSurvival,
+            boolean pureSidewaysInput
+    ) {
+        if (!hasArrogantAsf || !arrogantAsfActive || !aliveSurvival || !pureSidewaysInput) {
+            return original;
+        }
+        return original * ARROGANT_ASF_LATERAL_SPEED_MULTIPLIER;
+    }
+
+    public static float lateralMovementSpeed(PlayerEntity player, float original, boolean pureSidewaysInput) {
         TraitPlayerComponent traits = player == null ? null : TraitPlayerComponent.KEY.get(player);
-        return lateralSidewaysInput(
-                sideways,
+        return lateralMovementSpeed(
+                original,
                 traits != null && traits.hasActiveTrait(ArrogantAsfTrait.ID),
                 traits != null && traits.isArrogantAsfActive(),
-                player != null && GameFunctions.isPlayerAliveAndSurvival(player)
+                player != null && GameFunctions.isPlayerAliveAndSurvival(player),
+                pureSidewaysInput
         );
     }
 }

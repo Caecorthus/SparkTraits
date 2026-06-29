@@ -63,28 +63,44 @@ class ArrogantAsfTraitTest {
     }
 
     @Test
-    void sidewaysInputIsTripledOnlyWhileArrogantAsfIsActive() {
-        assertEquals(0.21d, CorruptCopTraitService.lateralSidewaysInput(0.07d, true, true, true), 0.0001d);
+    void watheMovementSpeedIsTripledOnlyForPureSidewaysMovement() {
+        assertEquals(0.21f, CorruptCopTraitService.lateralMovementSpeed(0.07f, true, true, true, true), 0.0001f);
 
-        assertEquals(0.07d, CorruptCopTraitService.lateralSidewaysInput(0.07d, true, false, true), 0.0001d);
-        assertEquals(0.07d, CorruptCopTraitService.lateralSidewaysInput(0.07d, false, true, true), 0.0001d);
-        assertEquals(0.07d, CorruptCopTraitService.lateralSidewaysInput(0.07d, true, true, false), 0.0001d);
+        assertEquals(0.07f, CorruptCopTraitService.lateralMovementSpeed(0.07f, true, false, true, true), 0.0001f);
+        assertEquals(0.07f, CorruptCopTraitService.lateralMovementSpeed(0.07f, false, true, true, true), 0.0001f);
+        assertEquals(0.07f, CorruptCopTraitService.lateralMovementSpeed(0.07f, true, true, false, true), 0.0001f);
+        assertEquals(0.07f, CorruptCopTraitService.lateralMovementSpeed(0.07f, true, true, true, false), 0.0001f);
+    }
+
+    @Test
+    void pureSidewaysMovementExcludesForwardAndDiagonalInput() {
+        assertTrue(CorruptCopTraitService.isPureSidewaysInput(0.98d, 0.0d));
+        assertTrue(CorruptCopTraitService.isPureSidewaysInput(-0.98d, 0.0d));
+
+        assertFalse(CorruptCopTraitService.isPureSidewaysInput(0.0d, 0.98d));
+        assertFalse(CorruptCopTraitService.isPureSidewaysInput(0.98d, 0.98d));
+        assertFalse(CorruptCopTraitService.isPureSidewaysInput(0.0d, 0.0d));
     }
 
     @Test
     void arrogantAsfMixinIsRegistered() throws IOException {
         String mainMixins = Files.readString(MAIN_RESOURCES.resolve("sparktraits.mixins.json"));
-        String source = Files.readString(Path.of(
-                "src/main/java/dev/caecorthus/sparktraits/mixin/ArrogantAsfSidewaysSpeedMixin.java"
+        String inputStateSource = Files.readString(Path.of(
+                "src/main/java/dev/caecorthus/sparktraits/mixin/ArrogantAsfMovementInputStateMixin.java"
+        ));
+        String speedSource = Files.readString(Path.of(
+                "src/main/java/dev/caecorthus/sparktraits/mixin/ArrogantAsfMovementSpeedMixin.java"
         ));
 
-        assertTrue(mainMixins.contains("\"ArrogantAsfSidewaysSpeedMixin\""));
+        assertTrue(mainMixins.contains("\"ArrogantAsfMovementInputStateMixin\""));
+        assertTrue(mainMixins.contains("\"ArrogantAsfMovementSpeedMixin\""));
+        assertFalse(mainMixins.contains("\"ArrogantAsfSidewaysSpeedMixin\""));
         assertFalse(mainMixins.contains("\"ArrogantAsfMovementInputMixin\""));
-        assertFalse(mainMixins.contains("\"ArrogantAsfMovementSpeedMixin\""));
-        assertTrue(source.contains("method = \"tickMovement\""));
-        assertTrue(source.contains("target = \"Lnet/minecraft/util/math/Vec3d;<init>(DDD)V\""));
-        assertTrue(source.contains("index = 0"));
-        assertFalse(source.contains("getMovementSpeed"));
+        assertTrue(inputStateSource.contains("method = \"tickMovement\""));
+        assertTrue(inputStateSource.contains("target = \"Lnet/minecraft/util/math/Vec3d;<init>(DDD)V\""));
+        assertTrue(inputStateSource.contains("isPureSidewaysInput"));
+        assertTrue(speedSource.contains("getMovementSpeed"));
+        assertTrue(speedSource.contains("lateralMovementSpeed"));
     }
 
     @Test
