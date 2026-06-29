@@ -7,6 +7,7 @@ import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.doctor4t.wathe.api.WatheRoles;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Vec3d;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -63,44 +64,94 @@ class ArrogantAsfTraitTest {
     }
 
     @Test
-    void watheMovementSpeedIsTripledOnlyForPureSidewaysMovement() {
-        assertEquals(0.21f, CorruptCopTraitService.lateralMovementSpeed(0.07f, true, true, true, true), 0.0001f);
+    void activeArrogantAsfTriplesPureSidewaysVelocity() {
+        Vec3d bonus = CorruptCopTraitService.arrogantAsfLateralVelocityBonus(
+                new Vec3d(3.0d, 0.0d, 0.0d),
+                0.07f,
+                0.0f,
+                true,
+                true,
+                true
+        );
 
-        assertEquals(0.07f, CorruptCopTraitService.lateralMovementSpeed(0.07f, true, false, true, true), 0.0001f);
-        assertEquals(0.07f, CorruptCopTraitService.lateralMovementSpeed(0.07f, false, true, true, true), 0.0001f);
-        assertEquals(0.07f, CorruptCopTraitService.lateralMovementSpeed(0.07f, true, true, false, true), 0.0001f);
-        assertEquals(0.07f, CorruptCopTraitService.lateralMovementSpeed(0.07f, true, true, true, false), 0.0001f);
+        assertVectorEquals(new Vec3d(0.14d, 0.0d, 0.0d), bonus);
     }
 
     @Test
-    void pureSidewaysMovementExcludesForwardAndDiagonalInput() {
-        assertTrue(CorruptCopTraitService.isPureSidewaysInput(0.98d, 0.0d));
-        assertTrue(CorruptCopTraitService.isPureSidewaysInput(-0.98d, 0.0d));
+    void activeArrogantAsfKeepsForwardOnlyVelocityVanilla() {
+        Vec3d bonus = CorruptCopTraitService.arrogantAsfLateralVelocityBonus(
+                new Vec3d(0.0d, 0.0d, 3.0d),
+                0.07f,
+                0.0f,
+                true,
+                true,
+                true
+        );
 
-        assertFalse(CorruptCopTraitService.isPureSidewaysInput(0.0d, 0.98d));
-        assertFalse(CorruptCopTraitService.isPureSidewaysInput(0.98d, 0.98d));
-        assertFalse(CorruptCopTraitService.isPureSidewaysInput(0.0d, 0.0d));
+        assertVectorEquals(Vec3d.ZERO, bonus);
+    }
+
+    @Test
+    void activeArrogantAsfOnlyBoostsLateralComponentForDiagonalInput() {
+        Vec3d bonus = CorruptCopTraitService.arrogantAsfLateralVelocityBonus(
+                new Vec3d(1.0d, 0.0d, 1.0d),
+                0.07f,
+                0.0f,
+                true,
+                true,
+                true
+        );
+
+        assertVectorEquals(new Vec3d(0.098994949f, 0.0d, 0.0d), bonus);
+    }
+
+    @Test
+    void activeArrogantAsfRotatesLateralBonusWithYaw() {
+        Vec3d bonus = CorruptCopTraitService.arrogantAsfLateralVelocityBonus(
+                new Vec3d(-1.0d, 0.0d, 0.0d),
+                0.07f,
+                90.0f,
+                true,
+                true,
+                true
+        );
+
+        assertVectorEquals(new Vec3d(0.0d, 0.0d, -0.14d), bonus);
+    }
+
+    @Test
+    void inactiveMissingOrDeadArrogantAsfAddsNoVelocityBonus() {
+        Vec3d movementInput = new Vec3d(1.0d, 0.0d, 0.0d);
+
+        assertVectorEquals(Vec3d.ZERO, CorruptCopTraitService.arrogantAsfLateralVelocityBonus(
+                movementInput, 0.07f, 0.0f, true, false, true
+        ));
+        assertVectorEquals(Vec3d.ZERO, CorruptCopTraitService.arrogantAsfLateralVelocityBonus(
+                movementInput, 0.07f, 0.0f, false, true, true
+        ));
+        assertVectorEquals(Vec3d.ZERO, CorruptCopTraitService.arrogantAsfLateralVelocityBonus(
+                movementInput, 0.07f, 0.0f, true, true, false
+        ));
     }
 
     @Test
     void arrogantAsfMixinIsRegistered() throws IOException {
         String mainMixins = Files.readString(MAIN_RESOURCES.resolve("sparktraits.mixins.json"));
-        String inputStateSource = Files.readString(Path.of(
-                "src/main/java/dev/caecorthus/sparktraits/mixin/ArrogantAsfMovementInputStateMixin.java"
-        ));
-        String speedSource = Files.readString(Path.of(
-                "src/main/java/dev/caecorthus/sparktraits/mixin/ArrogantAsfMovementSpeedMixin.java"
+        String lateralVelocitySource = Files.readString(Path.of(
+                "src/main/java/dev/caecorthus/sparktraits/mixin/ArrogantAsfLateralVelocityMixin.java"
         ));
 
-        assertTrue(mainMixins.contains("\"ArrogantAsfMovementInputStateMixin\""));
-        assertTrue(mainMixins.contains("\"ArrogantAsfMovementSpeedMixin\""));
+        assertTrue(mainMixins.contains("\"ArrogantAsfLateralVelocityMixin\""));
+        assertFalse(mainMixins.contains("\"ArrogantAsfMovementInputStateMixin\""));
+        assertFalse(mainMixins.contains("\"ArrogantAsfMovementSpeedMixin\""));
         assertFalse(mainMixins.contains("\"ArrogantAsfSidewaysSpeedMixin\""));
         assertFalse(mainMixins.contains("\"ArrogantAsfMovementInputMixin\""));
-        assertTrue(inputStateSource.contains("method = \"tickMovement\""));
-        assertTrue(inputStateSource.contains("target = \"Lnet/minecraft/util/math/Vec3d;<init>(DDD)V\""));
-        assertTrue(inputStateSource.contains("isPureSidewaysInput"));
-        assertTrue(speedSource.contains("getMovementSpeed"));
-        assertTrue(speedSource.contains("lateralMovementSpeed"));
+        assertTrue(lateralVelocitySource.contains("@Mixin(Entity.class)"));
+        assertTrue(lateralVelocitySource.contains("method = \"updateVelocity\""));
+        assertTrue(lateralVelocitySource.contains("@At(\"TAIL\")"));
+        assertTrue(lateralVelocitySource.contains("arrogantAsfLateralVelocityBonus"));
+        assertFalse(lateralVelocitySource.contains("getMovementSpeed"));
+        assertFalse(lateralVelocitySource.contains("target = \"Lnet/minecraft/util/math/Vec3d;<init>(DDD)V\""));
     }
 
     @Test
@@ -150,5 +201,11 @@ class ArrogantAsfTraitTest {
         return JsonParser.parseString(Files.readString(MAIN_RESOURCES.resolve(
                 "assets/sparktraits/lang/" + language + ".json"
         ))).getAsJsonObject();
+    }
+
+    private static void assertVectorEquals(Vec3d expected, Vec3d actual) {
+        assertEquals(expected.x, actual.x, 0.0001d);
+        assertEquals(expected.y, actual.y, 0.0001d);
+        assertEquals(expected.z, actual.z, 0.0001d);
     }
 }

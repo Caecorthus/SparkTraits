@@ -5,6 +5,8 @@ import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
 
@@ -15,7 +17,7 @@ import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
 public final class CorruptCopTraitService {
     public static final int ARROGANT_ASF_COLOR = 0x193264;
     public static final float ARROGANT_ASF_LATERAL_SPEED_MULTIPLIER = 3.0f;
-    private static final double MOVEMENT_INPUT_EPSILON = 1.0E-5d;
+    private static final double NORMALIZED_MOVEMENT_INPUT_EPSILON = 1.0E-7d;
 
     private CorruptCopTraitService() {
     }
@@ -41,31 +43,49 @@ public final class CorruptCopTraitService {
         return true;
     }
 
-    public static boolean isPureSidewaysInput(double sideways, double forward) {
-        return Math.abs(sideways) > MOVEMENT_INPUT_EPSILON && Math.abs(forward) <= MOVEMENT_INPUT_EPSILON;
-    }
-
-    public static float lateralMovementSpeed(
-            float original,
-            boolean hasArrogantAsf,
-            boolean arrogantAsfActive,
-            boolean aliveSurvival,
-            boolean pureSidewaysInput
-    ) {
-        if (!hasArrogantAsf || !arrogantAsfActive || !aliveSurvival || !pureSidewaysInput) {
-            return original;
-        }
-        return original * ARROGANT_ASF_LATERAL_SPEED_MULTIPLIER;
-    }
-
-    public static float lateralMovementSpeed(PlayerEntity player, float original, boolean pureSidewaysInput) {
+    public static Vec3d arrogantAsfLateralVelocityBonus(PlayerEntity player, Vec3d movementInput, float speed) {
         TraitPlayerComponent traits = player == null ? null : TraitPlayerComponent.KEY.get(player);
-        return lateralMovementSpeed(
-                original,
+        return arrogantAsfLateralVelocityBonus(
+                movementInput,
+                speed,
+                player == null ? 0.0f : player.getYaw(),
                 traits != null && traits.hasActiveTrait(ArrogantAsfTrait.ID),
                 traits != null && traits.isArrogantAsfActive(),
-                player != null && GameFunctions.isPlayerAliveAndSurvival(player),
-                pureSidewaysInput
+                player != null && GameFunctions.isPlayerAliveAndSurvival(player)
+        );
+    }
+
+    public static Vec3d arrogantAsfLateralVelocityBonus(
+            Vec3d movementInput,
+            float speed,
+            float yaw,
+            boolean hasArrogantAsf,
+            boolean arrogantAsfActive,
+            boolean aliveSurvival
+    ) {
+        if (!hasArrogantAsf || !arrogantAsfActive || !aliveSurvival || movementInput == null) {
+            return Vec3d.ZERO;
+        }
+
+        double lengthSquared = movementInput.lengthSquared();
+        if (lengthSquared < NORMALIZED_MOVEMENT_INPUT_EPSILON) {
+            return Vec3d.ZERO;
+        }
+
+        Vec3d normalizedInput = lengthSquared > 1.0d ? movementInput.normalize() : movementInput;
+        double lateralInput = normalizedInput.x;
+        if (Math.abs(lateralInput) < NORMALIZED_MOVEMENT_INPUT_EPSILON) {
+            return Vec3d.ZERO;
+        }
+
+        // English: Vanilla already applied one lateral share; add the remaining multiplier after normalization.
+        // 中文：原版已经应用了一份横移速度；归一化之后只补上剩余倍率。
+        double bonusSpeed = lateralInput * speed * (ARROGANT_ASF_LATERAL_SPEED_MULTIPLIER - 1.0d);
+        float radians = yaw * MathHelper.RADIANS_PER_DEGREE;
+        return new Vec3d(
+                bonusSpeed * MathHelper.cos(radians),
+                0.0d,
+                bonusSpeed * MathHelper.sin(radians)
         );
     }
 }
