@@ -46,7 +46,8 @@ public final class PigPlayerRenderer {
             float tickDelta,
             MatrixStack matrices,
             VertexConsumerProvider vertexConsumers,
-            int light
+            int light,
+            Identifier headTexture
     ) {
         Models models = models(player);
         forceAdultModels(models);
@@ -68,7 +69,7 @@ public final class PigPlayerRenderer {
         matrices.translate(0.0f, -1.501f, 0.0f);
 
         renderPigBody(player, models.pig(), limbPos, limbSpeed, animationProgress, relativeHeadYaw, pitch, matrices, vertexConsumers, light);
-        renderPlayerHead(player, models.head(), models.pigHead(), relativeHeadYaw, pitch, matrices, vertexConsumers, light);
+        renderPlayerHead(player, models.head(), models.pigHead(), headTexture, relativeHeadYaw, pitch, matrices, vertexConsumers, light);
         renderHelmet(player, models.armorRenderer(), models.outerArmor(), matrices, vertexConsumers, light);
 
         matrices.pop();
@@ -99,6 +100,7 @@ public final class PigPlayerRenderer {
             AbstractClientPlayerEntity player,
             PlayerEntityModel<AbstractClientPlayerEntity> model,
             ModelPart sourceHead,
+            Identifier headTexture,
             float relativeHeadYaw,
             float pitch,
             MatrixStack matrices,
@@ -110,7 +112,7 @@ public final class PigPlayerRenderer {
         model.hat.visible = player.isPartVisible(PlayerModelPart.HAT);
         copyPigHeadTransform(model.head, sourceHead, relativeHeadYaw, pitch);
         model.hat.copyTransform(model.head);
-        VertexConsumer consumer = vertexConsumers.getBuffer(model.getLayer(player.getSkinTextures().texture()));
+        VertexConsumer consumer = vertexConsumers.getBuffer(model.getLayer(headTexture));
         model.render(matrices, consumer, light, OverlayTexture.DEFAULT_UV);
     }
 

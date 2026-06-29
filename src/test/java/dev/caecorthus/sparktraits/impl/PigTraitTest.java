@@ -98,6 +98,22 @@ class PigTraitTest {
     }
 
     @Test
+    void pigRendererUsesFinalPlayerTextureForHead() throws IOException {
+        String renderer = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/PigPlayerRenderer.java"));
+        String mixin = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/mixin/PigPlayerRendererMixin.java"));
+
+        assertTrue(mixin.contains("getTexture(player)"));
+        assertTrue(mixin.contains("Identifier headTexture"));
+        assertTrue(mixin.contains("PigPlayerRenderer.render(player, yaw, tickDelta, matrices, vertexConsumers, light, headTexture)"));
+        assertTrue(renderer.contains("Identifier headTexture"));
+        assertTrue(renderer.contains("model.getLayer(headTexture)"));
+        assertFalse(renderer.contains("model.getLayer(player.getSkinTextures().texture())"));
+        assertFalse(renderer.contains("PlayerPsychoComponent"));
+        assertFalse(renderer.contains("depression_psycho"));
+        assertFalse(renderer.contains("textures/entity/psycho"));
+    }
+
+    @Test
     void pigCanApplyToOrdinaryRolesOnAnyFaction() {
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.CIVILIAN, Set.of(PigTrait.ID)));
         assertTrue(TraitRules.canApplyAll(null, null, null, WatheRoles.KILLER, Set.of(PigTrait.ID)));

@@ -6,7 +6,9 @@ import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.PlayerEntityRenderer;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -17,6 +19,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(PlayerEntityRenderer.class)
 public abstract class PigPlayerRendererMixin {
+    @Shadow
+    public abstract Identifier getTexture(AbstractClientPlayerEntity player);
+
     @Inject(
             method = "render(Lnet/minecraft/client/network/AbstractClientPlayerEntity;FFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V",
             at = @At("HEAD"),
@@ -32,7 +37,8 @@ public abstract class PigPlayerRendererMixin {
             CallbackInfo ci
     ) {
         if (!player.isInvisible() && PigTraitService.isPig(player)) {
-            PigPlayerRenderer.render(player, yaw, tickDelta, matrices, vertexConsumers, light);
+            Identifier headTexture = getTexture(player);
+            PigPlayerRenderer.render(player, yaw, tickDelta, matrices, vertexConsumers, light, headTexture);
             ci.cancel();
         }
     }
