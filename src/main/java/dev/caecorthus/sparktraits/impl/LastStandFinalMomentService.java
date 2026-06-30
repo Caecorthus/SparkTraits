@@ -147,6 +147,30 @@ public final class LastStandFinalMomentService {
         return null;
     }
 
+    public static boolean shouldCancelRoundEndFinalization(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            GameFunctions.WinStatus currentStatus
+    ) {
+        if (world == null || gameComponent == null || currentStatus == null) {
+            return false;
+        }
+        return shouldCancelRoundEndFinalization(
+                TraitWorldComponent.KEY.get(world).isFinalMomentActive(),
+                currentStatus,
+                snapshotPlayers(world, gameComponent)
+        );
+    }
+
+    static boolean shouldCancelRoundEndFinalization(
+            boolean finalMomentActive,
+            GameFunctions.WinStatus currentStatus,
+            Collection<PlayerState> players
+    ) {
+        CheckWinCondition.WinResult result = activeFinalMomentWinResult(finalMomentActive, currentStatus, players);
+        return result != null && result.status() == GameFunctions.WinStatus.NONE;
+    }
+
     static boolean hasLivingFinalMomentLooseEnd(
             boolean finalMomentActive,
             Collection<PlayerState> players

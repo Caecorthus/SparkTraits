@@ -126,12 +126,17 @@ class LastStandServiceTest {
 
         int guard = source.indexOf("sparktraits$cancelPendingLastStandRoundEnd");
         int eventTarget = source.indexOf("GameEvents$OnWinDetermined;onWinDetermined");
+        int finalMomentGuard = source.indexOf("LastStandFinalMomentService.shouldCancelRoundEndFinalization");
         int cancel = source.indexOf("ci.cancel()");
 
         assertTrue(guard >= 0);
         assertTrue(source.contains("cancellable = true"));
+        assertTrue(source.contains("locals = LocalCapture.CAPTURE_FAILHARD"));
         assertTrue(eventTarget >= 0);
         assertTrue(source.contains("LastStandService.hasPendingInWorld(serverWorld)"));
+        assertTrue(finalMomentGuard > guard);
+        assertTrue(finalMomentGuard < cancel);
+        assertTrue(source.contains("gameWorldComponent, winStatus"));
         assertTrue(source.contains("EffectiveTraitService.killUnsupportedImpostorsIfNoRealKillers(serverWorld, gameWorldComponent);"));
         assertTrue(cancel > guard);
         assertFalse(source.contains("GameWorldComponent;getGameStatus()Ldev/doctor4t/wathe/cca/GameWorldComponent$GameStatus;"));

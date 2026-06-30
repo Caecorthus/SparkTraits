@@ -161,6 +161,62 @@ class LastStandFinalMomentServiceTest {
     }
 
     @Test
+    void finalMomentRoundEndFallbackBlocksOrdinaryWinsWhileLooseEndIsContested() {
+        List<LastStandFinalMomentService.PlayerState> players = List.of(
+                state(FIRST, WatheRoles.LOOSE_END, true, true),
+                state(SECOND, WatheRoles.KILLER, true, false)
+        );
+
+        assertTrue(LastStandFinalMomentService.shouldCancelRoundEndFinalization(
+                true,
+                GameFunctions.WinStatus.KILLERS,
+                players
+        ));
+        assertTrue(LastStandFinalMomentService.shouldCancelRoundEndFinalization(
+                true,
+                GameFunctions.WinStatus.PASSENGERS,
+                players
+        ));
+    }
+
+    @Test
+    void finalMomentRoundEndFallbackAllowsNonOrdinaryWinsAndFinishedFinalMoment() {
+        List<LastStandFinalMomentService.PlayerState> contestedPlayers = List.of(
+                state(FIRST, WatheRoles.LOOSE_END, true, true),
+                state(SECOND, WatheRoles.KILLER, true, false)
+        );
+        List<LastStandFinalMomentService.PlayerState> deadLooseEndPlayers = List.of(
+                state(FIRST, WatheRoles.LOOSE_END, false, true),
+                state(SECOND, WatheRoles.KILLER, true, false)
+        );
+
+        assertFalse(LastStandFinalMomentService.shouldCancelRoundEndFinalization(
+                true,
+                GameFunctions.WinStatus.TIME,
+                contestedPlayers
+        ));
+        assertFalse(LastStandFinalMomentService.shouldCancelRoundEndFinalization(
+                true,
+                GameFunctions.WinStatus.NEUTRAL,
+                contestedPlayers
+        ));
+        assertFalse(LastStandFinalMomentService.shouldCancelRoundEndFinalization(
+                true,
+                GameFunctions.WinStatus.KILLERS,
+                deadLooseEndPlayers
+        ));
+    }
+
+    @Test
+    void finalMomentRoundEndFallbackAllowsPassengerWinWhenLooseEndIsOnlySurvivor() {
+        assertFalse(LastStandFinalMomentService.shouldCancelRoundEndFinalization(
+                true,
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(state(FIRST, WatheRoles.LOOSE_END, true, true))
+        ));
+    }
+
+    @Test
     void finalMomentTriggeredLooseEndKnifeCooldownIsZero() {
         assertEquals(0, LastStandFinalMomentService.finalMomentKnifeCooldown(
                 900,
