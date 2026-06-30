@@ -20,6 +20,7 @@
   "trait.sparktraits.arrogant_asf.description": "Use your ability key to toggle 1.75x lateral movement speed.",
   "tip.sparktraits.arrogant_asf.active": "Arrogant ASF: ON (%s to turn off)",
   "tip.sparktraits.arrogant_asf.inactive": "Arrogant ASF: OFF (%s to turn on)",
+  "tip.sparktraits.arrogant_asf.music_resume_remaining": "Music resume remaining: %s s",
   "subtitle.sparktraits.music.takediskrush": "TAKEDISKRUSH plays.",
   "trait.sparktraits.steady.name": "Steady",
   "trait.sparktraits.steady.description": "Your real sanity can rise above the normal limit.",

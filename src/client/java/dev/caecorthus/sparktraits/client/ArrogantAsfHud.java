@@ -31,8 +31,21 @@ public final class ArrogantAsfHud {
                 ? "tip.sparktraits.arrogant_asf.active"
                 : "tip.sparktraits.arrogant_asf.inactive";
         Text text = Text.translatable(key, NoellesrolesClient.abilityBind.getBoundKeyLocalizedText());
-        int x = context.getScaledWindowWidth() - renderer.getWidth(text);
         int y = context.getScaledWindowHeight() - renderer.fontHeight;
+        drawRightAligned(renderer, context, text, y);
+
+        int remainingSeconds = ArrogantAsfMusicController.remainingResumeSeconds();
+        if (!traits.isArrogantAsfActive() && remainingSeconds > 0) {
+            Text resumeText = Text.translatable(
+                    "tip.sparktraits.arrogant_asf.music_resume_remaining",
+                    remainingSeconds
+            );
+            drawRightAligned(renderer, context, resumeText, y - renderer.fontHeight);
+        }
+    }
+
+    private static void drawRightAligned(TextRenderer renderer, DrawContext context, Text text, int y) {
+        int x = context.getScaledWindowWidth() - renderer.getWidth(text);
         context.drawTextWithShadow(renderer, text, x, y, CorruptCopTraitService.ARROGANT_ASF_COLOR);
     }
 }

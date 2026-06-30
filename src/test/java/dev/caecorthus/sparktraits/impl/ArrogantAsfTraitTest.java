@@ -174,6 +174,9 @@ class ArrogantAsfTraitTest {
         assertTrue(hudSource.contains("NoellesrolesClient.abilityBind"));
         assertTrue(hudSource.contains("tip.sparktraits.arrogant_asf.active"));
         assertTrue(hudSource.contains("tip.sparktraits.arrogant_asf.inactive"));
+        assertTrue(hudSource.contains("tip.sparktraits.arrogant_asf.music_resume_remaining"));
+        assertTrue(hudSource.contains("ArrogantAsfMusicController.remainingResumeSeconds()"));
+        assertTrue(hudSource.contains("y - renderer.fontHeight"));
         assertTrue(hudSource.contains("isArrogantAsfActive"));
     }
 
@@ -198,12 +201,34 @@ class ArrogantAsfTraitTest {
     }
 
     @Test
-    void arrogantAsfMusicUsesWatheStyleRegistrarAndBackgroundAmbience() throws IOException {
+    void arrogantAsfMusicResumeWindowExpiresAfterTenSeconds() {
+        assertEquals(200, ArrogantAsfMusicRules.RESUME_WINDOW_TICKS);
+        assertTrue(ArrogantAsfMusicRules.shouldRetainPausedTrack(199));
+        assertFalse(ArrogantAsfMusicRules.shouldRetainPausedTrack(200));
+        assertFalse(ArrogantAsfMusicRules.shouldDiscardPausedTrack(199));
+        assertTrue(ArrogantAsfMusicRules.shouldDiscardPausedTrack(200));
+        assertEquals(10, ArrogantAsfMusicRules.remainingResumeSeconds(0));
+        assertEquals(10, ArrogantAsfMusicRules.remainingResumeSeconds(1));
+        assertEquals(1, ArrogantAsfMusicRules.remainingResumeSeconds(199));
+        assertEquals(0, ArrogantAsfMusicRules.remainingResumeSeconds(200));
+    }
+
+    @Test
+    void arrogantAsfMusicUsesWatheStyleRegistrarAndLocalResumeController() throws IOException {
         String buildGradle = Files.readString(Path.of("build.gradle"));
         String fabricMod = Files.readString(MAIN_RESOURCES.resolve("fabric.mod.json"));
         String sparkTraitsSource = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/SparkTraits.java"));
         String soundsSource = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/SparkTraitsSounds.java"));
         String clientSource = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/SparkTraitsClient.java"));
+        String controllerSource = Files.readString(Path.of(
+                "src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfMusicController.java"
+        ));
+        String soundInstanceSource = Files.readString(Path.of(
+                "src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfMusicInstance.java"
+        ));
+        String soundAccessSource = Files.readString(Path.of(
+                "src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfSoundAccess.java"
+        ));
         String corruptCopSource = Files.readString(Path.of(
                 "src/main/java/dev/caecorthus/sparktraits/impl/CorruptCopTraitService.java"
         ));
@@ -221,25 +246,29 @@ class ArrogantAsfTraitTest {
         assertTrue(soundsSource.contains("Registries.SOUND_EVENT.containsId"));
         assertTrue(soundsSource.contains("Registered SparkTraits sound event"));
         assertFalse(soundsSource.contains("Registry.register"));
-        assertTrue(clientSource.contains("registerArrogantAsfMusic()"));
-        assertTrue(clientSource.contains("AmbienceUtil.registerBackgroundAmbience"));
-        assertTrue(clientSource.contains("new BackgroundAmbience"));
-        assertTrue(clientSource.contains("SparkTraitsSounds.MUSIC_TAKEDISKRUSH"));
-        assertTrue(clientSource.contains("traits.hasActiveTrait(ArrogantAsfTrait.ID)"));
-        assertTrue(clientSource.contains("traits.isArrogantAsfActive()"));
-        assertFalse(clientSource.contains("ArrogantAsfMusicController::tick"));
+        assertTrue(clientSource.contains("ArrogantAsfMusicController::tick"));
+        assertFalse(clientSource.contains("AmbienceUtil.registerBackgroundAmbience"));
+        assertFalse(clientSource.contains("new BackgroundAmbience"));
         assertFalse(clientSource.contains("playSoundToPlayer"));
         assertFalse(clientSource.contains("StopSoundS2CPacket"));
+        assertTrue(controllerSource.contains("isArrogantAsfActive()"));
+        assertTrue(controllerSource.contains("hasActiveTrait(ArrogantAsfTrait.ID)"));
+        assertTrue(controllerSource.contains("SwallowedPlayerComponent.isPlayerSwallowed"));
+        assertTrue(controllerSource.contains("GameFunctions.isPlayerPlayingAndAlive"));
+        assertTrue(controllerSource.contains("Missing client sound resource"));
+        assertTrue(controllerSource.contains("soundManager.get(SparkTraitsSounds.MUSIC_TAKEDISKRUSH_ID)"));
+        assertTrue(controllerSource.contains("shouldDiscardPausedTrack(pausedTicks)"));
+        assertTrue(soundInstanceSource.contains("SoundCategory.AMBIENT"));
+        assertFalse(soundInstanceSource.contains("SoundCategory.MUSIC"));
+        assertFalse(soundInstanceSource.contains("SoundCategory.PLAYERS"));
+        assertTrue(soundInstanceSource.contains("AttenuationType.NONE"));
+        assertTrue(soundInstanceSource.contains("relative = true"));
+        assertTrue(soundAccessSource.contains("Source::pause"));
+        assertTrue(soundAccessSource.contains("Source::resume"));
         assertFalse(corruptCopSource.contains("ArrogantAsfMusicService"));
         assertFalse(traitHooksSource.contains("ArrogantAsfMusicService"));
-        assertFalse(clientMixins.contains("\"SoundManagerAccessor\""));
-        assertFalse(clientMixins.contains("\"SoundSystemAccessor\""));
-        assertTrue(Files.notExists(Path.of("src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfMusicController.java")));
-        assertTrue(Files.notExists(Path.of("src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfMusicInstance.java")));
-        assertTrue(Files.notExists(Path.of("src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfSoundAccess.java")));
-        assertTrue(Files.notExists(Path.of("src/client/java/dev/caecorthus/sparktraits/client/mixin/SoundManagerAccessor.java")));
-        assertTrue(Files.notExists(Path.of("src/client/java/dev/caecorthus/sparktraits/client/mixin/SoundSystemAccessor.java")));
-        assertTrue(Files.notExists(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/ArrogantAsfMusicRules.java")));
+        assertTrue(clientMixins.contains("\"SoundManagerAccessor\""));
+        assertTrue(clientMixins.contains("\"SoundSystemAccessor\""));
     }
 
     @Test
@@ -257,10 +286,14 @@ class ArrogantAsfTraitTest {
                 english.get("tip.sparktraits.arrogant_asf.active").getAsString());
         assertEquals("Arrogant ASF: OFF (%s to turn on)",
                 english.get("tip.sparktraits.arrogant_asf.inactive").getAsString());
+        assertEquals("Music resume remaining: %s s",
+                english.get("tip.sparktraits.arrogant_asf.music_resume_remaining").getAsString());
         assertEquals("展示豪度：开启（按 %s 关闭）",
                 chinese.get("tip.sparktraits.arrogant_asf.active").getAsString());
         assertEquals("展示豪度：关闭（按 %s 开启）",
                 chinese.get("tip.sparktraits.arrogant_asf.inactive").getAsString());
+        assertEquals("音乐续播剩余时间：%s 秒",
+                chinese.get("tip.sparktraits.arrogant_asf.music_resume_remaining").getAsString());
         assertEquals("TAKEDISKRUSH plays.",
                 english.get("subtitle.sparktraits.music.takediskrush").getAsString());
         assertEquals("TAKEDISKRUSH 响起。",
