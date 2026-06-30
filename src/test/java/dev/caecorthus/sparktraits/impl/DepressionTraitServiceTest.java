@@ -11,8 +11,11 @@ import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -177,6 +180,14 @@ class DepressionTraitServiceTest {
     }
 
     @Test
+    void activePsychoEndsWhenPlayerOrAttackerStopsPlaying() {
+        assertFalse(DepressionTraitService.shouldEndActivePsycho(true, true));
+        assertTrue(DepressionTraitService.shouldEndActivePsycho(false, true));
+        assertTrue(DepressionTraitService.shouldEndActivePsycho(true, false));
+        assertTrue(DepressionTraitService.shouldEndActivePsycho(false, false));
+    }
+
+    @Test
     void postPsychoStaminaRestoresFullFiniteStaminaAndKeepsInfiniteStamina() {
         DepressionTraitService.PostPsychoStaminaState finite =
                 DepressionTraitService.postPsychoStaminaState(200, 160);
@@ -273,6 +284,21 @@ class DepressionTraitServiceTest {
         assertFalse(DepressionTraitService.shouldBlockInventoryInsert(false, false));
         assertFalse(DepressionTraitService.shouldBlockInventoryInsert(true, true));
         assertTrue(DepressionTraitService.shouldBlockInventoryInsert(true, false));
+    }
+
+    @Test
+    void depressionAfterKillRunsBeforeLastStandFakeDeathReturn() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/TraitGameHooks.java"));
+
+        int lastStandStarted = source.indexOf("boolean lastStandStarted = LastStandService.tryStartAfterKill");
+        int depressionAfterKill = source.indexOf("DepressionTraitService.handleAfterKill(victim, killer)");
+        int lastStandReturn = source.indexOf("if (lastStandStarted)");
+        int clearTraits = source.indexOf("playerTraits.clearActiveTraits(TraitRemovalReason.DEATH)");
+
+        assertTrue(lastStandStarted >= 0);
+        assertTrue(depressionAfterKill > lastStandStarted);
+        assertTrue(lastStandReturn > depressionAfterKill);
+        assertTrue(clearTraits > lastStandReturn);
     }
 
     private static Role sparkWitchRole(String path) {

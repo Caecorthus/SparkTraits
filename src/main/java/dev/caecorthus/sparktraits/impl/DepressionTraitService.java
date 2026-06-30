@@ -287,6 +287,14 @@ public final class DepressionTraitService {
     }
 
     /**
+     * Depression psycho is maintained only while both chase participants are still active players.
+     * 只有疯魔者和目标都仍在存活游玩时，抑郁疯魔才继续维持。
+     */
+    public static boolean shouldEndActivePsycho(boolean playerAlive, boolean attackerAlive) {
+        return !playerAlive || !attackerAlive;
+    }
+
+    /**
      * Restores post-psycho stamina without forcing finite-role players into exhaustion.
      * 疯魔结束后恢复体力，避免有限体力角色被重置到 0 体力并立即疲惫。
      */
@@ -490,8 +498,12 @@ public final class DepressionTraitService {
                 continue;
             }
             ServerPlayerEntity attacker = world.getServer().getPlayerManager().getPlayer(state.attackerUuid());
-            if (attacker == null || !GameFunctions.isPlayerPlayingAndAlive(attacker)) {
-                endPsycho(player, true, true);
+            boolean playerAlive = GameFunctions.isPlayerPlayingAndAlive(player);
+            boolean attackerAlive = attacker != null && GameFunctions.isPlayerPlayingAndAlive(attacker);
+            if (shouldEndActivePsycho(playerAlive, attackerAlive)) {
+                // Dead Depression psycho players must not have their synced skin/state maintained.
+                // 已死亡的抑郁疯魔玩家不能继续被同步皮肤/状态维持住。
+                endPsycho(player, playerAlive, playerAlive);
                 continue;
             }
             maintainPsycho(player, attacker);

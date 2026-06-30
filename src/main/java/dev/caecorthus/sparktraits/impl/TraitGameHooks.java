@@ -44,6 +44,7 @@ public final class TraitGameHooks {
             boolean lastStandStarted = LastStandService.tryStartAfterKill(victim, killer, deathReason);
             PigTraitService.playDeathSound(victim);
             EffectiveTraitService.handleAfterKill(victim, killer, deathReason);
+            DepressionTraitService.handleAfterKill(victim, killer);
             if (lastStandStarted) {
                 syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
                 return;
@@ -51,7 +52,6 @@ public final class TraitGameHooks {
             KillerTraitService.handleAfterRealKill(victim, killer, deathReason);
             ImpostorBodyguardService.handleAfterKill(victim);
             ConscienceSerialKillerService.handleAfterKill(victim, killer, deathReason);
-            DepressionTraitService.handleAfterKill(victim, killer);
             playerTraits.clearActiveTraits(TraitRemovalReason.DEATH);
             ConscienceSerialKillerService.clearPlayer(victim);
             DepressionTraitService.clearPlayer(victim);
