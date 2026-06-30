@@ -1,0 +1,10 @@
+{
+  "music.takediskrush": {
+    "sounds": [
+      {
+        "name": "sparktraits:music/takediskrush",
+        "stream": true
+      }
+    ]
+  }
+}

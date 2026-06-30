@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -174,6 +175,66 @@ class ArrogantAsfTraitTest {
         assertTrue(hudSource.contains("tip.sparktraits.arrogant_asf.active"));
         assertTrue(hudSource.contains("tip.sparktraits.arrogant_asf.inactive"));
         assertTrue(hudSource.contains("isArrogantAsfActive"));
+    }
+
+    @Test
+    void arrogantAsfMusicResourceIsRegisteredAndStreamed() throws IOException {
+        JsonObject sounds = JsonParser.parseString(Files.readString(
+                MAIN_RESOURCES.resolve("assets/sparktraits/sounds.json")
+        )).getAsJsonObject();
+        JsonObject event = sounds.getAsJsonObject("music.takediskrush");
+        JsonObject sound = event.getAsJsonArray("sounds").get(0).getAsJsonObject();
+        byte[] header = Files.readAllBytes(MAIN_RESOURCES.resolve(
+                "assets/sparktraits/sounds/music/takediskrush.ogg"
+        ));
+
+        assertNotNull(event);
+        assertEquals("sparktraits:music/takediskrush", sound.get("name").getAsString());
+        assertTrue(sound.get("stream").getAsBoolean());
+        assertFalse(event.has("subtitle"));
+        assertEquals("OggS", new String(header, 0, 4, StandardCharsets.US_ASCII));
+    }
+
+    @Test
+    void arrogantAsfMusicResumeWindowExpiresAfterTenSeconds() {
+        assertEquals(200, ArrogantAsfMusicRules.RESUME_WINDOW_TICKS);
+        assertTrue(ArrogantAsfMusicRules.shouldRetainPausedTrack(199));
+        assertFalse(ArrogantAsfMusicRules.shouldRetainPausedTrack(200));
+        assertFalse(ArrogantAsfMusicRules.shouldDiscardPausedTrack(199));
+        assertTrue(ArrogantAsfMusicRules.shouldDiscardPausedTrack(200));
+    }
+
+    @Test
+    void arrogantAsfMusicClientWiringIsLocalOwnerOnly() throws IOException {
+        String sparkTraitsSource = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/SparkTraits.java"));
+        String soundsSource = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/SparkTraitsSounds.java"));
+        String clientSource = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/SparkTraitsClient.java"));
+        String controllerSource = Files.readString(Path.of(
+                "src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfMusicController.java"
+        ));
+        String soundInstanceSource = Files.readString(Path.of(
+                "src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfMusicInstance.java"
+        ));
+        String soundAccessSource = Files.readString(Path.of(
+                "src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfSoundAccess.java"
+        ));
+        String clientMixins = Files.readString(CLIENT_RESOURCES.resolve("sparktraits.client.mixins.json"));
+
+        assertTrue(sparkTraitsSource.contains("SparkTraitsSounds.register()"));
+        assertTrue(soundsSource.contains("music.takediskrush"));
+        assertTrue(soundsSource.contains("Registry.register"));
+        assertTrue(clientSource.contains("ArrogantAsfMusicController::tick"));
+        assertTrue(controllerSource.contains("isArrogantAsfActive()"));
+        assertTrue(controllerSource.contains("hasActiveTrait(ArrogantAsfTrait.ID)"));
+        assertTrue(controllerSource.contains("SwallowedPlayerComponent.isPlayerSwallowed"));
+        assertTrue(controllerSource.contains("GameFunctions.isPlayerPlayingAndAlive"));
+        assertTrue(soundInstanceSource.contains("SoundCategory.MUSIC"));
+        assertTrue(soundInstanceSource.contains("AttenuationType.NONE"));
+        assertTrue(soundInstanceSource.contains("relative = true"));
+        assertTrue(soundAccessSource.contains("Source::pause"));
+        assertTrue(soundAccessSource.contains("Source::resume"));
+        assertTrue(clientMixins.contains("\"SoundManagerAccessor\""));
+        assertTrue(clientMixins.contains("\"SoundSystemAccessor\""));
     }
 
     @Test

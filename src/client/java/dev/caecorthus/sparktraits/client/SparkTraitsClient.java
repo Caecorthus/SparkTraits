@@ -25,6 +25,7 @@ public class SparkTraitsClient implements ClientModInitializer {
         registerFinalMomentHighlight();
         registerGoingDarkInstinctSkip();
         ClientTickEvents.END_CLIENT_TICK.register(client -> DepressionHud.tick());
+        ClientTickEvents.END_CLIENT_TICK.register(ArrogantAsfMusicController::tick);
     }
 
     private static void registerFinalMomentHighlight() {
