@@ -55,7 +55,7 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     modApi files("wathe-${project.wathe_version}.jar")
-    modImplementation files("noellesroles-1.7.5-h1.5.5-spark.jar")
+    modImplementation files("noellesroles-1.7.6-h1.5.6-spark.jar")
     modLocalRuntime "maven.modrinth:carpet:1.4.147"
     modCompileOnly "maven.modrinth:simple-voice-chat:fabric-1.21.1-2.5.36"
     modLocalRuntime "maven.modrinth:simple-voice-chat:fabric-1.21.1-2.5.36"

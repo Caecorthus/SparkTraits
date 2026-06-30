@@ -19,7 +19,7 @@ import java.util.Set;
 @Mixin(value = Noellesroles.class, remap = false)
 public abstract class NoellesRolesJesterMomentMixin {
     @Redirect(
-            method = "lambda$registerEvents$9",
+            method = "lambda$registerEvents$5",
             at = @At(
                     value = "INVOKE",
                     target = "Ldev/doctor4t/wathe/api/Role;isInnocent()Z"

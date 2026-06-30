@@ -21,6 +21,7 @@ import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import org.agmas.noellesroles.morphling.MorphlingPlayerComponent;
 import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
+import org.ladysnake.cca.api.v3.component.ComponentKey;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -43,6 +44,7 @@ public final class EffectiveTraitService {
     private static final Identifier SPARKWITCH_GRAND_WITCH_ID = Identifier.of("sparkwitch", "grand_witch");
     private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
     private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
+    private static final Identifier NOELLES_SHADOW_JESTER_ID = Identifier.of("noellesroles", "shadow_jester");
     private static final Map<UUID, Identifier> poisonSources = new HashMap<>();
 
     private EffectiveTraitService() {
@@ -692,6 +694,18 @@ public final class EffectiveTraitService {
                 && (inPsychoMode || transitioning);
     }
 
+    /** Defers ordinary team wins while NoellesRoles' bound Shadow Jesters need showdown routing.
+     *  当 NoellesRoles 命运绑定双影小丑需要进入/维持谢幕时，延后普通队伍胜利。 */
+    public static boolean shouldDeferTeamWinForNoellesShadowJester(
+            Role role,
+            boolean allied,
+            boolean showdownActive
+    ) {
+        return role != null
+                && NOELLES_SHADOW_JESTER_ID.equals(role.identifier())
+                && (allied || showdownActive);
+    }
+
     public static Role.MoodType effectiveMoodType(PlayerEntity player, Role role) {
         if (hasConscience(player)) {
             return Role.MoodType.REAL;
@@ -852,6 +866,9 @@ public final class EffectiveTraitService {
                     noellesJesterBlocksTeamWin = true;
                 }
             }
+            if (shouldDeferTeamWinForNoellesShadowJester(player, role)) {
+                noellesJesterBlocksTeamWin = true;
+            }
             if (isOriginalKiller(role) && !hasConscience(traits)) {
                 realKillerAlive = true;
             }
@@ -877,6 +894,32 @@ public final class EffectiveTraitService {
             return CheckWinCondition.WinResult.block();
         }
         return null;
+    }
+
+    private static boolean shouldDeferTeamWinForNoellesShadowJester(PlayerEntity player, Role role) {
+        return shouldDeferTeamWinForNoellesShadowJester(
+                role,
+                noellesShadowJesterComponentFlag(player, "isAllied"),
+                noellesShadowJesterComponentFlag(player, "isShowdownActive")
+        );
+    }
+
+    private static boolean noellesShadowJesterComponentFlag(PlayerEntity player, String methodName) {
+        if (player == null) {
+            return false;
+        }
+        try {
+            Class<?> componentClass = Class.forName("org.agmas.noellesroles.shadowjester.ShadowJesterPlayerComponent");
+            Object keyObject = componentClass.getField("KEY").get(null);
+            if (!(keyObject instanceof ComponentKey<?> key)) {
+                return false;
+            }
+            Object component = key.get(player);
+            Object result = componentClass.getMethod(methodName).invoke(component);
+            return result instanceof Boolean value && value;
+        } catch (ReflectiveOperationException | LinkageError | ClassCastException exception) {
+            return false;
+        }
     }
 
     /** Kills Impostors once their real killer-side support is gone, even if neutral blockers keep the round active.

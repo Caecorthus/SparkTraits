@@ -206,6 +206,32 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void noellesShadowJesterDefersOnlyWhenAlliedOrInShowdown() {
+        Role shadowJester = noellesRole("shadow_jester");
+
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                shadowJester,
+                false,
+                false
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                shadowJester,
+                true,
+                false
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                shadowJester,
+                false,
+                true
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                Noellesroles.JESTER,
+                true,
+                true
+        ));
+    }
+
+    @Test
     void conscienceViewerForcesCohortHidden() {
         assertEquals(
                 Boolean.FALSE,
@@ -643,6 +669,18 @@ class EffectiveTraitServiceTest {
     private static Role sparkWitchRole(String path) {
         return new Role(
                 Identifier.of("sparkwitch", path),
+                0xFFFFFF,
+                false,
+                false,
+                Role.MoodType.FAKE,
+                200,
+                false
+        );
+    }
+
+    private static Role noellesRole(String path) {
+        return new Role(
+                Identifier.of("noellesroles", path),
                 0xFFFFFF,
                 false,
                 false,
