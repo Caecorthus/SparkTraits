@@ -19,8 +19,6 @@
     "MoodRendererMixin",
     "PigPlayerRendererMixin",
     "RoundTextRendererMixin",
-    "SoundManagerAccessor",
-    "SoundSystemAccessor",
     "TrimmedBedBluePoisonParticleMixin",
     "TraitInventoryScreenMixin",
     "TraitRoleNameRendererMixin",

@@ -25,7 +25,7 @@ public class SparkTraits implements ModInitializer {
     public void onInitialize() {
         SparkTraitsDataComponentTypes.init();
         SparkTraitsParticles.register();
-        SparkTraitsSounds.register();
+        SparkTraitsSounds.initialize();
         SparkTraitsBuiltInTraits.register();
         LastStandService.register();
         LastStandFinalMomentService.register();

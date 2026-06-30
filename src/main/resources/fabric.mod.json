@@ -42,6 +42,7 @@
     "java": ">=21",
     "wathe": "${wathe_version}",
     "noellesroles": "*",
+    "ratatouille": ">=${ratatouille_version}",
     "cardinal-components-base": ">=${cca_version}",
     "cardinal-components-entity": ">=${cca_version}",
     "cardinal-components-world": ">=${cca_version}"

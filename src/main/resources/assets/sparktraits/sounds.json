@@ -3,8 +3,10 @@
     "sounds": [
       {
         "name": "sparktraits:music/takediskrush",
-        "stream": true
+        "stream": true,
+        "volume": 0.9
       }
-    ]
+    ],
+    "subtitle": "subtitle.sparktraits.music.takediskrush"
   }
 }

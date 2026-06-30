@@ -191,56 +191,55 @@ class ArrogantAsfTraitTest {
         assertNotNull(event);
         assertEquals("sparktraits:music/takediskrush", sound.get("name").getAsString());
         assertTrue(sound.get("stream").getAsBoolean());
-        assertFalse(event.has("subtitle"));
+        assertEquals(0.9f, sound.get("volume").getAsFloat(), 0.0001f);
+        assertEquals("subtitle.sparktraits.music.takediskrush", event.get("subtitle").getAsString());
+        assertFalse(sound.has("attenuation_distance"));
         assertEquals("OggS", new String(header, 0, 4, StandardCharsets.US_ASCII));
     }
 
     @Test
-    void arrogantAsfMusicResumeWindowExpiresAfterTenSeconds() {
-        assertEquals(200, ArrogantAsfMusicRules.RESUME_WINDOW_TICKS);
-        assertTrue(ArrogantAsfMusicRules.shouldRetainPausedTrack(199));
-        assertFalse(ArrogantAsfMusicRules.shouldRetainPausedTrack(200));
-        assertFalse(ArrogantAsfMusicRules.shouldDiscardPausedTrack(199));
-        assertTrue(ArrogantAsfMusicRules.shouldDiscardPausedTrack(200));
-    }
-
-    @Test
-    void arrogantAsfMusicClientWiringIsLocalOwnerOnly() throws IOException {
+    void arrogantAsfMusicUsesWatheStyleRegistrarAndBackgroundAmbience() throws IOException {
+        String buildGradle = Files.readString(Path.of("build.gradle"));
+        String fabricMod = Files.readString(MAIN_RESOURCES.resolve("fabric.mod.json"));
         String sparkTraitsSource = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/SparkTraits.java"));
         String soundsSource = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/SparkTraitsSounds.java"));
         String clientSource = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/SparkTraitsClient.java"));
-        String controllerSource = Files.readString(Path.of(
-                "src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfMusicController.java"
+        String corruptCopSource = Files.readString(Path.of(
+                "src/main/java/dev/caecorthus/sparktraits/impl/CorruptCopTraitService.java"
         ));
-        String soundInstanceSource = Files.readString(Path.of(
-                "src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfMusicInstance.java"
-        ));
-        String soundAccessSource = Files.readString(Path.of(
-                "src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfSoundAccess.java"
+        String traitHooksSource = Files.readString(Path.of(
+                "src/main/java/dev/caecorthus/sparktraits/impl/TraitGameHooks.java"
         ));
         String clientMixins = Files.readString(CLIENT_RESOURCES.resolve("sparktraits.client.mixins.json"));
 
-        assertTrue(sparkTraitsSource.contains("SparkTraitsSounds.register()"));
-        assertTrue(soundsSource.contains("music.takediskrush"));
-        assertTrue(soundsSource.contains("Registry.register"));
+        assertTrue(buildGradle.contains("modImplementation(\"dev.doctor4t:ratatouille:${project.ratatouille_version}\")"));
+        assertTrue(fabricMod.contains("\"ratatouille\": \">=${ratatouille_version}\""));
+        assertTrue(sparkTraitsSource.contains("SparkTraitsSounds.initialize()"));
+        assertTrue(soundsSource.contains("SoundEventRegistrar"));
+        assertTrue(soundsSource.contains("registrar.create(\"music.takediskrush\")"));
+        assertTrue(soundsSource.contains("registrar.registerEntries()"));
         assertTrue(soundsSource.contains("Registries.SOUND_EVENT.containsId"));
         assertTrue(soundsSource.contains("Registered SparkTraits sound event"));
-        assertTrue(clientSource.contains("ArrogantAsfMusicController::tick"));
-        assertTrue(controllerSource.contains("isArrogantAsfActive()"));
-        assertTrue(controllerSource.contains("hasActiveTrait(ArrogantAsfTrait.ID)"));
-        assertTrue(controllerSource.contains("SwallowedPlayerComponent.isPlayerSwallowed"));
-        assertTrue(controllerSource.contains("GameFunctions.isPlayerPlayingAndAlive"));
-        assertTrue(controllerSource.contains("Missing client sound resource"));
-        assertTrue(controllerSource.contains("soundManager.get(SparkTraitsSounds.MUSIC_TAKEDISKRUSH_ID)"));
-        assertTrue(soundInstanceSource.contains("SoundCategory.AMBIENT"));
-        assertFalse(soundInstanceSource.contains("SoundCategory.MUSIC"));
-        assertFalse(soundInstanceSource.contains("SoundCategory.PLAYERS"));
-        assertTrue(soundInstanceSource.contains("AttenuationType.NONE"));
-        assertTrue(soundInstanceSource.contains("relative = true"));
-        assertTrue(soundAccessSource.contains("Source::pause"));
-        assertTrue(soundAccessSource.contains("Source::resume"));
-        assertTrue(clientMixins.contains("\"SoundManagerAccessor\""));
-        assertTrue(clientMixins.contains("\"SoundSystemAccessor\""));
+        assertFalse(soundsSource.contains("Registry.register"));
+        assertTrue(clientSource.contains("registerArrogantAsfMusic()"));
+        assertTrue(clientSource.contains("AmbienceUtil.registerBackgroundAmbience"));
+        assertTrue(clientSource.contains("new BackgroundAmbience"));
+        assertTrue(clientSource.contains("SparkTraitsSounds.MUSIC_TAKEDISKRUSH"));
+        assertTrue(clientSource.contains("traits.hasActiveTrait(ArrogantAsfTrait.ID)"));
+        assertTrue(clientSource.contains("traits.isArrogantAsfActive()"));
+        assertFalse(clientSource.contains("ArrogantAsfMusicController::tick"));
+        assertFalse(clientSource.contains("playSoundToPlayer"));
+        assertFalse(clientSource.contains("StopSoundS2CPacket"));
+        assertFalse(corruptCopSource.contains("ArrogantAsfMusicService"));
+        assertFalse(traitHooksSource.contains("ArrogantAsfMusicService"));
+        assertFalse(clientMixins.contains("\"SoundManagerAccessor\""));
+        assertFalse(clientMixins.contains("\"SoundSystemAccessor\""));
+        assertTrue(Files.notExists(Path.of("src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfMusicController.java")));
+        assertTrue(Files.notExists(Path.of("src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfMusicInstance.java")));
+        assertTrue(Files.notExists(Path.of("src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfSoundAccess.java")));
+        assertTrue(Files.notExists(Path.of("src/client/java/dev/caecorthus/sparktraits/client/mixin/SoundManagerAccessor.java")));
+        assertTrue(Files.notExists(Path.of("src/client/java/dev/caecorthus/sparktraits/client/mixin/SoundSystemAccessor.java")));
+        assertTrue(Files.notExists(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/ArrogantAsfMusicRules.java")));
     }
 
     @Test
@@ -262,6 +261,10 @@ class ArrogantAsfTraitTest {
                 chinese.get("tip.sparktraits.arrogant_asf.active").getAsString());
         assertEquals("展示豪度：关闭（按 %s 开启）",
                 chinese.get("tip.sparktraits.arrogant_asf.inactive").getAsString());
+        assertEquals("TAKEDISKRUSH plays.",
+                english.get("subtitle.sparktraits.music.takediskrush").getAsString());
+        assertEquals("TAKEDISKRUSH 响起。",
+                chinese.get("subtitle.sparktraits.music.takediskrush").getAsString());
     }
 
     private static JsonObject readLanguageFile(String language) throws IOException {

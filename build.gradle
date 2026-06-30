@@ -65,7 +65,7 @@ dependencies {
     modRuntimeOnly "org.ladysnake.cardinal-components-api:cardinal-components-scoreboard:${project.cca_version}"
     modRuntimeOnly "maven.modrinth:midnightlib:${project.midnightlib_version}"
     modRuntimeOnly "dev.isxander:yet-another-config-lib:${project.yacl_version}"
-    modRuntimeOnly("dev.doctor4t:ratatouille:${project.ratatouille_version}") {
+    modImplementation("dev.doctor4t:ratatouille:${project.ratatouille_version}") {
         exclude group: "dev.upcraft.datasync"
     }
     modRuntimeOnly "dev.upcraft.datasync:datasync-minecraft-1.21.1-fabric:0.10.2"
@@ -81,6 +81,7 @@ processResources {
     inputs.property "loader_version", project.loader_version
     inputs.property "wathe_version", project.wathe_version
     inputs.property "cca_version", project.cca_version
+    inputs.property "ratatouille_version", project.ratatouille_version
 
     filteringCharset "UTF-8"
 
@@ -89,7 +90,8 @@ processResources {
                 "minecraft_version": project.minecraft_version,
                 "loader_version": project.loader_version,
                 "wathe_version": project.wathe_version,
-                "cca_version": project.cca_version
+                "cca_version": project.cca_version,
+                "ratatouille_version": project.ratatouille_version
     }
 }
 
