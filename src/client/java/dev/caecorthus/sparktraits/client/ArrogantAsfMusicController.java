@@ -1,8 +1,10 @@
 package dev.caecorthus.sparktraits.client;
 
+import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.ArrogantAsfMusicRules;
 import dev.caecorthus.sparktraits.impl.ArrogantAsfTrait;
+import dev.caecorthus.sparktraits.impl.SparkTraitsSounds;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -17,6 +19,7 @@ public final class ArrogantAsfMusicController {
     private static ArrogantAsfMusicInstance music;
     private static boolean paused;
     private static int pausedTicks;
+    private static boolean missingSoundResourceWarned;
 
     private ArrogantAsfMusicController() {
     }
@@ -49,6 +52,9 @@ public final class ArrogantAsfMusicController {
     }
 
     private static void playOrResume(SoundManager soundManager) {
+        if (!hasMusicResource(soundManager)) {
+            return;
+        }
         if (music == null || !soundManager.isPlaying(music)) {
             music = new ArrogantAsfMusicInstance();
             paused = false;
@@ -62,6 +68,22 @@ public final class ArrogantAsfMusicController {
             paused = false;
             pausedTicks = 0;
         }
+    }
+
+    private static boolean hasMusicResource(SoundManager soundManager) {
+        if (soundManager.get(SparkTraitsSounds.MUSIC_TAKEDISKRUSH_ID) != null) {
+            missingSoundResourceWarned = false;
+            return true;
+        }
+
+        if (!missingSoundResourceWarned) {
+            // English: The sound event is registered, but the client resource pack did not expose the sound set.
+            // 中文：声音事件已注册，但客户端资源包没有暴露对应的声音集合。
+            SparkTraits.LOGGER.warn("Missing client sound resource {}. Check assets/sparktraits/sounds.json and the installed client jar.",
+                    SparkTraitsSounds.MUSIC_TAKEDISKRUSH_ID);
+            missingSoundResourceWarned = true;
+        }
+        return false;
     }
 
     private static void pauseOrExpire(SoundManager soundManager) {

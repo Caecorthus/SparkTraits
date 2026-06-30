@@ -22,7 +22,12 @@ public final class SparkTraitsSounds {
     }
 
     public static void register() {
-        // Static initializer performs the registration.
-        // 静态初始化器会完成注册。
+        // English: Keep this explicit so /playsound visibility failures leave a clear startup clue.
+        // 中文：显式校验注册结果，让 /playsound 不可见时启动日志能给出清晰线索。
+        if (!Registries.SOUND_EVENT.containsId(MUSIC_TAKEDISKRUSH_ID)) {
+            SparkTraits.LOGGER.warn("SparkTraits sound event {} was not registered.", MUSIC_TAKEDISKRUSH_ID);
+            return;
+        }
+        SparkTraits.LOGGER.info("Registered SparkTraits sound event {} for /playsound.", MUSIC_TAKEDISKRUSH_ID);
     }
 }

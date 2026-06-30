@@ -15,7 +15,9 @@ public final class ArrogantAsfMusicInstance extends AbstractSoundInstance implem
     private boolean done;
 
     public ArrogantAsfMusicInstance() {
-        super(SparkTraitsSounds.MUSIC_TAKEDISKRUSH, SoundCategory.MUSIC, Random.create());
+        // Match the manual acceptance command: /playsound sparktraits:music.takediskrush ambient @s.
+        // 对齐手动验收命令：/playsound sparktraits:music.takediskrush ambient @s。
+        super(SparkTraitsSounds.MUSIC_TAKEDISKRUSH, SoundCategory.AMBIENT, Random.create());
         this.repeat = true;
         this.repeatDelay = 0;
         this.attenuationType = SoundInstance.AttenuationType.NONE;
