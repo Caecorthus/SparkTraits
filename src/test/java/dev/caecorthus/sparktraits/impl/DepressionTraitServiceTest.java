@@ -5,6 +5,7 @@ import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
+import dev.doctor4t.wathe.game.GameConstants;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.BeforeAll;
@@ -114,6 +115,28 @@ class DepressionTraitServiceTest {
     }
 
     @Test
+    void depressionPsychoFreezesMoodDrainButAllowsRecovery() {
+        assertEquals(1.0f, DepressionTraitService.depressionAdjustedMood(
+                1.0f,
+                0.5f,
+                Set.of(GoodTraits.DEPRESSION),
+                true
+        ), 0.0001f);
+        assertEquals(1.1f, DepressionTraitService.depressionAdjustedMood(
+                1.0f,
+                1.1f,
+                Set.of(GoodTraits.DEPRESSION),
+                true
+        ), 0.0001f);
+        assertEquals(0.5f, DepressionTraitService.depressionAdjustedMood(
+                1.0f,
+                0.5f,
+                Set.of(),
+                true
+        ), 0.0001f);
+    }
+
+    @Test
     void depressionScalesFiniteStaminaAndRecovery() {
         assertEquals(160, DepressionTraitService.depressionStaminaMax(200, true));
         assertEquals(-1, DepressionTraitService.depressionStaminaMax(-1, true));
@@ -187,6 +210,51 @@ class DepressionTraitServiceTest {
         assertFalse(DepressionTraitService.shouldRunSuicideCountdown(0.55f));
         assertTrue(DepressionTraitService.shouldRunSuicideCountdown(0.549f));
         assertTrue(DepressionTraitService.shouldRunSuicideCountdown(0.25f));
+    }
+
+    @Test
+    void suicideCountdownPausesDuringAnyPsychoStateForDepressionOnly() {
+        assertTrue(DepressionTraitService.shouldPauseSuicideCountdown(true, true, false, true, false));
+        assertTrue(DepressionTraitService.shouldPauseSuicideCountdown(true, true, false, false, true));
+        assertTrue(DepressionTraitService.shouldPauseSuicideCountdown(true, true, true, false, false));
+        assertTrue(DepressionTraitService.shouldPauseSuicideCountdown(true, false, false, false, false));
+        assertTrue(DepressionTraitService.shouldPauseSuicideCountdown(false, true, false, true, true));
+        assertFalse(DepressionTraitService.shouldPauseSuicideCountdown(true, true, false, false, false));
+    }
+
+    @Test
+    void mentalBreakdownSuppressionIsScopedToDepressionPsychoOnly() {
+        assertTrue(DepressionTraitService.shouldSuppressMentalBreakdown(
+                true,
+                true,
+                false,
+                GameConstants.DeathReasons.MENTAL_BREAKDOWN
+        ));
+        assertTrue(DepressionTraitService.shouldSuppressMentalBreakdown(
+                true,
+                false,
+                true,
+                GameConstants.DeathReasons.MENTAL_BREAKDOWN
+        ));
+        assertFalse(DepressionTraitService.shouldSuppressMentalBreakdown(
+                false,
+                true,
+                true,
+                GameConstants.DeathReasons.MENTAL_BREAKDOWN
+        ));
+        assertFalse(DepressionTraitService.shouldSuppressMentalBreakdown(
+                true,
+                true,
+                true,
+                GameConstants.DeathReasons.GUN
+        ));
+    }
+
+    @Test
+    void depressionPsychoMoodFloorAndRestoreValueAreStable() {
+        assertEquals(0.0f, DepressionTraitService.depressionPsychoMoodFloor(-1.0f), 0.0001f);
+        assertEquals(0.25f, DepressionTraitService.depressionPsychoMoodFloor(0.25f), 0.0001f);
+        assertEquals(0.7f, DepressionTraitService.depressionPsychoRestoredMood(), 0.0001f);
     }
 
     @Test

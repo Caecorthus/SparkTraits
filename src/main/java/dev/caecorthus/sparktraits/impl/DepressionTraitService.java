@@ -59,6 +59,7 @@ public final class DepressionTraitService {
     public static final float STAMINA_MULTIPLIER = 0.8f;
     public static final float GUARANTEED_TRIGGER_MOOD = -0.20f;
     public static final float FULL_GRAYSCALE_MOOD = 0.0f;
+    public static final float POST_PSYCHO_MOOD = 0.7f;
     public static final double MIN_PSYCHO_COUNTER_CHANCE = 10.0;
     public static final Identifier APPRENTICE_WITCH_ID = Identifier.of("sparkwitch", "apprentice_witch");
     public static final Identifier DEPRESSION_STAMINA_MODIFIER_ID = SparkTraits.id("depression_stamina");
@@ -102,8 +103,22 @@ public final class DepressionTraitService {
     }
 
     public static float depressionAdjustedMood(float currentMood, float proposedMood, Collection<Identifier> traits) {
-        if (traits == null || !traits.contains(GoodTraits.DEPRESSION) || proposedMood >= currentMood) {
+        return depressionAdjustedMood(currentMood, proposedMood, traits, false);
+    }
+
+    public static float depressionAdjustedMood(
+            float currentMood,
+            float proposedMood,
+            Collection<Identifier> traits,
+            boolean depressionPsychoActive
+    ) {
+        if (traits == null
+                || !traits.contains(GoodTraits.DEPRESSION)
+                || proposedMood >= currentMood) {
             return proposedMood;
+        }
+        if (depressionPsychoActive) {
+            return currentMood;
         }
         return currentMood - (currentMood - proposedMood) * MOOD_DRAIN_MULTIPLIER;
     }
@@ -121,6 +136,37 @@ public final class DepressionTraitService {
 
     public static boolean shouldRunSuicideCountdown(float mood) {
         return triggerChance(mood) > 0.0;
+    }
+
+    public static boolean shouldPauseSuicideCountdown(
+            boolean hasDepression,
+            boolean playingAndAlive,
+            boolean pending,
+            boolean depressionPsychoActive,
+            boolean wathePsychoActive
+    ) {
+        // Pause only Depression's own countdown during fake death or psycho windows.
+        // 只暂停抑郁自己的倒计时；假死或疯魔窗口内不推进自毁判定。
+        return !hasDepression || !playingAndAlive || pending || depressionPsychoActive || wathePsychoActive;
+    }
+
+    public static boolean shouldSuppressMentalBreakdown(
+            boolean hasDepression,
+            boolean depressionPsychoActive,
+            boolean wathePsychoActive,
+            Identifier deathReason
+    ) {
+        return hasDepression
+                && (depressionPsychoActive || wathePsychoActive)
+                && GameConstants.DeathReasons.MENTAL_BREAKDOWN.equals(deathReason);
+    }
+
+    public static float depressionPsychoMoodFloor(float mood) {
+        return Math.max(mood, FULL_GRAYSCALE_MOOD);
+    }
+
+    public static float depressionPsychoRestoredMood() {
+        return POST_PSYCHO_MOOD;
     }
 
     public static float depressionScreenEffectStrength(boolean hasDepression, boolean psychoActive, float mood) {
@@ -276,6 +322,19 @@ public final class DepressionTraitService {
         return player != null && activePlayers.containsKey(player.getUuid());
     }
 
+    public static boolean isWathePsychoActive(net.minecraft.entity.player.PlayerEntity player) {
+        return player != null && PlayerPsychoComponent.KEY.get(player).getPsychoTicks() > 0;
+    }
+
+    public static boolean shouldSuppressMentalBreakdown(net.minecraft.entity.player.PlayerEntity player, Identifier deathReason) {
+        return shouldSuppressMentalBreakdown(
+                player != null && TraitPlayerComponent.KEY.get(player).hasActiveTrait(GoodTraits.DEPRESSION),
+                isPsychoActive(player),
+                isWathePsychoActive(player),
+                deathReason
+        );
+    }
+
     public static KillPlayer.KillResult beforeKill(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer, Identifier deathReason) {
         if (forceMentalBreakdownDeaths.remove(victim.getUuid())) {
             return null;
@@ -313,11 +372,11 @@ public final class DepressionTraitService {
         if (killer != null) {
             ActiveState killerState = activePlayers.get(killer.getUuid());
             if (killerState != null && killerState.attackerUuid().equals(victim.getUuid())) {
-                endPsycho(killer, true);
+                endPsycho(killer, true, true);
             }
         }
         if (activePlayers.containsKey(victim.getUuid())) {
-            endPsycho(victim, false);
+            endPsycho(victim, false, false);
         }
         clearPending(victim);
     }
@@ -325,7 +384,7 @@ public final class DepressionTraitService {
     public static void clearPlayer(ServerPlayerEntity player) {
         clearPending(player);
         if (activePlayers.containsKey(player.getUuid())) {
-            endPsycho(player, false);
+            endPsycho(player, false, false);
         }
         TraitPlayerComponent.KEY.get(player).setDepressionSuicideTicks(-1);
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(false, null);
@@ -340,7 +399,7 @@ public final class DepressionTraitService {
         }
         for (UUID uuid : Set.copyOf(activePlayers.keySet())) {
             if (world.getPlayerByUuid(uuid) instanceof ServerPlayerEntity player) {
-                endPsycho(player, false);
+                endPsycho(player, false, false);
             }
         }
         pendingPlayers.clear();
@@ -375,10 +434,12 @@ public final class DepressionTraitService {
                 continue;
             }
             TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
-            if (!traits.hasActiveTrait(GoodTraits.DEPRESSION)
-                    || !GameFunctions.isPlayerPlayingAndAlive(player)
-                    || isPending(player)
-                    || isPsychoActive(player)) {
+            if (shouldPauseSuicideCountdown(
+                    traits.hasActiveTrait(GoodTraits.DEPRESSION),
+                    GameFunctions.isPlayerPlayingAndAlive(player),
+                    isPending(player),
+                    isPsychoActive(player),
+                    isWathePsychoActive(player))) {
                 traits.setDepressionSuicideTicks(-1);
                 continue;
             }
@@ -430,7 +491,7 @@ public final class DepressionTraitService {
             }
             ServerPlayerEntity attacker = world.getServer().getPlayerManager().getPlayer(state.attackerUuid());
             if (attacker == null || !GameFunctions.isPlayerPlayingAndAlive(attacker)) {
-                endPsycho(player, true);
+                endPsycho(player, true, true);
                 continue;
             }
             maintainPsycho(player, attacker);
@@ -541,7 +602,7 @@ public final class DepressionTraitService {
         }
     }
 
-    private static void endPsycho(ServerPlayerEntity player, boolean restoreInventory) {
+    private static void endPsycho(ServerPlayerEntity player, boolean restoreInventory, boolean restoreMoodIfSurvived) {
         ActiveState state = activePlayers.remove(player.getUuid());
         if (state == null) {
             return;
@@ -551,11 +612,23 @@ public final class DepressionTraitService {
             state.inventory().restore(player);
         }
         restorePostPsychoStamina(player);
+        restorePostPsychoMood(player, restoreMoodIfSurvived);
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(false, null);
         ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
         if (attacker != null) {
             TraitPlayerComponent.KEY.get(attacker).setDepressionCounterTarget(null);
         }
+    }
+
+    private static void restorePostPsychoMood(ServerPlayerEntity player, boolean restoreMoodIfSurvived) {
+        if (!restoreMoodIfSurvived || !GameFunctions.isPlayerPlayingAndAlive(player)) {
+            return;
+        }
+        // Successful Depression psycho exits at a stable sanity value instead of preserving crisis mood.
+        // 抑郁疯魔成功结束后固定恢复到稳定理智值，而不是保留濒临崩溃的理智。
+        PlayerMoodComponent mood = PlayerMoodComponent.KEY.get(player);
+        mood.setMood(depressionPsychoRestoredMood());
+        mood.sync();
     }
 
     private static void restorePostPsychoStamina(ServerPlayerEntity player) {
