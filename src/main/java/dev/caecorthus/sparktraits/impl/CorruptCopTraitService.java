@@ -16,7 +16,7 @@ import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
  */
 public final class CorruptCopTraitService {
     public static final int ARROGANT_ASF_COLOR = 0x193264;
-    public static final float ARROGANT_ASF_LATERAL_SPEED_MULTIPLIER = 1.5f;
+    public static final float ARROGANT_ASF_LATERAL_SPEED_MULTIPLIER = 1.75f;
     private static final double NORMALIZED_MOVEMENT_INPUT_EPSILON = 1.0E-7d;
 
     private CorruptCopTraitService() {

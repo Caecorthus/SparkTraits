@@ -17,7 +17,7 @@
   "trait.sparktraits.pig.name": "Pig",
   "trait.sparktraits.pig.description": "You have a pig body with your own head.",
   "trait.sparktraits.arrogant_asf.name": "Arrogant ASF",
-  "trait.sparktraits.arrogant_asf.description": "Use your ability key to toggle 1.5x lateral movement speed.",
+  "trait.sparktraits.arrogant_asf.description": "Use your ability key to toggle 1.75x lateral movement speed.",
   "tip.sparktraits.arrogant_asf.active": "Arrogant ASF: ON (%s to turn off)",
   "tip.sparktraits.arrogant_asf.inactive": "Arrogant ASF: OFF (%s to turn on)",
   "subtitle.sparktraits.music.takediskrush": "TAKEDISKRUSH plays.",
