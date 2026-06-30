@@ -98,6 +98,12 @@ class LastStandServiceTest {
     }
 
     @Test
+    void pendingStateCancelsRoundEndFinalization() {
+        assertTrue(LastStandService.shouldCancelRoundEndFinalization(true));
+        assertFalse(LastStandService.shouldCancelRoundEndFinalization(false));
+    }
+
+    @Test
     void roundScopedTriggerStateKeepsFinalMomentQualificationWhenRuntimeSetIsCleared() {
         assertTrue(LastStandService.hasTriggeredThisRound(false, true));
         assertTrue(LastStandService.hasTriggeredThisRound(true, false));
@@ -112,6 +118,23 @@ class LastStandServiceTest {
         assertTrue(source.contains("lastStandTriggeredPlayers.clear();"));
         assertTrue(source.contains("markLastStandTriggered(UUID playerUuid)"));
         assertTrue(source.contains("hasLastStandTriggered(UUID playerUuid)"));
+    }
+
+    @Test
+    void roundEndFallbackCancelsBeforeWinAnnouncement() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/mixin/MurderGameModeMixin.java"));
+
+        int guard = source.indexOf("sparktraits$cancelPendingLastStandRoundEnd");
+        int eventTarget = source.indexOf("GameEvents$OnWinDetermined;onWinDetermined");
+        int cancel = source.indexOf("ci.cancel()");
+
+        assertTrue(guard >= 0);
+        assertTrue(source.contains("cancellable = true"));
+        assertTrue(eventTarget >= 0);
+        assertTrue(source.contains("LastStandService.hasPendingInWorld(serverWorld)"));
+        assertTrue(source.contains("EffectiveTraitService.killUnsupportedImpostorsIfNoRealKillers(serverWorld, gameWorldComponent);"));
+        assertTrue(cancel > guard);
+        assertFalse(source.contains("GameWorldComponent;getGameStatus()Ldev/doctor4t/wathe/cca/GameWorldComponent$GameStatus;"));
     }
 
     @Test

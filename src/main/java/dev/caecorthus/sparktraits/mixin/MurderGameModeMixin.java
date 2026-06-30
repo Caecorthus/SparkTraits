@@ -7,7 +7,6 @@ import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.caecorthus.sparktraits.impl.TraitAssignmentService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.ScoreboardRoleSelectorComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.game.gamemode.MurderGameMode;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -80,29 +79,6 @@ public abstract class MurderGameModeMixin {
         return ConscienceSerialKillerService.shouldReceiveKillerPassiveMoney(gameComponent, player);
     }
 
-    @Redirect(
-            method = "tickServerGameLoop",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;getGameStatus()Ldev/doctor4t/wathe/cca/GameWorldComponent$GameStatus;"
-            )
-    )
-    private GameWorldComponent.GameStatus sparktraits$blockPendingLastStandRoundEnd(
-            GameWorldComponent gameComponent,
-            ServerWorld serverWorld,
-            GameWorldComponent loopGameComponent
-    ) {
-        GameWorldComponent.GameStatus status = gameComponent.getGameStatus();
-        if (status == GameWorldComponent.GameStatus.ACTIVE
-                && LastStandService.shouldBlockRoundEnd(
-                LastStandService.hasPendingInWorld(serverWorld),
-                GameFunctions.WinStatus.NEUTRAL
-        )) {
-            return GameWorldComponent.GameStatus.INACTIVE;
-        }
-        return status;
-    }
-
     @Inject(method = "tickServerGameLoop", at = @At("RETURN"))
     private void sparktraits$selfRealizeUnsupportedImpostors(
             ServerWorld serverWorld,
@@ -112,5 +88,26 @@ public abstract class MurderGameModeMixin {
         // Run after other win-condition hooks so neutral blockers can keep the round alive first.
         // 在其他胜利判定钩子之后运行，让中立阻塞者先正常阻止回合结束。
         EffectiveTraitService.killUnsupportedImpostorsIfNoRealKillers(serverWorld, gameWorldComponent);
+    }
+
+    @Inject(
+            method = "tickServerGameLoop",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/doctor4t/wathe/api/event/GameEvents$OnWinDetermined;onWinDetermined(Lnet/minecraft/server/world/ServerWorld;Ldev/doctor4t/wathe/cca/GameWorldComponent;Ldev/doctor4t/wathe/game/GameFunctions$WinStatus;Lnet/minecraft/server/network/ServerPlayerEntity;)V"
+            ),
+            cancellable = true
+    )
+    private void sparktraits$cancelPendingLastStandRoundEnd(
+            ServerWorld serverWorld,
+            GameWorldComponent gameWorldComponent,
+            CallbackInfo ci
+    ) {
+        // Cancel before Wathe announces and stores a winner; event ordering may already have skipped our blocker.
+        // 在 wathe 宣布并写入胜利者前取消；事件顺序可能已经跳过了亡命徒阻止器。
+        if (LastStandService.shouldCancelRoundEndFinalization(LastStandService.hasPendingInWorld(serverWorld))) {
+            EffectiveTraitService.killUnsupportedImpostorsIfNoRealKillers(serverWorld, gameWorldComponent);
+            ci.cancel();
+        }
     }
 }

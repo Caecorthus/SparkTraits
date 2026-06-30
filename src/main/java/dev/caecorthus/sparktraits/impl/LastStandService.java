@@ -265,6 +265,12 @@ public final class LastStandService {
         return pendingInWorld && winStatus != GameFunctions.WinStatus.NONE;
     }
 
+    public static boolean shouldCancelRoundEndFinalization(boolean pendingInWorld) {
+        // The mixin calls this only after Wathe has a real winner ready to announce.
+        // Mixin 只会在 wathe 已经准备宣布真实胜利时调用这里。
+        return pendingInWorld;
+    }
+
     public static int pendingSpectatorHighlightColor(
             boolean canSeeSpectatorInformation,
             boolean instinctEnabled,
