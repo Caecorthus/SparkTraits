@@ -18,6 +18,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
+import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import org.agmas.noellesroles.morphling.MorphlingPlayerComponent;
 import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
 
@@ -642,9 +643,20 @@ public final class EffectiveTraitService {
             GameFunctions.WinStatus proposedWinStatus,
             Collection<Role> livingRoles
     ) {
+        return shouldDeferTeamWinForBlockingNeutral(proposedWinStatus, livingRoles, false);
+    }
+
+    public static boolean shouldDeferTeamWinForBlockingNeutral(
+            GameFunctions.WinStatus proposedWinStatus,
+            Collection<Role> livingRoles,
+            boolean noellesJesterBlocksTeamWin
+    ) {
         if (proposedWinStatus != GameFunctions.WinStatus.KILLERS
                 && proposedWinStatus != GameFunctions.WinStatus.PASSENGERS) {
             return false;
+        }
+        if (noellesJesterBlocksTeamWin) {
+            return true;
         }
         if (livingRoles == null) {
             return false;
@@ -658,7 +670,22 @@ public final class EffectiveTraitService {
     }
 
     private static boolean isBlockingTeamWinNeutral(Role role) {
-        return role != null && SPARKWITCH_MURDEROUS_WITCH_ID.equals(role.identifier());
+        return role != null
+                && (SPARKWITCH_MURDEROUS_WITCH_ID.equals(role.identifier())
+                || Noellesroles.CORRUPT_COP_ID.equals(role.identifier())
+                || Noellesroles.TAOTIE_ID.equals(role.identifier()));
+    }
+
+    /** Mirrors NoellesRoles' Jester blocker without making ordinary Jester block team wins.
+     *  同步 NoellesRoles 的小丑阻止规则，但普通小丑不会阻止队伍胜利。 */
+    public static boolean shouldDeferTeamWinForNoellesJester(
+            Role role,
+            boolean inPsychoMode,
+            boolean transitioning
+    ) {
+        return role != null
+                && Noellesroles.JESTER_ID.equals(role.identifier())
+                && (inPsychoMode || transitioning);
     }
 
     public static Role.MoodType effectiveMoodType(PlayerEntity player, Role role) {
@@ -806,6 +833,7 @@ public final class EffectiveTraitService {
         List<Role> livingRoles = new ArrayList<>();
         boolean realKillerAlive = false;
         boolean effectiveCivilianAlive = false;
+        boolean noellesJesterBlocksTeamWin = false;
 
         for (ServerPlayerEntity player : players) {
             if (!GameFunctions.isPlayerPlayingAndAlive(player) || !gameComponent.hasAnyRole(player)) {
@@ -814,6 +842,12 @@ public final class EffectiveTraitService {
             Role role = gameComponent.getRole(player);
             Collection<Identifier> traits = TraitPlayerComponent.KEY.get(player).getActiveTraitIds();
             livingRoles.add(role);
+            if (role != null && Noellesroles.JESTER_ID.equals(role.identifier())) {
+                JesterPlayerComponent jester = JesterPlayerComponent.KEY.get(player);
+                if (shouldDeferTeamWinForNoellesJester(role, jester.inPsychoMode, jester.isTransitioning())) {
+                    noellesJesterBlocksTeamWin = true;
+                }
+            }
             if (isOriginalKiller(role) && !hasConscience(traits)) {
                 realKillerAlive = true;
             }
@@ -824,13 +858,13 @@ public final class EffectiveTraitService {
 
         if (!realKillerAlive) {
             killUnsupportedImpostors(players, gameComponent, false);
-            if (shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.PASSENGERS, livingRoles)) {
+            if (shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.PASSENGERS, livingRoles, noellesJesterBlocksTeamWin)) {
                 return null;
             }
             return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.PASSENGERS);
         }
         if (!effectiveCivilianAlive) {
-            if (shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.KILLERS, livingRoles)) {
+            if (shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.KILLERS, livingRoles, noellesJesterBlocksTeamWin)) {
                 return null;
             }
             return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.KILLERS);

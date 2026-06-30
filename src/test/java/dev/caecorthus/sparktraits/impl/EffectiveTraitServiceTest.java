@@ -93,7 +93,7 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
-    void murderousWitchDefersOnlyOrdinaryTeamWins() {
+    void blockingNeutralsDeferOnlyOrdinaryTeamWins() {
         Role murderousWitch = sparkWitchRole("murderous_witch");
 
         assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
@@ -104,13 +104,80 @@ class EffectiveTraitServiceTest {
                 GameFunctions.WinStatus.KILLERS,
                 List.of(murderousWitch)
         ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(Noellesroles.CORRUPT_COP)
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.KILLERS,
+                List.of(Noellesroles.CORRUPT_COP)
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(Noellesroles.TAOTIE)
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.KILLERS,
+                List.of(Noellesroles.TAOTIE)
+        ));
         assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
                 GameFunctions.WinStatus.TIME,
                 List.of(murderousWitch)
         ));
         assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.TIME,
+                List.of(Noellesroles.CORRUPT_COP, Noellesroles.TAOTIE)
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.NONE,
+                List.of(Noellesroles.CORRUPT_COP, Noellesroles.TAOTIE)
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
                 GameFunctions.WinStatus.PASSENGERS,
                 List.of(WatheRoles.CIVILIAN, sparkWitchRole("grand_witch"))
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(Noellesroles.JESTER)
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(Noellesroles.JESTER),
+                true
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.KILLERS,
+                List.of(Noellesroles.JESTER),
+                true
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.TIME,
+                List.of(Noellesroles.JESTER),
+                true
+        ));
+    }
+
+    @Test
+    void noellesJesterDefersOnlyDuringMomentOrTransition() {
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForNoellesJester(
+                Noellesroles.JESTER,
+                false,
+                false
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForNoellesJester(
+                Noellesroles.JESTER,
+                true,
+                false
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForNoellesJester(
+                Noellesroles.JESTER,
+                false,
+                true
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForNoellesJester(
+                Noellesroles.CORRUPT_COP,
+                true,
+                true
         ));
     }
 
