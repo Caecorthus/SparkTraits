@@ -92,7 +92,7 @@ class PigTraitTest {
         String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/PigTraitService.java"));
 
         assertEquals(0.6F, PigTraitService.PIG_COLLISION_WIDTH);
-        assertEquals(1.2F, PigTraitService.PIG_COLLISION_HEIGHT);
+        assertEquals(1.6F, PigTraitService.PIG_COLLISION_HEIGHT);
         assertEquals(PigTraitService.PIG_COLLISION_WIDTH, dimensions.width());
         assertEquals(PigTraitService.PIG_COLLISION_HEIGHT, dimensions.height());
         assertFalse(source.contains("EntityType.PIG.getDimensions()"));
