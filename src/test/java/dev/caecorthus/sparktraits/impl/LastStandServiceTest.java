@@ -138,12 +138,49 @@ class LastStandServiceTest {
     }
 
     @Test
-    void spectatorInstinctCanStillHighlightPendingLastStandPlayer() {
-        assertEquals(WatheRoles.KILLER.color(), LastStandService.pendingSpectatorHighlightColor(true, true, true, WatheRoles.KILLER));
-        assertEquals(WatheRoles.CIVILIAN.color(), LastStandService.pendingSpectatorHighlightColor(true, true, true, null));
-        assertEquals(-1, LastStandService.pendingSpectatorHighlightColor(false, true, true, WatheRoles.KILLER));
-        assertEquals(-1, LastStandService.pendingSpectatorHighlightColor(true, false, true, WatheRoles.KILLER));
-        assertEquals(-1, LastStandService.pendingSpectatorHighlightColor(true, true, false, WatheRoles.KILLER));
+    void spectatorInstinctCanStillHighlightLastStandPlayer() {
+        assertEquals(WatheRoles.KILLER.color(), LastStandService.spectatorLastStandHighlightColor(
+                true,
+                true,
+                true,
+                false,
+                WatheRoles.KILLER
+        ));
+        assertEquals(WatheRoles.CIVILIAN.color(), LastStandService.spectatorLastStandHighlightColor(
+                true,
+                true,
+                true,
+                false,
+                null
+        ));
+        assertEquals(WatheRoles.CIVILIAN.color(), LastStandService.spectatorLastStandHighlightColor(
+                true,
+                true,
+                false,
+                true,
+                WatheRoles.CIVILIAN
+        ));
+        assertEquals(-1, LastStandService.spectatorLastStandHighlightColor(
+                false,
+                true,
+                true,
+                false,
+                WatheRoles.KILLER
+        ));
+        assertEquals(-1, LastStandService.spectatorLastStandHighlightColor(
+                true,
+                false,
+                true,
+                false,
+                WatheRoles.KILLER
+        ));
+        assertEquals(-1, LastStandService.spectatorLastStandHighlightColor(
+                true,
+                true,
+                false,
+                false,
+                WatheRoles.KILLER
+        ));
     }
 
     @Test

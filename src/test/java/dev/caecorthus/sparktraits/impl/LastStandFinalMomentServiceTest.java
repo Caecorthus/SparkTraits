@@ -6,6 +6,9 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.util.Identifier;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -218,6 +221,25 @@ class LastStandFinalMomentServiceTest {
     void finalMomentLastStandLooseEndUsesPassengerHighlightColor() {
         assertEquals(0x36E51B, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END, true));
         assertEquals(0xB567FF, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END, false));
+    }
+
+    @Test
+    void finalMomentClientHighlightRunsBeforeHiddenInstinctSkip() throws IOException {
+        String source = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/mixin/WatheClientMixin.java"));
+
+        int finalMoment = source.indexOf("traitWorld.isFinalMomentActive()");
+        int hiddenSkip = source.indexOf("EffectiveTraitService.isHiddenFromKillerInstinct(playerTarget)");
+
+        assertTrue(finalMoment >= 0);
+        assertTrue(hiddenSkip >= 0);
+        assertTrue(finalMoment < hiddenSkip);
+    }
+
+    @Test
+    void finalMomentClientEventPriorityBeatsSkipTie() throws IOException {
+        String source = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/SparkTraitsClient.java"));
+
+        assertTrue(source.contains("GetInstinctHighlight.HighlightResult.PRIORITY_HIGH + 1"));
     }
 
     @Test

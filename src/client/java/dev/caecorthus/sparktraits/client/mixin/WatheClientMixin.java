@@ -1,10 +1,12 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.ConscienceSerialKillerService;
 import dev.caecorthus.sparktraits.impl.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
 import dev.doctor4t.wathe.api.Role;
@@ -59,13 +61,28 @@ public abstract class WatheClientMixin {
 
         GameWorldComponent game = playerTarget == null ? null : GameWorldComponent.KEY.get(viewer.getWorld());
         TraitPlayerComponent targetTraits = playerTarget == null ? null : TraitPlayerComponent.KEY.get(playerTarget);
+        if (playerTarget != null) {
+            TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(viewer.getWorld());
+            if (traitWorld.isFinalMomentActive()
+                    && game.hasAnyRole(playerTarget)
+                    && GameFunctions.isPlayerPlayingAndAlive(playerTarget)) {
+                // Final Moment must beat Last Stand's normal killer-instinct hiding.
+                // 终局时刻必须优先于背水一战的普通杀手本能隐藏。
+                cir.setReturnValue(LastStandFinalMomentService.finalMomentHighlightColor(
+                        game.getRole(playerTarget),
+                        traitWorld.isFinalMomentLooseEnd(playerTarget.getUuid())
+                ));
+                return;
+            }
+        }
         if (WatheClient.canSeeSpectatorInformation()) {
-            // Last Stand pending players are fake-dead spectators, so vanilla spectator instinct needs a bypass.
-            // 背水一战等待复活的玩家处于假死旁观状态，因此原版旁观透视需要单独放行。
-            int highlight = LastStandService.pendingSpectatorHighlightColor(
+            // Last Stand targets can be hidden while pending or after revival, so spectator instinct needs a bypass.
+            // 背水一战目标在等待复活或复活后都可能被隐藏，因此旁观透视需要单独放行。
+            int highlight = LastStandService.spectatorLastStandHighlightColor(
                     true,
                     WatheClient.isInstinctEnabled(),
                     targetTraits != null && targetTraits.isLastStandPending(),
+                    targetTraits != null && targetTraits.isKillerInstinctHidden(),
                     game == null ? null : game.getRole(playerTarget)
             );
             if (highlight != -1) {

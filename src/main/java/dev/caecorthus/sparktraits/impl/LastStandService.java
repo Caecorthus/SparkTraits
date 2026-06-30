@@ -277,7 +277,23 @@ public final class LastStandService {
             boolean lastStandPending,
             @Nullable Role targetRole
     ) {
-        if (!canSeeSpectatorInformation || !instinctEnabled || !lastStandPending) {
+        return spectatorLastStandHighlightColor(
+                canSeeSpectatorInformation,
+                instinctEnabled,
+                lastStandPending,
+                false,
+                targetRole
+        );
+    }
+
+    public static int spectatorLastStandHighlightColor(
+            boolean canSeeSpectatorInformation,
+            boolean instinctEnabled,
+            boolean lastStandPending,
+            boolean killerInstinctHidden,
+            @Nullable Role targetRole
+    ) {
+        if (!canSeeSpectatorInformation || !instinctEnabled || (!lastStandPending && !killerInstinctHidden)) {
             return -1;
         }
         return Objects.requireNonNullElse(targetRole, WatheRoles.CIVILIAN).color();

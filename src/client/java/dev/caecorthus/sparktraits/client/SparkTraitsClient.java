@@ -51,7 +51,7 @@ public class SparkTraitsClient implements ClientModInitializer {
                             role,
                             traitWorld.isFinalMomentLooseEnd(targetPlayer.getUuid())
                     ),
-                    GetInstinctHighlight.HighlightResult.PRIORITY_HIGH
+                    GetInstinctHighlight.HighlightResult.PRIORITY_HIGH + 1
             );
         });
     }
