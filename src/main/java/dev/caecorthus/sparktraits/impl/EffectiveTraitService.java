@@ -40,6 +40,8 @@ public final class EffectiveTraitService {
     public static final double CONSCIENCE_INSTINCT_RANGE_SQUARED = 100.0;
     public static final int TASK_MONEY_REWARD = 50;
     public static final Identifier SELF_REALIZATION = SparkTraits.id("self_realization");
+    private static final Identifier SPARKWITCH_GRAND_WITCH_ID = Identifier.of("sparkwitch", "grand_witch");
+    private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
     private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
     private static final Map<UUID, Identifier> poisonSources = new HashMap<>();
 
@@ -637,8 +639,8 @@ public final class EffectiveTraitService {
         };
     }
 
-    /** Defers ordinary team wins so downstream neutral blockers can resolve their own win hooks.
-     *  延后普通队伍胜利，让后续中立阻塞角色用自己的胜利钩子结算。 */
+    /** Defers ordinary team wins so downstream blockers and custom faction wins can resolve their hooks.
+     *  延后普通队伍胜利，让后续阻塞角色与自定义阵营胜利用自己的钩子结算。 */
     public static boolean shouldDeferTeamWinForBlockingNeutral(
             GameFunctions.WinStatus proposedWinStatus,
             Collection<Role> livingRoles
@@ -671,7 +673,9 @@ public final class EffectiveTraitService {
 
     private static boolean isBlockingTeamWinNeutral(Role role) {
         return role != null
-                && (SPARKWITCH_MURDEROUS_WITCH_ID.equals(role.identifier())
+                && (SPARKWITCH_GRAND_WITCH_ID.equals(role.identifier())
+                || SPARKWITCH_ACCOMPLICE_ID.equals(role.identifier())
+                || SPARKWITCH_MURDEROUS_WITCH_ID.equals(role.identifier())
                 || Noellesroles.CORRUPT_COP_ID.equals(role.identifier())
                 || Noellesroles.TAOTIE_ID.equals(role.identifier()));
     }

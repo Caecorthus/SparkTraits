@@ -132,9 +132,33 @@ class EffectiveTraitServiceTest {
                 GameFunctions.WinStatus.NONE,
                 List.of(Noellesroles.CORRUPT_COP, Noellesroles.TAOTIE)
         ));
-        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
                 GameFunctions.WinStatus.PASSENGERS,
                 List.of(WatheRoles.CIVILIAN, sparkWitchRole("grand_witch"))
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.KILLERS,
+                List.of(WatheRoles.KILLER, sparkWitchRole("grand_witch"))
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(sparkWitchRole("accomplice"))
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.KILLERS,
+                List.of(sparkWitchRole("accomplice"))
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.TIME,
+                List.of(sparkWitchRole("grand_witch"), sparkWitchRole("accomplice"))
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.NONE,
+                List.of(sparkWitchRole("grand_witch"), sparkWitchRole("accomplice"))
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(sparkWitchRole("apprentice_witch"), sparkWitchRole("pig_god"))
         ));
         assertFalse(EffectiveTraitService.shouldDeferTeamWinForBlockingNeutral(
                 GameFunctions.WinStatus.PASSENGERS,
