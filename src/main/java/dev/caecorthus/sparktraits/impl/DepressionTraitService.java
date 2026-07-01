@@ -67,6 +67,8 @@ public final class DepressionTraitService {
     public static final double MIN_PSYCHO_COUNTER_CHANCE = 10.0;
     public static final int JESTER_MOMENT_PSYCHO_ARMOUR = 2;
     public static final int RAGE_LOOP_INTERVAL_TICKS = 1121;
+    public static final int DEPRESSION_PSYCHO_SPEED_DURATION_TICKS = Integer.MAX_VALUE;
+    public static final int DEPRESSION_PSYCHO_SPEED_AMPLIFIER = 1;
     public static final Identifier APPRENTICE_WITCH_ID = Identifier.of("sparkwitch", "apprentice_witch");
     public static final Identifier DEPRESSION_STAMINA_MODIFIER_ID = SparkTraits.id("depression_stamina");
     public static final double DEPRESSION_STAMINA_MODIFIER_VALUE = -0.2;
@@ -628,6 +630,7 @@ public final class DepressionTraitService {
         state.effects().restore(player);
         player.teleport(player.getServerWorld(), state.deathPos().x, state.deathPos().y, state.deathPos().z, Set.of(), state.deathYaw(), state.deathPitch());
 
+        StatusEffectInstance prePsychoSpeed = copyStatusEffect(player.getStatusEffect(StatusEffects.SPEED));
         InventorySnapshot inventory = InventorySnapshot.capture(player);
         clearInventory(player);
         PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
@@ -644,7 +647,8 @@ public final class DepressionTraitService {
                 state.attackerUuid(),
                 inventory,
                 Math.max(0, state.initialArmour()),
-                RAGE_LOOP_INTERVAL_TICKS
+                RAGE_LOOP_INTERVAL_TICKS,
+                prePsychoSpeed
         );
         activePlayers.put(player.getUuid(), activeState);
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(true, state.attackerUuid());
@@ -669,6 +673,7 @@ public final class DepressionTraitService {
         if (psycho.getArmour() != maintainedArmour) {
             psycho.setArmour(maintainedArmour);
         }
+        applyPsychoSpeed(player);
         enforceBatOnly(player);
         PlayerStaminaComponent stamina = PlayerStaminaComponent.KEY.get(player);
         stamina.setMaxSprintTime(-1);
@@ -692,6 +697,7 @@ public final class DepressionTraitService {
         if (restoreInventory) {
             state.inventory().restore(player);
         }
+        restorePrePsychoSpeed(player, state.prePsychoSpeed());
         restorePostPsychoStamina(player);
         restorePostPsychoMood(player, restoreMoodIfSurvived);
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(false, null);
@@ -770,6 +776,31 @@ public final class DepressionTraitService {
         player.currentScreenHandler.sendContentUpdates();
     }
 
+    private static void applyPsychoSpeed(ServerPlayerEntity player) {
+        StatusEffectInstance speed = player.getStatusEffect(StatusEffects.SPEED);
+        if (speed != null
+                && speed.getAmplifier() > DEPRESSION_PSYCHO_SPEED_AMPLIFIER) {
+            return;
+        }
+        // English: Depression psycho owns a persistent Speed II layer until endPsycho restores/clears it.
+        // 中文：抑郁疯魔期间由本状态维持一层永久速度 II，并在 endPsycho 时恢复或清除。
+        player.addStatusEffect(new StatusEffectInstance(
+                StatusEffects.SPEED,
+                DEPRESSION_PSYCHO_SPEED_DURATION_TICKS,
+                DEPRESSION_PSYCHO_SPEED_AMPLIFIER,
+                false,
+                false,
+                true
+        ));
+    }
+
+    private static void restorePrePsychoSpeed(ServerPlayerEntity player, @Nullable StatusEffectInstance prePsychoSpeed) {
+        player.removeStatusEffect(StatusEffects.SPEED);
+        if (prePsychoSpeed != null && GameFunctions.isPlayerPlayingAndAlive(player)) {
+            player.addStatusEffect(new StatusEffectInstance(prePsychoSpeed));
+        }
+    }
+
     private static ActiveState tickRageLoop(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state) {
         // English: Replay blind-rage chase on the audio-length cadence for the two chase participants only.
         // 中文：按 blind-rage chase 音频长度周期重播，并且只播放给追逐双方。
@@ -807,6 +838,10 @@ public final class DepressionTraitService {
         return role != null && role.identifier().equals(id);
     }
 
+    private static @Nullable StatusEffectInstance copyStatusEffect(@Nullable StatusEffectInstance effect) {
+        return effect == null ? null : new StatusEffectInstance(effect);
+    }
+
     private static double linearChance(float mood, float startMood, float fullMood, double startChance, double fullChance) {
         if (mood >= startMood) {
             return startChance;
@@ -837,10 +872,11 @@ public final class DepressionTraitService {
             UUID attackerUuid,
             InventorySnapshot inventory,
             int maxArmour,
-            int rageLoopTicks
+            int rageLoopTicks,
+            @Nullable StatusEffectInstance prePsychoSpeed
     ) {
         ActiveState withRageLoopTicks(int ticks) {
-            return new ActiveState(playerUuid, attackerUuid, inventory, maxArmour, ticks);
+            return new ActiveState(playerUuid, attackerUuid, inventory, maxArmour, ticks, prePsychoSpeed);
         }
     }
 

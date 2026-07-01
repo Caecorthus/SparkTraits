@@ -305,6 +305,18 @@ class DepressionTraitServiceTest {
     }
 
     @Test
+    void depressionPsychoMaintainsPermanentSpeedTwoAndClearsItOnExit() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
+
+        assertEquals(Integer.MAX_VALUE, DepressionTraitService.DEPRESSION_PSYCHO_SPEED_DURATION_TICKS);
+        assertEquals(1, DepressionTraitService.DEPRESSION_PSYCHO_SPEED_AMPLIFIER);
+        assertTrue(source.contains("applyPsychoSpeed(player);"));
+        assertTrue(source.contains("restorePrePsychoSpeed(player, state.prePsychoSpeed());"));
+        assertTrue(source.contains("player.removeStatusEffect(StatusEffects.SPEED);"));
+        assertTrue(source.contains("StatusEffects.SPEED"));
+    }
+
+    @Test
     void depressionMeleeKillSoundIsSelectedFromTwoSeparateEvents() throws IOException {
         String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
 
