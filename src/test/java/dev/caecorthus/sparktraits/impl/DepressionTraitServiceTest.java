@@ -282,6 +282,25 @@ class DepressionTraitServiceTest {
     }
 
     @Test
+    void depressionPsychoSkinMixinOverridesPlayerTextureAndArmSkin() throws IOException {
+        String source = Files.readString(Path.of(
+                "src/client/java/dev/caecorthus/sparktraits/client/mixin/DepressionPsychoSkinMixin.java"
+        ));
+
+        assertTrue(source.contains("ModifyReturnValue"));
+        assertTrue(source.contains("@At(\"RETURN\")"));
+        assertTrue(source.contains("Identifier originalTexture"));
+        assertTrue(source.contains("return texture == null ? originalTexture : texture;"));
+        assertTrue(source.contains("@WrapOperation("));
+        assertTrue(source.contains("method = \"renderArm\""));
+        assertTrue(source.contains("getSkinTextures()Lnet/minecraft/client/util/SkinTextures;"));
+        assertTrue(source.contains("return new SkinTextures("));
+        assertTrue(source.contains("textures/entity/depression_psycho"));
+        assertFalse(source.contains("cancellable = true"));
+        assertFalse(source.contains("@At(\"HEAD\")"));
+    }
+
+    @Test
     void activeJesterMomentKillAddsOnlyInitialDepressionPsychoArmour() {
         assertEquals(2, DepressionTraitService.initialPsychoArmour(Noellesroles.JESTER, true));
         assertEquals(0, DepressionTraitService.initialPsychoArmour(Noellesroles.JESTER, false));
