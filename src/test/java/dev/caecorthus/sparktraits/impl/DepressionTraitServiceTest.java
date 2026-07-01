@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -192,6 +193,15 @@ class DepressionTraitServiceTest {
     }
 
     @Test
+    void activePsychoEndsWhenTrackedTargetDies() {
+        UUID target = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID other = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
+        assertTrue(DepressionTraitService.shouldEndActivePsychoForDeadTarget(target, target));
+        assertFalse(DepressionTraitService.shouldEndActivePsychoForDeadTarget(other, target));
+    }
+
+    @Test
     void postPsychoStaminaRestoresFullFiniteStaminaAndKeepsInfiniteStamina() {
         DepressionTraitService.PostPsychoStaminaState finite =
                 DepressionTraitService.postPsychoStaminaState(200, 160);
@@ -318,13 +328,19 @@ class DepressionTraitServiceTest {
     }
 
     @Test
-    void depressionBlindRageChaseLoopUsesAudioLengthInterval() {
-        assertEquals(1121, DepressionTraitService.RAGE_LOOP_INTERVAL_TICKS);
+    void depressionPsychoAudioLoopsUseTheirOwnAudioLengthIntervals() {
+        assertEquals(213, DepressionTraitService.RAGE_LOOP_INTERVAL_TICKS);
+        assertEquals(1121, DepressionTraitService.CHASE_LOOP_INTERVAL_TICKS);
         assertTrue(DepressionTraitService.shouldPlayRageLoop(0));
         assertTrue(DepressionTraitService.shouldPlayRageLoop(-1));
         assertFalse(DepressionTraitService.shouldPlayRageLoop(1));
-        assertEquals(1121, DepressionTraitService.nextRageLoopTicks(0));
-        assertEquals(1120, DepressionTraitService.nextRageLoopTicks(1121));
+        assertEquals(213, DepressionTraitService.nextRageLoopTicks(0));
+        assertEquals(212, DepressionTraitService.nextRageLoopTicks(213));
+        assertTrue(DepressionTraitService.shouldPlayChaseLoop(0));
+        assertTrue(DepressionTraitService.shouldPlayChaseLoop(-1));
+        assertFalse(DepressionTraitService.shouldPlayChaseLoop(1));
+        assertEquals(1121, DepressionTraitService.nextChaseLoopTicks(0));
+        assertEquals(1120, DepressionTraitService.nextChaseLoopTicks(1121));
     }
 
     @Test
@@ -384,14 +400,19 @@ class DepressionTraitServiceTest {
     }
 
     @Test
-    void depressionBlindRageEnrageAndChaseArePairOnlySounds() throws IOException {
+    void depressionPsychoAudioKeepsPairOnlyMusicAndRangeTransitionsSeparate() throws IOException {
         String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
 
         assertTrue(source.contains("playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_ENRAGE)"));
         assertTrue(source.contains("playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE)"));
-        assertTrue(source.contains("tickRageLoop(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state)"));
-        assertFalse(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_DOCILE_TO_RAGE)"));
-        assertFalse(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP)"));
+        assertTrue(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_DOCILE_TO_RAGE)"));
+        assertTrue(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP)"));
+        assertTrue(source.contains("stopRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP_ID, SparkTraitsSounds.DEPRESSION_RAGE_LOOP);"));
+        assertTrue(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);"));
+        assertTrue(source.contains("tickPsychoAudio(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state)"));
+        assertFalse(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_ENRAGE)"));
+        assertFalse(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE)"));
+        assertFalse(source.contains("playRangeSound(killer, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);"));
     }
 
     @Test
@@ -448,6 +469,41 @@ class DepressionTraitServiceTest {
         assertTrue(depressionAfterKill > lastStandStarted);
         assertTrue(lastStandReturn > depressionAfterKill);
         assertTrue(clearTraits > lastStandReturn);
+    }
+
+    @Test
+    void depressionAfterKillEndsAnyActivePsychoTargetingTheDeadVictim() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
+
+        int afterKill = source.indexOf("public static void handleAfterKill");
+        int targetCleanup = source.indexOf("endActivePsychosTargeting(victim)", afterKill);
+        int clearPending = source.indexOf("clearPending(victim)", afterKill);
+        int helper = source.indexOf("private static void endActivePsychosTargeting(ServerPlayerEntity victim)");
+
+        assertTrue(afterKill >= 0);
+        assertTrue(targetCleanup > afterKill);
+        assertTrue(clearPending > targetCleanup);
+        assertTrue(helper > afterKill);
+        assertTrue(source.contains("shouldEndActivePsychoForDeadTarget(victim.getUuid(), state.attackerUuid())"));
+    }
+
+    @Test
+    void depressionEndPsychoClearsSparkTraitsStateBeforeFragileRestores() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
+
+        int endPsycho = source.indexOf("private static void endPsycho");
+        int firstClear = source.indexOf("clearActivePsychoState(player, state);", endPsycho);
+        int stopPsycho = source.indexOf("PlayerPsychoComponent.KEY.get(player).stopPsycho();", endPsycho);
+        int restoreInventory = source.indexOf("state.inventory().restore(player);", endPsycho);
+        int finallyBlock = source.indexOf("finally", endPsycho);
+        int finalClear = source.indexOf("clearActivePsychoState(player, state);", finallyBlock);
+
+        assertTrue(endPsycho >= 0);
+        assertTrue(firstClear > endPsycho);
+        assertTrue(stopPsycho > firstClear);
+        assertTrue(restoreInventory > firstClear);
+        assertTrue(finallyBlock > firstClear);
+        assertTrue(finalClear > finallyBlock);
     }
 
     private static Role sparkWitchRole(String path) {

@@ -26,6 +26,7 @@ import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.s2c.play.StopSoundS2CPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -66,7 +67,8 @@ public final class DepressionTraitService {
     public static final float POST_PSYCHO_MOOD = 0.7f;
     public static final double MIN_PSYCHO_COUNTER_CHANCE = 10.0;
     public static final int JESTER_MOMENT_PSYCHO_ARMOUR = 2;
-    public static final int RAGE_LOOP_INTERVAL_TICKS = 1121;
+    public static final int RAGE_LOOP_INTERVAL_TICKS = 213;
+    public static final int CHASE_LOOP_INTERVAL_TICKS = 1121;
     public static final int DEPRESSION_PSYCHO_SPEED_DURATION_TICKS = Integer.MAX_VALUE;
     public static final int DEPRESSION_PSYCHO_SPEED_AMPLIFIER = 1;
     public static final Identifier APPRENTICE_WITCH_ID = Identifier.of("sparkwitch", "apprentice_witch");
@@ -311,6 +313,10 @@ public final class DepressionTraitService {
         return !playerAlive || !attackerAlive;
     }
 
+    public static boolean shouldEndActivePsychoForDeadTarget(UUID deadPlayerUuid, UUID activeTargetUuid) {
+        return activeTargetUuid.equals(deadPlayerUuid);
+    }
+
     /**
      * Restores post-psycho stamina without forcing finite-role players into exhaustion.
      * 疯魔结束后恢复体力，避免有限体力角色被重置到 0 体力并立即疲惫。
@@ -358,6 +364,14 @@ public final class DepressionTraitService {
 
     public static int nextRageLoopTicks(int ticksUntilNextLoop) {
         return ticksUntilNextLoop <= 0 ? RAGE_LOOP_INTERVAL_TICKS : ticksUntilNextLoop - 1;
+    }
+
+    public static boolean shouldPlayChaseLoop(int ticksUntilNextLoop) {
+        return ticksUntilNextLoop <= 0;
+    }
+
+    public static int nextChaseLoopTicks(int ticksUntilNextLoop) {
+        return ticksUntilNextLoop <= 0 ? CHASE_LOOP_INTERVAL_TICKS : ticksUntilNextLoop - 1;
     }
 
     public static SoundEvent meleeKillSound(boolean secondVariant) {
@@ -427,11 +441,11 @@ public final class DepressionTraitService {
             if (killerState != null) {
                 playRangeSound(victim, meleeKillSound(killer.getRandom().nextBoolean()));
                 if (killerState.attackerUuid().equals(victim.getUuid())) {
-                    playRangeSound(killer, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);
                     endPsycho(killer, true, true);
                 }
             }
         }
+        endActivePsychosTargeting(victim);
         if (activePlayers.containsKey(victim.getUuid())) {
             playRangeSound(victim, SparkTraitsSounds.DEPRESSION_SHYGUY_KILLED);
             endPsycho(victim, false, false);
@@ -592,6 +606,7 @@ public final class DepressionTraitService {
         pendingPlayers.put(uuid, state);
         TraitPlayerComponent.KEY.get(attacker).setDepressionCounterTarget(uuid);
         attacker.networkHandler.sendPacket(new net.minecraft.network.packet.s2c.play.TitleS2CPacket(ATTACKER_TITLE));
+        playRangeSound(player, SparkTraitsSounds.DEPRESSION_DOCILE_TO_RAGE);
         playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_ENRAGE);
         playDirectSound(attacker, SparkTraitsSounds.DEPRESSION_PLAYER_WAS_SEEN);
         holdPending(player, state);
@@ -652,12 +667,14 @@ public final class DepressionTraitService {
                 inventory,
                 Math.max(0, state.initialArmour()),
                 RAGE_LOOP_INTERVAL_TICKS,
+                CHASE_LOOP_INTERVAL_TICKS,
                 prePsychoSpeed
         );
         activePlayers.put(player.getUuid(), activeState);
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(true, state.attackerUuid());
         ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
         playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE);
+        playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP);
         activePlayers.put(player.getUuid(), maintainPsycho(
                 player,
                 attacker,
@@ -688,7 +705,7 @@ public final class DepressionTraitService {
         if (attacker != null) {
             attacker.sendMessage(ATTACKER_ACTIONBAR, true);
         }
-        ActiveState updatedState = tickRageLoop(player, attacker, state);
+        ActiveState updatedState = tickPsychoAudio(player, attacker, state);
         return updatedState;
     }
 
@@ -697,13 +714,42 @@ public final class DepressionTraitService {
         if (state == null) {
             return;
         }
-        PlayerPsychoComponent.KEY.get(player).stopPsycho();
-        if (restoreInventory) {
-            state.inventory().restore(player);
+        clearActivePsychoState(player, state);
+        try {
+            stopRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP_ID, SparkTraitsSounds.DEPRESSION_RAGE_LOOP);
+            playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);
+            PlayerPsychoComponent.KEY.get(player).stopPsycho();
+            if (restoreInventory) {
+                state.inventory().restore(player);
+            }
+            restorePrePsychoSpeed(player, state.prePsychoSpeed());
+            restorePostPsychoStamina(player);
+            restorePostPsychoMood(player, restoreMoodIfSurvived);
+        } finally {
+            clearActivePsychoState(player, state);
         }
-        restorePrePsychoSpeed(player, state.prePsychoSpeed());
-        restorePostPsychoStamina(player);
-        restorePostPsychoMood(player, restoreMoodIfSurvived);
+    }
+
+    private static void endActivePsychosTargeting(ServerPlayerEntity victim) {
+        for (ActiveState state : Set.copyOf(activePlayers.values())) {
+            if (!shouldEndActivePsychoForDeadTarget(victim.getUuid(), state.attackerUuid())) {
+                continue;
+            }
+            ServerPlayerEntity player = victim.getServer().getPlayerManager().getPlayer(state.playerUuid());
+            if (player == null) {
+                activePlayers.remove(state.playerUuid());
+                TraitPlayerComponent.KEY.get(victim).setDepressionCounterTarget(null);
+                continue;
+            }
+            if (activePlayers.containsKey(player.getUuid())) {
+                endPsycho(player, true, true);
+            }
+        }
+    }
+
+    private static void clearActivePsychoState(ServerPlayerEntity player, ActiveState state) {
+        // English: Wathe stopPsycho removes the bat, but SparkTraits must clear its own synced state first.
+        // 中文：Wathe 的 stopPsycho 只会移除棒子；SparkTraits 自己同步的疯魔状态必须先独立清理。
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(false, null);
         ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
         if (attacker != null) {
@@ -805,13 +851,19 @@ public final class DepressionTraitService {
         }
     }
 
-    private static ActiveState tickRageLoop(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state) {
-        // English: Replay blind-rage chase on the audio-length cadence for the two chase participants only.
-        // 中文：按 blind-rage chase 音频长度周期重播，并且只播放给追逐双方。
+    private static ActiveState tickPsychoAudio(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state) {
+        // English: Rage loop is positional, while blind-rage chase stays owned by the two chase participants.
+        // 中文：rage_loop 是位置范围音效；blind-rage chase 仍只属于追逐双方。
         if (shouldPlayRageLoop(state.rageLoopTicks())) {
+            playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP);
+        }
+        if (shouldPlayChaseLoop(state.chaseLoopTicks())) {
             playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE);
         }
-        return state.withRageLoopTicks(nextRageLoopTicks(state.rageLoopTicks()));
+        return state.withLoopTicks(
+                nextRageLoopTicks(state.rageLoopTicks()),
+                nextChaseLoopTicks(state.chaseLoopTicks())
+        );
     }
 
     private static void playRangeSound(ServerPlayerEntity source, SoundEvent sound) {
@@ -825,6 +877,16 @@ public final class DepressionTraitService {
                 DEPRESSION_RANGE_SOUND_VOLUME,
                 DEPRESSION_SOUND_PITCH
         );
+    }
+
+    private static void stopRangeSound(ServerPlayerEntity source, Identifier soundId, SoundEvent sound) {
+        double range = sound.getDistanceToTravel(DEPRESSION_RANGE_SOUND_VOLUME);
+        double rangeSquared = range * range;
+        StopSoundS2CPacket packet = new StopSoundS2CPacket(soundId, DEPRESSION_AUDIO_CATEGORY);
+        for (ServerPlayerEntity player : source.getServerWorld().getPlayers(player ->
+                player.squaredDistanceTo(source) <= rangeSquared)) {
+            player.networkHandler.sendPacket(packet);
+        }
     }
 
     private static void playDirectSound(ServerPlayerEntity player, SoundEvent sound) {
@@ -881,10 +943,11 @@ public final class DepressionTraitService {
             InventorySnapshot inventory,
             int maxArmour,
             int rageLoopTicks,
+            int chaseLoopTicks,
             @Nullable StatusEffectInstance prePsychoSpeed
     ) {
-        ActiveState withRageLoopTicks(int ticks) {
-            return new ActiveState(playerUuid, attackerUuid, inventory, maxArmour, ticks, prePsychoSpeed);
+        ActiveState withLoopTicks(int rageTicks, int chaseTicks) {
+            return new ActiveState(playerUuid, attackerUuid, inventory, maxArmour, rageTicks, chaseTicks, prePsychoSpeed);
         }
     }
 
