@@ -7,6 +7,7 @@ import dev.doctor4t.wathe.game.rotation.RoleCategory;
 import dev.doctor4t.wathe.game.rotation.RotationStrength;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
@@ -22,6 +23,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TraitAssignmentServiceTest {
     private record CompensationCandidate(String name, int bucket, double killerDebt) {
+    }
+
+    @BeforeAll
+    static void registerRequiredTraitTestFixtures() {
+        if (!dev.caecorthus.sparktraits.api.TraitRegistry.contains(PigTrait.ID)) {
+            dev.caecorthus.sparktraits.api.TraitRegistry.register(new PigTrait());
+        }
+        if (!dev.caecorthus.sparktraits.api.TraitRegistry.contains(ChildishTrait.ID)) {
+            dev.caecorthus.sparktraits.api.TraitRegistry.register(new ChildishTrait());
+        }
     }
 
     @Test
@@ -84,6 +95,32 @@ class TraitAssignmentServiceTest {
 
         assertEquals(List.of(firstLocked, middleLocked), plan.lockedTraits());
         assertEquals(List.of(required), plan.randomTraits());
+    }
+
+    @Test
+    void requiredPigRemovesRandomChildishBeforeFinalizingPigGodTraits() {
+        Identifier ordinaryRandom = Identifier.of("sparktraits_test", "ordinary_random");
+
+        TraitAssignmentService.ForcedTraitPlan plan = TraitAssignmentService.forceRequiredTraitPlan(
+                List.of(),
+                List.of(ChildishTrait.ID, ordinaryRandom),
+                PigTrait.ID
+        );
+
+        assertEquals(List.of(), plan.lockedTraits());
+        assertEquals(List.of(ordinaryRandom, PigTrait.ID), plan.randomTraits());
+    }
+
+    @Test
+    void existingRequiredPigStillRemovesRandomChildish() {
+        TraitAssignmentService.ForcedTraitPlan plan = TraitAssignmentService.forceRequiredTraitPlan(
+                List.of(),
+                List.of(PigTrait.ID, ChildishTrait.ID),
+                PigTrait.ID
+        );
+
+        assertEquals(List.of(), plan.lockedTraits());
+        assertEquals(List.of(PigTrait.ID), plan.randomTraits());
     }
 
     @Test

@@ -551,7 +551,17 @@ public final class TraitAssignmentService {
     ) {
         List<Identifier> locked = new ArrayList<>(lockedTraits);
         List<Identifier> random = new ArrayList<>(randomTraits);
-        if (requiredTrait == null || locked.contains(requiredTrait) || random.contains(requiredTrait)) {
+        if (requiredTrait == null) {
+            return new ForcedTraitPlan(List.copyOf(locked), List.copyOf(random));
+        }
+        Trait required = TraitRegistry.get(requiredTrait);
+        if (required != null) {
+            random.removeIf(randomTraitId -> {
+                Trait randomTrait = TraitRegistry.get(randomTraitId);
+                return randomTrait != null && TraitRules.areIncompatible(required, randomTrait);
+            });
+        }
+        if (locked.contains(requiredTrait) || random.contains(requiredTrait)) {
             return new ForcedTraitPlan(List.copyOf(locked), List.copyOf(random));
         }
         while (locked.size() + random.size() >= TraitPlayerComponent.MAX_TRAITS) {
