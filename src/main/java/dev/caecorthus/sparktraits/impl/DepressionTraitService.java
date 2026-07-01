@@ -29,12 +29,15 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import org.agmas.noellesroles.Noellesroles;
+import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
@@ -59,11 +62,17 @@ public final class DepressionTraitService {
     public static final float STAMINA_MULTIPLIER = 0.8f;
     public static final float GUARANTEED_TRIGGER_MOOD = -0.20f;
     public static final float FULL_GRAYSCALE_MOOD = 0.0f;
+    public static final float MAX_SCREEN_EFFECT_STRENGTH = 0.75f;
     public static final float POST_PSYCHO_MOOD = 0.7f;
     public static final double MIN_PSYCHO_COUNTER_CHANCE = 10.0;
+    public static final int JESTER_MOMENT_PSYCHO_ARMOUR = 2;
+    public static final int RAGE_LOOP_INTERVAL_TICKS = 1121;
     public static final Identifier APPRENTICE_WITCH_ID = Identifier.of("sparkwitch", "apprentice_witch");
     public static final Identifier DEPRESSION_STAMINA_MODIFIER_ID = SparkTraits.id("depression_stamina");
     public static final double DEPRESSION_STAMINA_MODIFIER_VALUE = -0.2;
+    private static final float DEPRESSION_RANGE_SOUND_VOLUME = 3.0f;
+    private static final float DEPRESSION_DIRECT_SOUND_VOLUME = 1.0f;
+    private static final float DEPRESSION_SOUND_PITCH = 1.0f;
     private static final EntityAttributeModifier DEPRESSION_STAMINA_MODIFIER = new EntityAttributeModifier(
             DEPRESSION_STAMINA_MODIFIER_ID,
             DEPRESSION_STAMINA_MODIFIER_VALUE,
@@ -174,15 +183,17 @@ public final class DepressionTraitService {
             return 0.0f;
         }
         if (psychoActive) {
-            return 1.0f;
+            return MAX_SCREEN_EFFECT_STRENGTH;
         }
         if (mood >= GameConstants.MID_MOOD_THRESHOLD) {
             return 0.0f;
         }
         if (mood <= FULL_GRAYSCALE_MOOD) {
-            return 1.0f;
+            return MAX_SCREEN_EFFECT_STRENGTH;
         }
-        return (GameConstants.MID_MOOD_THRESHOLD - mood) / (GameConstants.MID_MOOD_THRESHOLD - FULL_GRAYSCALE_MOOD);
+        return MAX_SCREEN_EFFECT_STRENGTH
+                * (GameConstants.MID_MOOD_THRESHOLD - mood)
+                / (GameConstants.MID_MOOD_THRESHOLD - FULL_GRAYSCALE_MOOD);
     }
 
     public static float depressionScreenEffectStrength(
@@ -322,6 +333,31 @@ public final class DepressionTraitService {
         return isPending(player);
     }
 
+    public static int initialPsychoArmour(Role killerRole, boolean activeJesterMoment) {
+        return activeJesterMoment && roleIdentifierEquals(killerRole, Noellesroles.JESTER_ID)
+                ? JESTER_MOMENT_PSYCHO_ARMOUR
+                : 0;
+    }
+
+    public static int maintainedPsychoArmour(int currentArmour, int maxArmour) {
+        if (maxArmour <= 0) {
+            return 0;
+        }
+        return Math.max(0, Math.min(currentArmour, maxArmour));
+    }
+
+    public static boolean shouldPlayRageLoop(int ticksUntilNextLoop) {
+        return ticksUntilNextLoop <= 0;
+    }
+
+    public static int nextRageLoopTicks(int ticksUntilNextLoop) {
+        return ticksUntilNextLoop <= 0 ? RAGE_LOOP_INTERVAL_TICKS : ticksUntilNextLoop - 1;
+    }
+
+    public static SoundEvent meleeKillSound(boolean secondVariant) {
+        return secondVariant ? SparkTraitsSounds.DEPRESSION_MELEE_KILL_2 : SparkTraitsSounds.DEPRESSION_MELEE_KILL_1;
+    }
+
     public static boolean isPending(ServerPlayerEntity player) {
         return pendingPlayers.containsKey(player.getUuid());
     }
@@ -372,18 +408,26 @@ public final class DepressionTraitService {
         if (roll >= chance) {
             return null;
         }
-        startPending(victim, killer, deathReason);
+        startPending(victim, killer, deathReason, initialPsychoArmour(
+                killerRole,
+                JesterPlayerComponent.KEY.get(killer).inPsychoMode
+        ));
         return KillPlayer.KillResult.cancel();
     }
 
     public static void handleAfterKill(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer) {
         if (killer != null) {
             ActiveState killerState = activePlayers.get(killer.getUuid());
-            if (killerState != null && killerState.attackerUuid().equals(victim.getUuid())) {
-                endPsycho(killer, true, true);
+            if (killerState != null) {
+                playRangeSound(victim, meleeKillSound(killer.getRandom().nextBoolean()));
+                if (killerState.attackerUuid().equals(victim.getUuid())) {
+                    playRangeSound(killer, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);
+                    endPsycho(killer, true, true);
+                }
             }
         }
         if (activePlayers.containsKey(victim.getUuid())) {
+            playRangeSound(victim, SparkTraitsSounds.DEPRESSION_SHYGUY_KILLED);
             endPsycho(victim, false, false);
         }
         clearPending(victim);
@@ -506,11 +550,14 @@ public final class DepressionTraitService {
                 endPsycho(player, playerAlive, playerAlive);
                 continue;
             }
-            maintainPsycho(player, attacker);
+            ActiveState updatedState = maintainPsycho(player, attacker, state);
+            if (activePlayers.containsKey(player.getUuid())) {
+                activePlayers.put(player.getUuid(), updatedState);
+            }
         }
     }
 
-    private static void startPending(ServerPlayerEntity player, ServerPlayerEntity attacker, Identifier deathReason) {
+    private static void startPending(ServerPlayerEntity player, ServerPlayerEntity attacker, Identifier deathReason, int initialArmour) {
         ServerWorld world = player.getServerWorld();
         UUID uuid = player.getUuid();
         PlayerBodyEntity body = WatheEntities.PLAYER_BODY.create(world);
@@ -533,11 +580,14 @@ public final class DepressionTraitService {
                 player.isInvulnerable(),
                 player.getPos(),
                 player.getYaw(),
-                player.getPitch()
+                player.getPitch(),
+                initialArmour
         );
         pendingPlayers.put(uuid, state);
         TraitPlayerComponent.KEY.get(attacker).setDepressionCounterTarget(uuid);
         attacker.networkHandler.sendPacket(new net.minecraft.network.packet.s2c.play.TitleS2CPacket(ATTACKER_TITLE));
+        playPairSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_ENRAGE);
+        playDirectSound(attacker, SparkTraitsSounds.DEPRESSION_PLAYER_WAS_SEEN);
         holdPending(player, state);
     }
 
@@ -583,25 +633,42 @@ public final class DepressionTraitService {
         PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
         psycho.startPsycho(PsychoType.VISIBLE_QUIET);
         psycho.setPsychoTicks(Integer.MAX_VALUE);
-        psycho.setArmour(0);
+        psycho.setArmour(Math.max(0, state.initialArmour()));
         PlayerStaminaComponent stamina = PlayerStaminaComponent.KEY.get(player);
         stamina.setMaxSprintTime(-1);
         stamina.setSprintingTicks(Integer.MAX_VALUE);
         stamina.setExhausted(false);
         stamina.sync();
-        ActiveState activeState = new ActiveState(player.getUuid(), state.attackerUuid(), inventory);
+        ActiveState activeState = new ActiveState(
+                player.getUuid(),
+                state.attackerUuid(),
+                inventory,
+                Math.max(0, state.initialArmour()),
+                RAGE_LOOP_INTERVAL_TICKS
+        );
         activePlayers.put(player.getUuid(), activeState);
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(true, state.attackerUuid());
-        maintainPsycho(player, player.getServer().getPlayerManager().getPlayer(state.attackerUuid()));
+        ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
+        playPairSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE);
+        activePlayers.put(player.getUuid(), maintainPsycho(
+                player,
+                attacker,
+                activeState
+        ));
     }
 
-    private static void maintainPsycho(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker) {
+    private static ActiveState maintainPsycho(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state) {
         PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
         if (psycho.getPsychoTicks() <= 0) {
             psycho.startPsycho(PsychoType.VISIBLE_QUIET);
         }
         psycho.setPsychoTicks(Integer.MAX_VALUE);
-        psycho.setArmour(0);
+        // English: The Jester bonus is starting armour only; consumed armour stays consumed.
+        // 中文：小丑加成只提供初始护盾；已经消耗的护盾不会被每 tick 补回。
+        int maintainedArmour = maintainedPsychoArmour(psycho.getArmour(), state.maxArmour());
+        if (psycho.getArmour() != maintainedArmour) {
+            psycho.setArmour(maintainedArmour);
+        }
         enforceBatOnly(player);
         PlayerStaminaComponent stamina = PlayerStaminaComponent.KEY.get(player);
         stamina.setMaxSprintTime(-1);
@@ -612,6 +679,8 @@ public final class DepressionTraitService {
         if (attacker != null) {
             attacker.sendMessage(ATTACKER_ACTIONBAR, true);
         }
+        ActiveState updatedState = tickRageLoop(player, attacker, state);
+        return updatedState;
     }
 
     private static void endPsycho(ServerPlayerEntity player, boolean restoreInventory, boolean restoreMoodIfSurvived) {
@@ -701,6 +770,39 @@ public final class DepressionTraitService {
         player.currentScreenHandler.sendContentUpdates();
     }
 
+    private static ActiveState tickRageLoop(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state) {
+        // English: Replay blind-rage chase on the audio-length cadence for the two chase participants only.
+        // 中文：按 blind-rage chase 音频长度周期重播，并且只播放给追逐双方。
+        if (shouldPlayRageLoop(state.rageLoopTicks())) {
+            playPairSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE);
+        }
+        return state.withRageLoopTicks(nextRageLoopTicks(state.rageLoopTicks()));
+    }
+
+    private static void playRangeSound(ServerPlayerEntity source, SoundEvent sound) {
+        source.getWorld().playSound(
+                null,
+                source.getX(),
+                source.getY(),
+                source.getZ(),
+                sound,
+                SoundCategory.PLAYERS,
+                DEPRESSION_RANGE_SOUND_VOLUME,
+                DEPRESSION_SOUND_PITCH
+        );
+    }
+
+    private static void playDirectSound(ServerPlayerEntity player, SoundEvent sound) {
+        player.playSoundToPlayer(sound, SoundCategory.PLAYERS, DEPRESSION_DIRECT_SOUND_VOLUME, DEPRESSION_SOUND_PITCH);
+    }
+
+    private static void playPairSound(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, SoundEvent sound) {
+        playDirectSound(player, sound);
+        if (attacker != null && attacker != player) {
+            playDirectSound(attacker, sound);
+        }
+    }
+
     private static boolean roleIdentifierEquals(Role role, Identifier id) {
         return role != null && role.identifier().equals(id);
     }
@@ -725,11 +827,21 @@ public final class DepressionTraitService {
             boolean wasInvulnerable,
             Vec3d deathPos,
             float deathYaw,
-            float deathPitch
+            float deathPitch,
+            int initialArmour
     ) {
     }
 
-    private record ActiveState(UUID playerUuid, UUID attackerUuid, InventorySnapshot inventory) {
+    private record ActiveState(
+            UUID playerUuid,
+            UUID attackerUuid,
+            InventorySnapshot inventory,
+            int maxArmour,
+            int rageLoopTicks
+    ) {
+        ActiveState withRageLoopTicks(int ticks) {
+            return new ActiveState(playerUuid, attackerUuid, inventory, maxArmour, ticks);
+        }
     }
 
     public record PostPsychoStaminaState(int maxSprintTime, float sprintingTicks, boolean exhausted) {

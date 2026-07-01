@@ -8,5 +8,80 @@
       }
     ],
     "subtitle": "subtitle.sparktraits.music.takediskrush"
+  },
+  "depression.docile_to_rage": {
+    "sounds": [
+      {
+        "name": "sparktraits:depression/docile_to_rage",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitle.sparktraits.depression.docile_to_rage"
+  },
+  "depression.rage_loop": {
+    "sounds": [
+      {
+        "name": "sparktraits:depression/rage_loop",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitle.sparktraits.depression.rage_loop"
+  },
+  "depression.blind_rage_enrage": {
+    "sounds": [
+      {
+        "name": "sparktraits:depression/blind_rage_enrage",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitle.sparktraits.depression.blind_rage_enrage"
+  },
+  "depression.blind_rage_chase": {
+    "sounds": [
+      {
+        "name": "sparktraits:depression/blind_rage_chase",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitle.sparktraits.depression.blind_rage_chase"
+  },
+  "depression.rage_to_docile": {
+    "sounds": [
+      {
+        "name": "sparktraits:depression/rage_to_docile",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitle.sparktraits.depression.rage_to_docile"
+  },
+  "depression.player_was_seen": {
+    "sounds": [
+      {
+        "name": "sparktraits:depression/player_was_seen",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitle.sparktraits.depression.player_was_seen"
+  },
+  "depression.melee_kill_1": {
+    "sounds": [
+      "sparktraits:depression/melee_kill_1"
+    ],
+    "subtitle": "subtitle.sparktraits.depression.melee_kill"
+  },
+  "depression.melee_kill_2": {
+    "sounds": [
+      "sparktraits:depression/melee_kill_2"
+    ],
+    "subtitle": "subtitle.sparktraits.depression.melee_kill"
+  },
+  "depression.shyguy_killed": {
+    "sounds": [
+      {
+        "name": "sparktraits:depression/shyguy_killed",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitle.sparktraits.depression.shyguy_killed"
   }
 }

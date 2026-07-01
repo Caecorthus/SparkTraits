@@ -271,10 +271,92 @@ class DepressionTraitServiceTest {
     @Test
     void depressionVisualStrengthIsLinearFromMidMoodToZero() {
         assertEquals(0.0f, DepressionTraitService.depressionScreenEffectStrength(true, false, 0.55f), 0.0001f);
-        assertEquals(0.5f, DepressionTraitService.depressionScreenEffectStrength(true, false, 0.275f), 0.0001f);
-        assertEquals(1.0f, DepressionTraitService.depressionScreenEffectStrength(true, false, 0.0f), 0.0001f);
-        assertEquals(1.0f, DepressionTraitService.depressionScreenEffectStrength(true, true, -1, 0.5f), 0.0001f);
+        assertEquals(0.375f, DepressionTraitService.depressionScreenEffectStrength(true, false, 0.275f), 0.0001f);
+        assertEquals(0.75f, DepressionTraitService.depressionScreenEffectStrength(true, false, 0.0f), 0.0001f);
+        assertEquals(0.75f, DepressionTraitService.depressionScreenEffectStrength(true, true, -1, 0.5f), 0.0001f);
         assertEquals(0.0f, DepressionTraitService.depressionScreenEffectStrength(false, true, 100, -0.2f), 0.0001f);
+    }
+
+    @Test
+    void activeJesterMomentKillAddsOnlyInitialDepressionPsychoArmour() {
+        assertEquals(2, DepressionTraitService.initialPsychoArmour(Noellesroles.JESTER, true));
+        assertEquals(0, DepressionTraitService.initialPsychoArmour(Noellesroles.JESTER, false));
+        assertEquals(0, DepressionTraitService.initialPsychoArmour(WatheRoles.KILLER, true));
+        assertEquals(0, DepressionTraitService.initialPsychoArmour(Noellesroles.SHADOW_JESTER, true));
+    }
+
+    @Test
+    void depressionPsychoArmourClampsWithoutRefillingConsumedArmour() {
+        assertEquals(0, DepressionTraitService.maintainedPsychoArmour(3, 0));
+        assertEquals(2, DepressionTraitService.maintainedPsychoArmour(2, 2));
+        assertEquals(1, DepressionTraitService.maintainedPsychoArmour(1, 2));
+        assertEquals(0, DepressionTraitService.maintainedPsychoArmour(0, 2));
+        assertEquals(2, DepressionTraitService.maintainedPsychoArmour(5, 2));
+    }
+
+    @Test
+    void depressionBlindRageChaseLoopUsesAudioLengthInterval() {
+        assertEquals(1121, DepressionTraitService.RAGE_LOOP_INTERVAL_TICKS);
+        assertTrue(DepressionTraitService.shouldPlayRageLoop(0));
+        assertTrue(DepressionTraitService.shouldPlayRageLoop(-1));
+        assertFalse(DepressionTraitService.shouldPlayRageLoop(1));
+        assertEquals(1121, DepressionTraitService.nextRageLoopTicks(0));
+        assertEquals(1120, DepressionTraitService.nextRageLoopTicks(1121));
+    }
+
+    @Test
+    void depressionMeleeKillSoundIsSelectedFromTwoSeparateEvents() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
+
+        assertTrue(source.contains("meleeKillSound(boolean secondVariant)"));
+        assertTrue(source.contains("SparkTraitsSounds.DEPRESSION_MELEE_KILL_1"));
+        assertTrue(source.contains("SparkTraitsSounds.DEPRESSION_MELEE_KILL_2"));
+        assertFalse(source.contains("DEPRESSION_MELEE_KILL ="));
+    }
+
+    @Test
+    void depressionSoundRegistryAndResourcesContainAllCustomEvents() throws IOException {
+        String sounds = Files.readString(Path.of("src/main/resources/assets/sparktraits/sounds.json"));
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/SparkTraitsSounds.java"));
+
+        for (String event : new String[]{
+                "depression.docile_to_rage",
+                "depression.rage_loop",
+                "depression.blind_rage_enrage",
+                "depression.blind_rage_chase",
+                "depression.rage_to_docile",
+                "depression.player_was_seen",
+                "depression.melee_kill_1",
+                "depression.melee_kill_2",
+                "depression.shyguy_killed"
+        }) {
+            assertTrue(sounds.contains("\"" + event + "\""));
+            assertTrue(source.contains("registrar.create(\"" + event + "\")"));
+        }
+        for (String file : new String[]{
+                "docile_to_rage.ogg",
+                "rage_loop.ogg",
+                "blind_rage_enrage.ogg",
+                "blind_rage_chase.ogg",
+                "rage_to_docile.ogg",
+                "player_was_seen.ogg",
+                "melee_kill_1.ogg",
+                "melee_kill_2.ogg",
+                "shyguy_killed.ogg"
+        }) {
+            assertTrue(Files.exists(Path.of("src/main/resources/assets/sparktraits/sounds/depression", file)));
+        }
+    }
+
+    @Test
+    void depressionBlindRageEnrageAndChaseArePairOnlySounds() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
+
+        assertTrue(source.contains("playPairSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_ENRAGE)"));
+        assertTrue(source.contains("playPairSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE)"));
+        assertTrue(source.contains("tickRageLoop(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state)"));
+        assertFalse(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_DOCILE_TO_RAGE)"));
+        assertFalse(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP)"));
     }
 
     @Test

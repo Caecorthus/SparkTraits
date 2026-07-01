@@ -15,6 +15,24 @@ public final class SparkTraitsSounds {
 
     public static final Identifier MUSIC_TAKEDISKRUSH_ID = SparkTraits.id("music.takediskrush");
     public static final SoundEvent MUSIC_TAKEDISKRUSH = registrar.create("music.takediskrush");
+    public static final Identifier DEPRESSION_DOCILE_TO_RAGE_ID = SparkTraits.id("depression.docile_to_rage");
+    public static final SoundEvent DEPRESSION_DOCILE_TO_RAGE = registrar.create("depression.docile_to_rage");
+    public static final Identifier DEPRESSION_RAGE_LOOP_ID = SparkTraits.id("depression.rage_loop");
+    public static final SoundEvent DEPRESSION_RAGE_LOOP = registrar.create("depression.rage_loop");
+    public static final Identifier DEPRESSION_BLIND_RAGE_ENRAGE_ID = SparkTraits.id("depression.blind_rage_enrage");
+    public static final SoundEvent DEPRESSION_BLIND_RAGE_ENRAGE = registrar.create("depression.blind_rage_enrage");
+    public static final Identifier DEPRESSION_BLIND_RAGE_CHASE_ID = SparkTraits.id("depression.blind_rage_chase");
+    public static final SoundEvent DEPRESSION_BLIND_RAGE_CHASE = registrar.create("depression.blind_rage_chase");
+    public static final Identifier DEPRESSION_RAGE_TO_DOCILE_ID = SparkTraits.id("depression.rage_to_docile");
+    public static final SoundEvent DEPRESSION_RAGE_TO_DOCILE = registrar.create("depression.rage_to_docile");
+    public static final Identifier DEPRESSION_PLAYER_WAS_SEEN_ID = SparkTraits.id("depression.player_was_seen");
+    public static final SoundEvent DEPRESSION_PLAYER_WAS_SEEN = registrar.create("depression.player_was_seen");
+    public static final Identifier DEPRESSION_MELEE_KILL_1_ID = SparkTraits.id("depression.melee_kill_1");
+    public static final SoundEvent DEPRESSION_MELEE_KILL_1 = registrar.create("depression.melee_kill_1");
+    public static final Identifier DEPRESSION_MELEE_KILL_2_ID = SparkTraits.id("depression.melee_kill_2");
+    public static final SoundEvent DEPRESSION_MELEE_KILL_2 = registrar.create("depression.melee_kill_2");
+    public static final Identifier DEPRESSION_SHYGUY_KILLED_ID = SparkTraits.id("depression.shyguy_killed");
+    public static final SoundEvent DEPRESSION_SHYGUY_KILLED = registrar.create("depression.shyguy_killed");
 
     private SparkTraitsSounds() {
     }
@@ -23,10 +41,23 @@ public final class SparkTraitsSounds {
         registrar.registerEntries();
         // English: Keep this explicit so /playsound visibility failures leave a clear startup clue.
         // 中文：显式校验注册结果，让 /playsound 不可见时启动日志能给出清晰线索。
-        if (!Registries.SOUND_EVENT.containsId(MUSIC_TAKEDISKRUSH_ID)) {
-            SparkTraits.LOGGER.warn("SparkTraits sound event {} was not registered.", MUSIC_TAKEDISKRUSH_ID);
-            return;
+        for (Identifier id : new Identifier[]{
+                MUSIC_TAKEDISKRUSH_ID,
+                DEPRESSION_DOCILE_TO_RAGE_ID,
+                DEPRESSION_RAGE_LOOP_ID,
+                DEPRESSION_BLIND_RAGE_ENRAGE_ID,
+                DEPRESSION_BLIND_RAGE_CHASE_ID,
+                DEPRESSION_RAGE_TO_DOCILE_ID,
+                DEPRESSION_PLAYER_WAS_SEEN_ID,
+                DEPRESSION_MELEE_KILL_1_ID,
+                DEPRESSION_MELEE_KILL_2_ID,
+                DEPRESSION_SHYGUY_KILLED_ID
+        }) {
+            if (!Registries.SOUND_EVENT.containsId(id)) {
+                SparkTraits.LOGGER.warn("SparkTraits sound event {} was not registered.", id);
+                return;
+            }
         }
-        SparkTraits.LOGGER.info("Registered SparkTraits sound event {} for /playsound.", MUSIC_TAKEDISKRUSH_ID);
+        SparkTraits.LOGGER.info("Registered SparkTraits sound events for /playsound.");
     }
 }
