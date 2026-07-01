@@ -87,6 +87,47 @@ class TraitAssignmentServiceTest {
     }
 
     @Test
+    void randomDepressionCapRemovesOnlyRandomDepressions() {
+        TraitAssignmentService.PlayerPlan lockedDepression = new TraitAssignmentService.PlayerPlan(
+                null,
+                List.of(GoodTraits.DEPRESSION),
+                List.of()
+        );
+        TraitAssignmentService.PlayerPlan firstRandomDepression = new TraitAssignmentService.PlayerPlan(
+                null,
+                List.of(),
+                List.of(GoodTraits.DEPRESSION)
+        );
+        TraitAssignmentService.PlayerPlan secondRandomDepression = new TraitAssignmentService.PlayerPlan(
+                null,
+                List.of(),
+                List.of(GoodTraits.DEPRESSION)
+        );
+
+        TraitAssignmentService.enforceRandomDepressionCap(
+                List.of(lockedDepression, firstRandomDepression, secondRandomDepression),
+                32
+        );
+
+        assertEquals(List.of(GoodTraits.DEPRESSION), lockedDepression.traits());
+        assertEquals(List.of(GoodTraits.DEPRESSION), firstRandomDepression.traits());
+        assertEquals(List.of(), secondRandomDepression.traits());
+    }
+
+    @Test
+    void randomDepressionCapAtMinimumRefreshPlayerCountRemovesEveryRandomDepression() {
+        TraitAssignmentService.PlayerPlan randomDepression = new TraitAssignmentService.PlayerPlan(
+                null,
+                List.of(),
+                List.of(GoodTraits.DEPRESSION)
+        );
+
+        TraitAssignmentService.enforceRandomDepressionCap(List.of(randomDepression), 24);
+
+        assertEquals(List.of(), randomDepression.traits());
+    }
+
+    @Test
     void pigGodRequiresPigTrait() {
         assertTrue(TraitAssignmentService.shouldForcePigOntoPigGod(sparkWitchRole("pig_god")));
         assertFalse(TraitAssignmentService.shouldForcePigOntoPigGod(sparkWitchRole("grand_witch")));

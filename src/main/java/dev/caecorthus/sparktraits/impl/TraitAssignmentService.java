@@ -119,6 +119,7 @@ public final class TraitAssignmentService {
         addExtraKillersForConscience(world, gameComponent, players, plans, publicKillerCount, protectedLockedRolePlayers, random);
         forceArrogantAsfOntoCorruptCop(gameComponent, traitWorld, plans);
         forcePigOntoPigGod(gameComponent, traitWorld, plans);
+        enforceRandomDepressionCap(plans, players.size());
 
         traitWorld.clearRoundState();
         for (PlayerPlan plan : plans) {
@@ -590,17 +591,29 @@ public final class TraitAssignmentService {
         }
     }
 
+    /**
+     * Caps only randomly rolled Depression traits; pending/admin locks intentionally bypass this random budget.
+     * 只限制随机抽到的抑郁天赋；管理员/待应用锁定不会消耗这个随机名额。
+     */
+    static void enforceRandomDepressionCap(List<PlayerPlan> plans, int startingPlayerCount) {
+        int cap = DepressionTraitService.randomDepressionCap(startingPlayerCount);
+        int keptRandomDepressions = 0;
+        for (PlayerPlan plan : plans) {
+            keptRandomDepressions = plan.removeRandomDepressionsOverLimit(cap, keptRandomDepressions);
+        }
+    }
+
     private static boolean isUniqueTrait(Identifier traitId) {
         Trait trait = TraitRegistry.get(traitId);
         return trait != null && trait.uniquePerGame();
     }
 
-    private static final class PlayerPlan {
+    static final class PlayerPlan {
         private final ServerPlayerEntity player;
         private final List<Identifier> lockedTraits;
         private final List<Identifier> randomTraits;
 
-        private PlayerPlan(ServerPlayerEntity player, List<Identifier> lockedTraits, List<Identifier> randomTraits) {
+        PlayerPlan(ServerPlayerEntity player, List<Identifier> lockedTraits, List<Identifier> randomTraits) {
             this.player = player;
             this.lockedTraits = new ArrayList<>(lockedTraits);
             this.randomTraits = new ArrayList<>(randomTraits);
@@ -665,6 +678,23 @@ public final class TraitAssignmentService {
             lockedTraits.addAll(plan.lockedTraits());
             randomTraits.clear();
             randomTraits.addAll(plan.randomTraits());
+        }
+
+        int removeRandomDepressionsOverLimit(int cap, int alreadyKept) {
+            int kept = alreadyKept;
+            for (int i = 0; i < randomTraits.size(); ) {
+                if (!GoodTraits.DEPRESSION.equals(randomTraits.get(i))) {
+                    i++;
+                    continue;
+                }
+                if (kept >= cap) {
+                    randomTraits.remove(i);
+                    continue;
+                }
+                kept++;
+                i++;
+            }
+            return kept;
         }
 
         private boolean isCompatibleWithLockedTraits(Trait trait) {

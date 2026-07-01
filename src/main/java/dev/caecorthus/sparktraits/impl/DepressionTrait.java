@@ -26,18 +26,13 @@ public final class DepressionTrait implements Trait {
     }
 
     @Override
-    public boolean uniquePerGame() {
-        return true;
-    }
-
-    @Override
     public TraitAudience audience() {
         return TraitAudience.INNOCENT_ONLY;
     }
 
     @Override
     public Set<Identifier> incompatibleTraits() {
-        return Set.of(ImpostorTrait.ID, LastStandTrait.ID);
+        return Set.of(ImpostorTrait.ID, LastStandTrait.ID, GoodTraits.INTROVERTED, GoodTraits.EXTROVERTED);
     }
 
     @Override

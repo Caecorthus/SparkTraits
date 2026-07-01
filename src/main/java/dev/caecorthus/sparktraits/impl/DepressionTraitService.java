@@ -65,7 +65,8 @@ public final class DepressionTraitService {
     public static final float FULL_GRAYSCALE_MOOD = 0.0f;
     public static final float MAX_SCREEN_EFFECT_STRENGTH = 0.75f;
     public static final float POST_PSYCHO_MOOD = 0.7f;
-    public static final double MIN_PSYCHO_COUNTER_CHANCE = 10.0;
+    public static final double MAX_SUICIDE_TRIGGER_CHANCE = 30.0;
+    public static final int RANDOM_CAP_STEP_PLAYERS = 8;
     public static final int JESTER_MOMENT_PSYCHO_ARMOUR = 2;
     public static final int RAGE_LOOP_INTERVAL_TICKS = 213;
     public static final int CHASE_LOOP_INTERVAL_TICKS = 1121;
@@ -119,6 +120,13 @@ public final class DepressionTraitService {
                 && !roleIdentifierEquals(role, APPRENTICE_WITCH_ID);
     }
 
+    public static int randomDepressionCap(int startingPlayerCount) {
+        if (startingPlayerCount < MIN_RANDOM_PLAYERS) {
+            return 0;
+        }
+        return Math.max(0, (startingPlayerCount - MIN_RANDOM_PLAYERS) / RANDOM_CAP_STEP_PLAYERS);
+    }
+
     public static float depressionAdjustedMood(float currentMood, float proposedMood, Collection<Identifier> traits) {
         return depressionAdjustedMood(currentMood, proposedMood, traits, false);
     }
@@ -141,14 +149,11 @@ public final class DepressionTraitService {
     }
 
     public static double triggerChance(float mood) {
-        return linearChance(mood, GameConstants.MID_MOOD_THRESHOLD, GUARANTEED_TRIGGER_MOOD, 0.0, 100.0);
+        return linearChance(mood, GameConstants.MID_MOOD_THRESHOLD, GUARANTEED_TRIGGER_MOOD, 0.0, MAX_SUICIDE_TRIGGER_CHANCE);
     }
 
     public static double psychoCounterChance(float mood) {
-        if (mood > GameConstants.MID_MOOD_THRESHOLD) {
-            return 0.0;
-        }
-        return linearChance(mood, GameConstants.MID_MOOD_THRESHOLD, FULL_GRAYSCALE_MOOD, MIN_PSYCHO_COUNTER_CHANCE, 100.0);
+        return 100.0;
     }
 
     public static boolean shouldRunSuicideCountdown(float mood) {
@@ -413,16 +418,13 @@ public final class DepressionTraitService {
         if (!victimTraits.hasActiveTrait(GoodTraits.DEPRESSION)) {
             return null;
         }
-        float mood = PlayerMoodComponent.KEY.get(victim).getMood();
-        if (mood > GameConstants.MID_MOOD_THRESHOLD) {
-            return null;
-        }
         GameWorldComponent game = GameWorldComponent.KEY.get(victim.getWorld());
         Role killerRole = game.getRole(killer);
         Collection<Identifier> killerTraits = TraitPlayerComponent.KEY.get(killer).getActiveTraitIds();
         if (EffectiveTraitService.isEffectiveCivilian(killerRole, killerTraits)) {
             return null;
         }
+        float mood = PlayerMoodComponent.KEY.get(victim).getMood();
         double roll = victim.getRandom().nextDouble() * 100.0;
         double chance = psychoCounterChance(mood);
         if (roll >= chance) {

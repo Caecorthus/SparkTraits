@@ -65,10 +65,18 @@ class DepressionTraitServiceTest {
     }
 
     @Test
-    void depressionConflictsOnlyWithLastStand() {
+    void depressionConflictsWithLastStandAndSocialTraits() {
         assertTrue(TraitRules.areIncompatible(
                 TraitRegistry.get(GoodTraits.DEPRESSION),
                 TraitRegistry.get(LastStandTrait.ID)
+        ));
+        assertTrue(TraitRules.areIncompatible(
+                TraitRegistry.get(GoodTraits.DEPRESSION),
+                TraitRegistry.get(GoodTraits.INTROVERTED)
+        ));
+        assertTrue(TraitRules.areIncompatible(
+                TraitRegistry.get(GoodTraits.DEPRESSION),
+                TraitRegistry.get(GoodTraits.EXTROVERTED)
         ));
         assertFalse(TraitRules.areIncompatible(
                 TraitRegistry.get(GoodTraits.DEPRESSION),
@@ -83,24 +91,49 @@ class DepressionTraitServiceTest {
         assertNotNull(depression);
         assertEquals(DepressionTraitService.COLOR, depression.color());
         assertEquals(TraitAudience.INNOCENT_ONLY, depression.audience());
-        assertTrue(depression.uniquePerGame());
+        assertFalse(depression.uniquePerGame());
         assertTrue(depression.incompatibleTraits().contains(ImpostorTrait.ID));
         assertTrue(depression.incompatibleTraits().contains(LastStandTrait.ID));
+        assertTrue(depression.incompatibleTraits().contains(GoodTraits.INTROVERTED));
+        assertTrue(depression.incompatibleTraits().contains(GoodTraits.EXTROVERTED));
     }
 
     @Test
-    void triggerChanceIsLinearFromMidMoodToMinusTwenty() {
+    void triggerChanceIsLinearFromMidMoodToThirtyPercentAtMinusTwenty() {
         assertEquals(0.0, DepressionTraitService.triggerChance(0.55f), 0.0001);
-        assertEquals(100.0, DepressionTraitService.triggerChance(-0.20f), 0.0001);
-        assertEquals(50.0, DepressionTraitService.triggerChance(0.175f), 0.0001);
+        assertEquals(30.0, DepressionTraitService.triggerChance(-0.20f), 0.0001);
+        assertEquals(15.0, DepressionTraitService.triggerChance(0.175f), 0.0001);
     }
 
     @Test
-    void psychoCounterChanceIsLinearFromTenPercentAtMidMoodToGuaranteedAtZero() {
-        assertEquals(0.0, DepressionTraitService.psychoCounterChance(0.56f), 0.0001);
-        assertEquals(10.0, DepressionTraitService.psychoCounterChance(0.55f), 0.0001);
-        assertEquals(55.0, DepressionTraitService.psychoCounterChance(0.275f), 0.0001);
+    void psychoCounterChanceIsGuaranteedRegardlessOfMood() {
+        assertEquals(100.0, DepressionTraitService.psychoCounterChance(1.0f), 0.0001);
+        assertEquals(100.0, DepressionTraitService.psychoCounterChance(0.56f), 0.0001);
+        assertEquals(100.0, DepressionTraitService.psychoCounterChance(0.55f), 0.0001);
+        assertEquals(100.0, DepressionTraitService.psychoCounterChance(0.275f), 0.0001);
         assertEquals(100.0, DepressionTraitService.psychoCounterChance(0.0f), 0.0001);
+    }
+
+    @Test
+    void randomDepressionCapUsesMinimumRefreshPlayerCount() {
+        assertEquals(0, DepressionTraitService.randomDepressionCap(23));
+        assertEquals(0, DepressionTraitService.randomDepressionCap(24));
+        assertEquals(0, DepressionTraitService.randomDepressionCap(31));
+        assertEquals(1, DepressionTraitService.randomDepressionCap(32));
+        assertEquals(1, DepressionTraitService.randomDepressionCap(39));
+        assertEquals(2, DepressionTraitService.randomDepressionCap(40));
+    }
+
+    @Test
+    void depressionFakeDeathCounterHasNoMoodGate() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
+
+        int beforeKill = source.indexOf("public static KillPlayer.KillResult beforeKill");
+        int afterKill = source.indexOf("public static void handleAfterKill", beforeKill);
+        String beforeKillSource = source.substring(beforeKill, afterKill);
+
+        assertFalse(beforeKillSource.contains("mood > GameConstants.MID_MOOD_THRESHOLD"));
+        assertTrue(beforeKillSource.contains("double chance = psychoCounterChance(mood);"));
     }
 
     @Test
