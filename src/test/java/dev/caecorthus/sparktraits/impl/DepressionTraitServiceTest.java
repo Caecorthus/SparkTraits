@@ -9,6 +9,7 @@ import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.game.GameConstants;
+import net.minecraft.sound.SoundCategory;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.BeforeAll;
@@ -375,14 +376,18 @@ class DepressionTraitServiceTest {
     }
 
     @Test
-    void depressionMusicAndEffectsUseSeparateCategoriesAndLouderVolumes() throws IOException {
+    void depressionPsychoSoundsUseAmbientCategoryAndLouderVolumes() throws IOException {
         String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
 
         assertEquals(5.0f, DepressionTraitService.DEPRESSION_RANGE_SOUND_VOLUME, 0.0001f);
         assertEquals(2.0f, DepressionTraitService.DEPRESSION_DIRECT_SOUND_VOLUME, 0.0001f);
         assertEquals(2.0f, DepressionTraitService.DEPRESSION_MUSIC_SOUND_VOLUME, 0.0001f);
-        assertTrue(source.contains("player.playSoundToPlayer(sound, SoundCategory.MUSIC, DEPRESSION_MUSIC_SOUND_VOLUME"));
-        assertTrue(source.contains("player.playSoundToPlayer(sound, SoundCategory.PLAYERS, DEPRESSION_DIRECT_SOUND_VOLUME"));
+        assertEquals(SoundCategory.AMBIENT, DepressionTraitService.DEPRESSION_AUDIO_CATEGORY);
+        assertTrue(source.contains("source.getWorld().playSound("));
+        assertTrue(source.contains("DEPRESSION_AUDIO_CATEGORY,\n                DEPRESSION_RANGE_SOUND_VOLUME"));
+        assertTrue(source.contains("player.playSoundToPlayer(sound, DEPRESSION_AUDIO_CATEGORY, DEPRESSION_DIRECT_SOUND_VOLUME"));
+        assertTrue(source.contains("player.playSoundToPlayer(sound, DEPRESSION_AUDIO_CATEGORY, DEPRESSION_MUSIC_SOUND_VOLUME"));
+        assertFalse(source.contains("SoundCategory.MUSIC"));
     }
 
     @Test

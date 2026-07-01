@@ -75,6 +75,9 @@ public final class DepressionTraitService {
     public static final float DEPRESSION_RANGE_SOUND_VOLUME = 5.0f;
     public static final float DEPRESSION_DIRECT_SOUND_VOLUME = 2.0f;
     public static final float DEPRESSION_MUSIC_SOUND_VOLUME = 2.0f;
+    // English: Wathe locks MUSIC to 0.0, so Depression's owned psycho audio uses AMBIENT.
+    // 中文：Wathe 会把 MUSIC 分类锁到 0.0，因此抑郁自管的疯魔音频改走 AMBIENT。
+    static final SoundCategory DEPRESSION_AUDIO_CATEGORY = SoundCategory.AMBIENT;
     private static final float DEPRESSION_SOUND_PITCH = 1.0f;
     private static final EntityAttributeModifier DEPRESSION_STAMINA_MODIFIER = new EntityAttributeModifier(
             DEPRESSION_STAMINA_MODIFIER_ID,
@@ -818,18 +821,18 @@ public final class DepressionTraitService {
                 source.getY(),
                 source.getZ(),
                 sound,
-                SoundCategory.PLAYERS,
+                DEPRESSION_AUDIO_CATEGORY,
                 DEPRESSION_RANGE_SOUND_VOLUME,
                 DEPRESSION_SOUND_PITCH
         );
     }
 
     private static void playDirectSound(ServerPlayerEntity player, SoundEvent sound) {
-        player.playSoundToPlayer(sound, SoundCategory.PLAYERS, DEPRESSION_DIRECT_SOUND_VOLUME, DEPRESSION_SOUND_PITCH);
+        player.playSoundToPlayer(sound, DEPRESSION_AUDIO_CATEGORY, DEPRESSION_DIRECT_SOUND_VOLUME, DEPRESSION_SOUND_PITCH);
     }
 
     private static void playMusicSound(ServerPlayerEntity player, SoundEvent sound) {
-        player.playSoundToPlayer(sound, SoundCategory.MUSIC, DEPRESSION_MUSIC_SOUND_VOLUME, DEPRESSION_SOUND_PITCH);
+        player.playSoundToPlayer(sound, DEPRESSION_AUDIO_CATEGORY, DEPRESSION_MUSIC_SOUND_VOLUME, DEPRESSION_SOUND_PITCH);
     }
 
     private static void playPairMusicSound(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, SoundEvent sound) {
