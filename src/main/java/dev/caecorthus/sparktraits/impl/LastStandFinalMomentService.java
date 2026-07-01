@@ -70,25 +70,16 @@ public final class LastStandFinalMomentService {
             GameWorldComponent gameComponent,
             GameFunctions.WinStatus currentStatus
     ) {
-        TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(world);
         if (gameComponent.getGameStatus() != GameWorldComponent.GameStatus.ACTIVE
                 || currentStatus == GameFunctions.WinStatus.NEUTRAL) {
             return null;
         }
-        if (traitWorld.isFinalMomentActive()) {
+        if (TraitWorldComponent.KEY.get(world).isFinalMomentActive()) {
             return activeFinalMomentWinResult(true, currentStatus, snapshotPlayers(world, gameComponent));
         }
-        if (currentStatus == GameFunctions.WinStatus.TIME) {
-            return null;
-        }
-
-        FinalMomentDecision decision = evaluate(snapshotPlayers(world, gameComponent));
-        if (!decision.shouldTrigger()) {
-            return null;
-        }
-
-        triggerFinalMoment(world, gameComponent, traitWorld, decision.finalPlayerUuids());
-        return CheckWinCondition.WinResult.block();
+        return triggerFinalMomentIfEligible(world, gameComponent, currentStatus)
+                ? CheckWinCondition.WinResult.block()
+                : null;
     }
 
     static FinalMomentDecision evaluate(Collection<PlayerState> players) {
@@ -122,6 +113,45 @@ public final class LastStandFinalMomentService {
         return finalMomentActive
                 && (currentStatus == GameFunctions.WinStatus.PASSENGERS
                 || currentStatus == GameFunctions.WinStatus.KILLERS);
+    }
+
+    public static boolean triggerFinalMomentIfEligible(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            GameFunctions.WinStatus currentStatus
+    ) {
+        if (world == null || gameComponent == null || currentStatus == null) {
+            return false;
+        }
+        TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(world);
+        List<PlayerState> players = snapshotPlayers(world, gameComponent);
+        if (!canTriggerInactiveFinalMoment(
+                gameComponent.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE,
+                traitWorld.isFinalMomentActive(),
+                currentStatus,
+                players
+        )) {
+            return false;
+        }
+
+        FinalMomentDecision decision = evaluate(players);
+        triggerFinalMoment(world, gameComponent, traitWorld, decision.finalPlayerUuids());
+        return true;
+    }
+
+    static boolean canTriggerInactiveFinalMoment(
+            boolean gameActive,
+            boolean finalMomentActive,
+            GameFunctions.WinStatus currentStatus,
+            Collection<PlayerState> players
+    ) {
+        if (!gameActive
+                || finalMomentActive
+                || currentStatus == GameFunctions.WinStatus.TIME
+                || currentStatus == GameFunctions.WinStatus.NEUTRAL) {
+            return false;
+        }
+        return evaluate(players).shouldTrigger();
     }
 
     static @Nullable CheckWinCondition.WinResult activeFinalMomentWinResult(

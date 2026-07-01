@@ -6,8 +6,10 @@ import dev.caecorthus.sparktraits.api.TraitAssignmentReason;
 import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitSelectionContext;
 import dev.doctor4t.wathe.api.Faction;
+import dev.doctor4t.wathe.api.Role;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import org.agmas.noellesroles.Noellesroles;
 
 /**
  * Hidden civilian trait that can turn one qualifying death into a delayed last stand.
@@ -44,9 +46,14 @@ public final class LastStandTrait implements Trait {
     @Override
     public boolean canApply(TraitSelectionContext context) {
         return Trait.super.canApply(context)
-                && context.role() != null
-                && context.role().getFaction() == Faction.CIVILIAN
-                && context.gameComponent().getAllKillerTeamPlayers().size() >= 2;
+                && canSelectLastStand(context.role(), context.gameComponent().getAllKillerTeamPlayers().size());
+    }
+
+    static boolean canSelectLastStand(Role role, int killerTeamPlayerCount) {
+        return role != null
+                && role.getFaction() == Faction.CIVILIAN
+                && !role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
+                && killerTeamPlayerCount >= 2;
     }
 
     @Override

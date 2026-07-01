@@ -98,6 +98,30 @@ public abstract class MurderGameModeMixin {
             method = "tickServerGameLoop",
             at = @At(
                     value = "INVOKE",
+                    target = "Ldev/doctor4t/wathe/api/event/CheckWinCondition;checkWin(Lnet/minecraft/server/world/ServerWorld;Ldev/doctor4t/wathe/cca/GameWorldComponent;Ldev/doctor4t/wathe/game/GameFunctions$WinStatus;)Ldev/doctor4t/wathe/api/event/CheckWinCondition$WinResult;"
+            ),
+            cancellable = true,
+            locals = LocalCapture.CAPTURE_FAILHARD
+    )
+    private void sparktraits$startFinalMomentBeforeWinConditionHooks(
+            ServerWorld serverWorld,
+            GameWorldComponent gameWorldComponent,
+            CallbackInfo ci,
+            GameFunctions.WinStatus winStatus,
+            ServerPlayerEntity neutralWinner,
+            boolean civilianAlive
+    ) {
+        // Start Final Moment before earlier neutral blockers, such as NoellesRoles Jester Moment, can short-circuit the event chain.
+        // 在 NoellesRoles 小丑时刻等更早的中立阻塞者截断胜利事件前，先启动背水一战终局时刻。
+        if (LastStandFinalMomentService.triggerFinalMomentIfEligible(serverWorld, gameWorldComponent, winStatus)) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = "tickServerGameLoop",
+            at = @At(
+                    value = "INVOKE",
                     target = "Ldev/doctor4t/wathe/api/event/GameEvents$OnWinDetermined;onWinDetermined(Lnet/minecraft/server/world/ServerWorld;Ldev/doctor4t/wathe/cca/GameWorldComponent;Ldev/doctor4t/wathe/game/GameFunctions$WinStatus;Lnet/minecraft/server/network/ServerPlayerEntity;)V"
             ),
             cancellable = true,

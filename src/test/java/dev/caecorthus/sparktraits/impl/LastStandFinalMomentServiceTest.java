@@ -4,6 +4,7 @@ import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.util.Identifier;
+import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -74,6 +75,66 @@ class LastStandFinalMomentServiceTest {
 
         assertTrue(decision.shouldTrigger());
         assertEquals(List.of(FIRST, SECOND), decision.finalPlayerUuids());
+    }
+
+    @Test
+    void inactiveFinalMomentCanStartBeforeNoellesJesterBlocksTeamWins() {
+        assertTrue(LastStandFinalMomentService.canTriggerInactiveFinalMoment(
+                true,
+                false,
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(
+                        state(FIRST, WatheRoles.CIVILIAN, true, true),
+                        state(SECOND, Noellesroles.JESTER, true, false)
+                )
+        ));
+    }
+
+    @Test
+    void inactiveFinalMomentStillRequiresOtherGoodPlayersToBeGone() {
+        assertFalse(LastStandFinalMomentService.canTriggerInactiveFinalMoment(
+                true,
+                false,
+                GameFunctions.WinStatus.PASSENGERS,
+                List.of(
+                        state(FIRST, WatheRoles.CIVILIAN, true, true),
+                        state(SECOND, WatheRoles.VIGILANTE, true, false),
+                        state(THIRD, Noellesroles.JESTER, true, false)
+                )
+        ));
+    }
+
+    @Test
+    void inactiveFinalMomentDoesNotStartForNonActiveRoundOrFinalStatuses() {
+        List<LastStandFinalMomentService.PlayerState> players = List.of(
+                state(FIRST, WatheRoles.CIVILIAN, true, true),
+                state(SECOND, Noellesroles.JESTER, true, false)
+        );
+
+        assertFalse(LastStandFinalMomentService.canTriggerInactiveFinalMoment(
+                false,
+                false,
+                GameFunctions.WinStatus.PASSENGERS,
+                players
+        ));
+        assertFalse(LastStandFinalMomentService.canTriggerInactiveFinalMoment(
+                true,
+                true,
+                GameFunctions.WinStatus.PASSENGERS,
+                players
+        ));
+        assertFalse(LastStandFinalMomentService.canTriggerInactiveFinalMoment(
+                true,
+                false,
+                GameFunctions.WinStatus.TIME,
+                players
+        ));
+        assertFalse(LastStandFinalMomentService.canTriggerInactiveFinalMoment(
+                true,
+                false,
+                GameFunctions.WinStatus.NEUTRAL,
+                players
+        ));
     }
 
     @Test
@@ -296,6 +357,24 @@ class LastStandFinalMomentServiceTest {
         String source = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/SparkTraitsClient.java"));
 
         assertTrue(source.contains("GetInstinctHighlight.HighlightResult.PRIORITY_HIGH + 1"));
+    }
+
+    @Test
+    void finalMomentStartFallbackRunsBeforeWinConditionListeners() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/mixin/MurderGameModeMixin.java"));
+
+        int guard = source.indexOf("sparktraits$startFinalMomentBeforeWinConditionHooks");
+        int eventTarget = source.indexOf("CheckWinCondition;checkWin");
+        int trigger = source.indexOf("LastStandFinalMomentService.triggerFinalMomentIfEligible", guard);
+        int cancel = source.indexOf("ci.cancel()", guard);
+
+        assertTrue(guard >= 0);
+        assertTrue(eventTarget >= 0);
+        assertTrue(trigger > guard);
+        assertTrue(cancel > trigger);
+        assertTrue(source.contains("target = \"Ldev/doctor4t/wathe/api/event/CheckWinCondition;checkWin"));
+        assertTrue(source.contains("gameWorldComponent, winStatus"));
+        assertTrue(eventTarget < guard);
     }
 
     @Test

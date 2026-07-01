@@ -5,6 +5,7 @@ import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.util.Identifier;
+import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -57,6 +58,17 @@ class LastStandServiceTest {
     void populationThresholdCanAnticipateTheVictimDeath() {
         assertTrue(LastStandService.meetsCivilianPopulationThresholdAfterDeath(3, 2));
         assertFalse(LastStandService.meetsCivilianPopulationThresholdAfterDeath(3, 3));
+    }
+
+    @Test
+    void lastStandSelectionExcludesSurvivalMaster() {
+        assertFalse(LastStandTrait.canSelectLastStand(Noellesroles.SURVIVAL_MASTER, 2));
+    }
+
+    @Test
+    void lastStandSelectionStillAllowsOrdinaryCivilianWithEnoughKillers() {
+        assertTrue(LastStandTrait.canSelectLastStand(WatheRoles.CIVILIAN, 2));
+        assertFalse(LastStandTrait.canSelectLastStand(WatheRoles.CIVILIAN, 1));
     }
 
     @Test
@@ -127,7 +139,7 @@ class LastStandServiceTest {
         int guard = source.indexOf("sparktraits$cancelPendingLastStandRoundEnd");
         int eventTarget = source.indexOf("GameEvents$OnWinDetermined;onWinDetermined");
         int finalMomentGuard = source.indexOf("LastStandFinalMomentService.shouldCancelRoundEndFinalization");
-        int cancel = source.indexOf("ci.cancel()");
+        int cancel = source.indexOf("ci.cancel()", guard);
 
         assertTrue(guard >= 0);
         assertTrue(source.contains("cancellable = true"));
