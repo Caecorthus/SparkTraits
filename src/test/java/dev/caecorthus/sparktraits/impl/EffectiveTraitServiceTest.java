@@ -58,6 +58,21 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void impostorBlackoutImmunityFollowsOnlyTheImpostorTrait() {
+        assertTrue(EffectiveTraitService.canSelectImpostor(Noellesroles.DEMON_HUNTER, 2, Set.of()));
+        assertTrue(EffectiveTraitService.shouldApplyImpostorBlackoutImmunity(
+                Set.of(ImpostorTrait.ID)
+        ));
+        assertFalse(EffectiveTraitService.shouldApplyImpostorBlackoutImmunity(
+                Set.of()
+        ));
+        assertFalse(EffectiveTraitService.shouldApplyImpostorBlackoutImmunity(
+                Set.of(ConscienceTrait.ID)
+        ));
+        assertFalse(EffectiveTraitService.canSelectImpostor(Noellesroles.UNDERCOVER, 2, Set.of()));
+    }
+
+    @Test
     void effectiveTeamsFlipForConscienceAndImpostor() {
         Set<Identifier> conscience = Set.of(ConscienceTrait.ID);
         Set<Identifier> impostor = Set.of(ImpostorTrait.ID);

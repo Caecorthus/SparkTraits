@@ -4,6 +4,7 @@ import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
+import dev.doctor4t.wathe.api.event.BlackoutEffect;
 import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.api.event.ShouldPunishGunShooter;
 import dev.doctor4t.wathe.api.event.ShouldShowCohort;
@@ -13,6 +14,8 @@ import dev.doctor4t.wathe.cca.PlayerShopComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.util.ShopUtils;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -52,6 +55,7 @@ public final class EffectiveTraitService {
 
     public static void register() {
         CheckWinCondition.EVENT.register(EffectiveTraitService::checkWin);
+        BlackoutEffect.BEFORE.register(EffectiveTraitService::beforeBlackoutEffect);
         TaskComplete.EVENT.register((player, taskType) -> {
             GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
             if (shouldRewardTaskMoney(game.getRole(player), TraitPlayerComponent.KEY.get(player).getActiveTraitIds())) {
@@ -98,6 +102,26 @@ public final class EffectiveTraitService {
                     ? ShouldShowCohort.CohortResult.show(ShouldShowCohort.CohortResult.PRIORITY_HIGH)
                     : ShouldShowCohort.CohortResult.hide();
         });
+    }
+
+    private static BlackoutEffect.BlackoutResult beforeBlackoutEffect(ServerPlayerEntity player, int durationTicks) {
+        Collection<Identifier> traits = TraitPlayerComponent.KEY.get(player).getActiveTraitIds();
+        if (!shouldApplyImpostorBlackoutImmunity(traits)) {
+            return null;
+        }
+
+        // Match Wathe's killer blackout branch without granting other killer features.
+        // 对齐 wathe 杀手熄灯分支，但不授予其他杀手功能。
+        player.removeStatusEffect(StatusEffects.BLINDNESS);
+        player.addStatusEffect(new StatusEffectInstance(
+                StatusEffects.NIGHT_VISION,
+                durationTicks,
+                0,
+                false,
+                false,
+                true
+        ));
+        return BlackoutEffect.BlackoutResult.cancel();
     }
 
     public static boolean hasConscience(PlayerEntity player) {
@@ -577,6 +601,12 @@ public final class EffectiveTraitService {
             return false;
         }
         return hasConscience(purchaserTraits) == hasConscience(targetTraits);
+    }
+
+    /** Grants blackout vision only to active Impostor trait holders.
+     *  只让当前拥有内鬼天赋的玩家获得熄灯视野免疫。 */
+    public static boolean shouldApplyImpostorBlackoutImmunity(Collection<Identifier> traits) {
+        return traits != null && hasImpostor(traits);
     }
 
     public static int publicKillerCount(GameWorldComponent gameComponent, Collection<ServerPlayerEntity> players) {
