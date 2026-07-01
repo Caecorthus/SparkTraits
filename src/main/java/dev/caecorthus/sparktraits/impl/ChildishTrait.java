@@ -10,8 +10,8 @@ import net.minecraft.util.Identifier;
 import java.util.Set;
 
 /**
- * Global trait that scales the whole player body down to ninety-five percent.
- * 全局天赋：将玩家整体体型缩小到百分之九十五。
+ * Global trait that scales the whole player body down to ninety percent.
+ * 全局天赋：将玩家整体体型缩小到百分之九十。
  */
 public final class ChildishTrait implements Trait {
     public static final Identifier ID = SparkTraits.id("childish");

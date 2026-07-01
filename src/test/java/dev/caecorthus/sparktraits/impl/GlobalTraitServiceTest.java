@@ -101,8 +101,8 @@ class GlobalTraitServiceTest {
     }
 
     @Test
-    void childishScaleShrinksPlayersToNinetyFivePercent() {
-        assertEquals(-0.05D, GlobalTraitService.CHILDISH_SCALE_MODIFIER_VALUE, 0.0001D);
+    void childishScaleShrinksPlayersToNinetyPercent() {
+        assertEquals(-0.10D, GlobalTraitService.CHILDISH_SCALE_MODIFIER_VALUE, 0.0001D);
     }
 
     @Test
