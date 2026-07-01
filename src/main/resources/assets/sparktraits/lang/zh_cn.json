@@ -51,7 +51,7 @@
   "trait.sparktraits.heavy_artillery.name": "重炮手",
   "trait.sparktraits.heavy_artillery.description": "近距离枪击会结算两次，击穿一层护盾。",
   "trait.sparktraits.niko.name": "Niko",
-  "trait.sparktraits.niko.description": "蹲下时获得夜视，左轮手枪和德林加射程变为300格。蹲下使用左轮时三连发，并进入60秒冷却。",
+  "trait.sparktraits.niko.description": "蹲下时获得夜视，左轮手枪和德林加射程变为300格。蹲下使用左轮时三连发，后坐力降低90%，并进入60秒冷却。",
   "trait.sparktraits.well_trained.name": "训练有素",
   "trait.sparktraits.well_trained.description": "低理智不再妨碍你，且理智流失速度降低百分之三十。",
   "trait.sparktraits.going_dark.name": "隐蔽行动",

@@ -16,6 +16,7 @@
     "MarksmanCrosshairMixin",
     "MarksmanDerringerMixin",
     "MarksmanRevolverMixin",
+    "NikoRevolverRecoilMixin",
     "MoodRendererMixin",
     "PigPlayerRendererMixin",
     "RoundTextRendererMixin",

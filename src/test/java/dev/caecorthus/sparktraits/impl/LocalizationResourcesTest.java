@@ -10,6 +10,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies that localized SparkTraits resources stay complete.
@@ -17,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  */
 class LocalizationResourcesTest {
     private static final Path LANG_DIR = Path.of("src/main/resources/assets/sparktraits/lang");
+    private static final Path CLIENT_MIXINS = Path.of("src/client/resources/sparktraits.client.mixins.json");
 
     @Test
     void chineseLocalizationContainsEveryEnglishKey() throws IOException {
@@ -55,8 +57,17 @@ class LocalizationResourcesTest {
         assertEquals("训练有素", chinese.get("trait.sparktraits.well_trained.name").getAsString());
         assertEquals("隐蔽行动", chinese.get("trait.sparktraits.going_dark.name").getAsString());
 
-        assertFalse(english.get("trait.sparktraits.niko.description").getAsString().contains("recoil"));
-        assertFalse(chinese.get("trait.sparktraits.niko.description").getAsString().contains("后坐力"));
+        assertTrue(english.get("trait.sparktraits.niko.description").getAsString().contains("recoil"));
+        assertTrue(english.get("trait.sparktraits.niko.description").getAsString().contains("90%"));
+        assertTrue(chinese.get("trait.sparktraits.niko.description").getAsString().contains("后坐力"));
+        assertTrue(chinese.get("trait.sparktraits.niko.description").getAsString().contains("90%"));
+    }
+
+    @Test
+    void nikoRevolverRecoilMixinIsRegistered() throws IOException {
+        String clientMixins = Files.readString(CLIENT_MIXINS);
+
+        assertTrue(clientMixins.contains("\"NikoRevolverRecoilMixin\""));
     }
 
     @Test

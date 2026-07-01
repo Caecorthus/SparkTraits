@@ -43,6 +43,7 @@ public final class VigilanteVeteranTraitService {
     public static final int NIKO_BURST_INTERVAL_TICKS = 2;
     public static final int NIKO_BURST_SHOTS = 3;
     public static final int NIKO_NIGHT_VISION_TICKS = 60;
+    public static final float NIKO_REVOLVER_RECOIL_MULTIPLIER = 0.1f;
     public static final float FAST_RELOAD_MULTIPLIER = 0.7f;
     public static final float WELL_TRAINED_DRAIN_MULTIPLIER = 0.7f;
 
@@ -132,6 +133,38 @@ public final class VigilanteVeteranTraitService {
             return NIKO_GUN_RANGE;
         }
         return originalRange;
+    }
+
+    public static float adjustedNikoRevolverRecoil(
+            float recoil,
+            boolean revolver,
+            boolean coolingDown,
+            boolean gameRunning,
+            boolean playerPlayingAndAlive,
+            Role role,
+            Collection<Identifier> traits,
+            boolean sneaking
+    ) {
+        if (shouldStartNikoRevolverBurst(revolver, coolingDown, gameRunning, playerPlayingAndAlive, role, traits, sneaking)) {
+            return recoil * NIKO_REVOLVER_RECOIL_MULTIPLIER;
+        }
+        return recoil;
+    }
+
+    public static float adjustedNikoRevolverRecoil(float recoil, PlayerEntity player) {
+        if (player == null || player.getWorld() == null) {
+            return recoil;
+        }
+        return adjustedNikoRevolverRecoil(
+                recoil,
+                player.getMainHandStack().isOf(WatheItems.REVOLVER),
+                player.getItemCooldownManager().isCoolingDown(WatheItems.REVOLVER),
+                GameWorldComponent.KEY.get(player.getWorld()).isRunning(),
+                !player.isSpectator() && GameFunctions.isPlayerPlayingAndAlive(player),
+                roleOf(player),
+                traitsOf(player),
+                isSneaking(player)
+        );
     }
 
     public static boolean shouldStartNikoRevolverBurst(

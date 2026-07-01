@@ -248,6 +248,80 @@ class PoliceTraitServiceTest {
     }
 
     @Test
+    void nikoRevolverBurstReducesOnlyEligibleRecoil() {
+        assertEquals(0.4f, VigilanteVeteranTraitService.adjustedNikoRevolverRecoil(
+                4.0f,
+                true,
+                false,
+                true,
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001f);
+        assertEquals(4.0f, VigilanteVeteranTraitService.adjustedNikoRevolverRecoil(
+                4.0f,
+                false,
+                false,
+                true,
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001f);
+        assertEquals(4.0f, VigilanteVeteranTraitService.adjustedNikoRevolverRecoil(
+                4.0f,
+                true,
+                true,
+                true,
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001f);
+        assertEquals(4.0f, VigilanteVeteranTraitService.adjustedNikoRevolverRecoil(
+                4.0f,
+                true,
+                false,
+                true,
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(PoliceTraits.NIKO),
+                false
+        ), 0.0001f);
+        assertEquals(4.0f, VigilanteVeteranTraitService.adjustedNikoRevolverRecoil(
+                4.0f,
+                true,
+                false,
+                true,
+                true,
+                WatheRoles.VIGILANTE,
+                Set.of(),
+                true
+        ), 0.0001f);
+        assertEquals(4.0f, VigilanteVeteranTraitService.adjustedNikoRevolverRecoil(
+                4.0f,
+                true,
+                false,
+                true,
+                true,
+                Noellesroles.DETECTIVE,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001f);
+        assertEquals(4.0f, VigilanteVeteranTraitService.adjustedNikoRevolverRecoil(
+                4.0f,
+                true,
+                false,
+                true,
+                true,
+                Noellesroles.CORRUPT_COP,
+                Set.of(PoliceTraits.NIKO),
+                true
+        ), 0.0001f);
+    }
+
+    @Test
     void nikoBurstContinuationKeepsStateChecksWithoutCooldownGate() {
         assertTrue(VigilanteVeteranTraitService.shouldContinueNikoRevolverBurst(
                 true,
