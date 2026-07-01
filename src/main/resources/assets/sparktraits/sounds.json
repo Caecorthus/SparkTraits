@@ -12,8 +12,7 @@
   "depression.docile_to_rage": {
     "sounds": [
       {
-        "name": "sparktraits:depression/docile_to_rage",
-        "stream": true
+        "name": "sparktraits:depression/docile_to_rage"
       }
     ],
     "subtitle": "subtitle.sparktraits.depression.docile_to_rage"
@@ -21,8 +20,7 @@
   "depression.rage_loop": {
     "sounds": [
       {
-        "name": "sparktraits:depression/rage_loop",
-        "stream": true
+        "name": "sparktraits:depression/rage_loop"
       }
     ],
     "subtitle": "subtitle.sparktraits.depression.rage_loop"
@@ -30,8 +28,7 @@
   "depression.blind_rage_enrage": {
     "sounds": [
       {
-        "name": "sparktraits:depression/blind_rage_enrage",
-        "stream": true
+        "name": "sparktraits:depression/blind_rage_enrage"
       }
     ],
     "subtitle": "subtitle.sparktraits.depression.blind_rage_enrage"
@@ -48,8 +45,7 @@
   "depression.rage_to_docile": {
     "sounds": [
       {
-        "name": "sparktraits:depression/rage_to_docile",
-        "stream": true
+        "name": "sparktraits:depression/rage_to_docile"
       }
     ],
     "subtitle": "subtitle.sparktraits.depression.rage_to_docile"
@@ -57,8 +53,7 @@
   "depression.player_was_seen": {
     "sounds": [
       {
-        "name": "sparktraits:depression/player_was_seen",
-        "stream": true
+        "name": "sparktraits:depression/player_was_seen"
       }
     ],
     "subtitle": "subtitle.sparktraits.depression.player_was_seen"
@@ -78,8 +73,7 @@
   "depression.shyguy_killed": {
     "sounds": [
       {
-        "name": "sparktraits:depression/shyguy_killed",
-        "stream": true
+        "name": "sparktraits:depression/shyguy_killed"
       }
     ],
     "subtitle": "subtitle.sparktraits.depression.shyguy_killed"

@@ -72,8 +72,9 @@ public final class DepressionTraitService {
     public static final Identifier APPRENTICE_WITCH_ID = Identifier.of("sparkwitch", "apprentice_witch");
     public static final Identifier DEPRESSION_STAMINA_MODIFIER_ID = SparkTraits.id("depression_stamina");
     public static final double DEPRESSION_STAMINA_MODIFIER_VALUE = -0.2;
-    private static final float DEPRESSION_RANGE_SOUND_VOLUME = 3.0f;
-    private static final float DEPRESSION_DIRECT_SOUND_VOLUME = 1.0f;
+    public static final float DEPRESSION_RANGE_SOUND_VOLUME = 5.0f;
+    public static final float DEPRESSION_DIRECT_SOUND_VOLUME = 2.0f;
+    public static final float DEPRESSION_MUSIC_SOUND_VOLUME = 2.0f;
     private static final float DEPRESSION_SOUND_PITCH = 1.0f;
     private static final EntityAttributeModifier DEPRESSION_STAMINA_MODIFIER = new EntityAttributeModifier(
             DEPRESSION_STAMINA_MODIFIER_ID,
@@ -588,7 +589,7 @@ public final class DepressionTraitService {
         pendingPlayers.put(uuid, state);
         TraitPlayerComponent.KEY.get(attacker).setDepressionCounterTarget(uuid);
         attacker.networkHandler.sendPacket(new net.minecraft.network.packet.s2c.play.TitleS2CPacket(ATTACKER_TITLE));
-        playPairSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_ENRAGE);
+        playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_ENRAGE);
         playDirectSound(attacker, SparkTraitsSounds.DEPRESSION_PLAYER_WAS_SEEN);
         holdPending(player, state);
     }
@@ -653,7 +654,7 @@ public final class DepressionTraitService {
         activePlayers.put(player.getUuid(), activeState);
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(true, state.attackerUuid());
         ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
-        playPairSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE);
+        playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE);
         activePlayers.put(player.getUuid(), maintainPsycho(
                 player,
                 attacker,
@@ -805,7 +806,7 @@ public final class DepressionTraitService {
         // English: Replay blind-rage chase on the audio-length cadence for the two chase participants only.
         // 中文：按 blind-rage chase 音频长度周期重播，并且只播放给追逐双方。
         if (shouldPlayRageLoop(state.rageLoopTicks())) {
-            playPairSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE);
+            playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE);
         }
         return state.withRageLoopTicks(nextRageLoopTicks(state.rageLoopTicks()));
     }
@@ -827,10 +828,14 @@ public final class DepressionTraitService {
         player.playSoundToPlayer(sound, SoundCategory.PLAYERS, DEPRESSION_DIRECT_SOUND_VOLUME, DEPRESSION_SOUND_PITCH);
     }
 
-    private static void playPairSound(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, SoundEvent sound) {
-        playDirectSound(player, sound);
+    private static void playMusicSound(ServerPlayerEntity player, SoundEvent sound) {
+        player.playSoundToPlayer(sound, SoundCategory.MUSIC, DEPRESSION_MUSIC_SOUND_VOLUME, DEPRESSION_SOUND_PITCH);
+    }
+
+    private static void playPairMusicSound(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, SoundEvent sound) {
+        playMusicSound(player, sound);
         if (attacker != null && attacker != player) {
-            playDirectSound(attacker, sound);
+            playMusicSound(attacker, sound);
         }
     }
 

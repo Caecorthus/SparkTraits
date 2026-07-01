@@ -1,5 +1,8 @@
 package dev.caecorthus.sparktraits.impl;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import dev.caecorthus.sparktraits.api.Trait;
 import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
@@ -364,11 +367,39 @@ class DepressionTraitServiceTest {
     void depressionBlindRageEnrageAndChaseArePairOnlySounds() throws IOException {
         String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
 
-        assertTrue(source.contains("playPairSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_ENRAGE)"));
-        assertTrue(source.contains("playPairSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE)"));
+        assertTrue(source.contains("playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_ENRAGE)"));
+        assertTrue(source.contains("playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE)"));
         assertTrue(source.contains("tickRageLoop(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state)"));
         assertFalse(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_DOCILE_TO_RAGE)"));
         assertFalse(source.contains("playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP)"));
+    }
+
+    @Test
+    void depressionMusicAndEffectsUseSeparateCategoriesAndLouderVolumes() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
+
+        assertEquals(5.0f, DepressionTraitService.DEPRESSION_RANGE_SOUND_VOLUME, 0.0001f);
+        assertEquals(2.0f, DepressionTraitService.DEPRESSION_DIRECT_SOUND_VOLUME, 0.0001f);
+        assertEquals(2.0f, DepressionTraitService.DEPRESSION_MUSIC_SOUND_VOLUME, 0.0001f);
+        assertTrue(source.contains("player.playSoundToPlayer(sound, SoundCategory.MUSIC, DEPRESSION_MUSIC_SOUND_VOLUME"));
+        assertTrue(source.contains("player.playSoundToPlayer(sound, SoundCategory.PLAYERS, DEPRESSION_DIRECT_SOUND_VOLUME"));
+    }
+
+    @Test
+    void depressionShortEffectsDoNotUseStreamingSoundSources() throws IOException {
+        JsonObject sounds = JsonParser.parseString(Files.readString(Path.of(
+                "src/main/resources/assets/sparktraits/sounds.json"
+        ))).getAsJsonObject();
+
+        assertFalse(firstSoundEntryStreams(sounds, "depression.docile_to_rage"));
+        assertFalse(firstSoundEntryStreams(sounds, "depression.rage_loop"));
+        assertFalse(firstSoundEntryStreams(sounds, "depression.blind_rage_enrage"));
+        assertTrue(firstSoundEntryStreams(sounds, "depression.blind_rage_chase"));
+        assertFalse(firstSoundEntryStreams(sounds, "depression.rage_to_docile"));
+        assertFalse(firstSoundEntryStreams(sounds, "depression.player_was_seen"));
+        assertFalse(firstSoundEntryStreams(sounds, "depression.melee_kill_1"));
+        assertFalse(firstSoundEntryStreams(sounds, "depression.melee_kill_2"));
+        assertFalse(firstSoundEntryStreams(sounds, "depression.shyguy_killed"));
     }
 
     @Test
@@ -405,5 +436,14 @@ class DepressionTraitServiceTest {
                 200,
                 false
         );
+    }
+
+    private static boolean firstSoundEntryStreams(JsonObject sounds, String event) {
+        JsonElement firstSound = sounds.getAsJsonObject(event).getAsJsonArray("sounds").get(0);
+        if (!firstSound.isJsonObject()) {
+            return false;
+        }
+        JsonElement stream = firstSound.getAsJsonObject().get("stream");
+        return stream != null && stream.getAsBoolean();
     }
 }
