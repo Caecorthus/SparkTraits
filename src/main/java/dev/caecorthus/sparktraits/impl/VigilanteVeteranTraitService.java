@@ -26,6 +26,8 @@ import net.minecraft.util.hit.EntityHitResult;
 
 import java.util.Collection;
 import java.util.List;
+import org.agmas.noellesroles.Noellesroles;
+import org.agmas.noellesroles.jester.JesterPlayerComponent;
 
 /**
  * Shared rules for Vigilante and Veteran-only traits.
@@ -219,6 +221,15 @@ public final class VigilanteVeteranTraitService {
         return eligibleShot && victimStillAlive;
     }
 
+    public static boolean shouldRetryHeavyArtilleryDamage(
+            boolean eligibleShot,
+            boolean victimStillAlive,
+            boolean victimInJesterMomentTransition
+    ) {
+        return shouldRetryHeavyArtilleryDamage(eligibleShot, victimStillAlive)
+                && !victimInJesterMomentTransition;
+    }
+
     public static void killPlayerWithHeavyArtillery(
             ServerPlayerEntity victim,
             boolean spawnBody,
@@ -227,9 +238,27 @@ public final class VigilanteVeteranTraitService {
     ) {
         boolean eligibleShot = isHeavyArtilleryShot(shooter, victim, deathReason);
         GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason);
-        if (shouldRetryHeavyArtilleryDamage(eligibleShot, GameFunctions.isPlayerPlayingAndAlive(victim))) {
+        if (shouldRetryHeavyArtilleryDamage(
+                eligibleShot,
+                GameFunctions.isPlayerPlayingAndAlive(victim),
+                isJesterMomentActiveOrTransitioning(victim)
+        )) {
             GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason);
         }
+    }
+
+    private static boolean isJesterMomentActiveOrTransitioning(ServerPlayerEntity victim) {
+        if (victim == null || victim.getWorld() == null) {
+            return false;
+        }
+        GameWorldComponent game = GameWorldComponent.KEY.get(victim.getWorld());
+        if (!game.isRole(victim, Noellesroles.JESTER)) {
+            return false;
+        }
+        JesterPlayerComponent jester = JesterPlayerComponent.KEY.get(victim);
+        // Heavy Artillery must not convert NoellesRoles' fake-death handoff into a real death.
+        // 重炮不能把 NoellesRoles 的小丑假死交接阶段再次结算成真死亡。
+        return jester.inPsychoMode || jester.isTransitioning();
     }
 
     public static void killPlayerWithPoliceGunTraits(

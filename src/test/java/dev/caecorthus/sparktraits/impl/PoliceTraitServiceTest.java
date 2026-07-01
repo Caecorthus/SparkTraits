@@ -363,6 +363,8 @@ class PoliceTraitServiceTest {
         assertTrue(VigilanteVeteranTraitService.shouldRetryHeavyArtilleryDamage(true, true));
         assertFalse(VigilanteVeteranTraitService.shouldRetryHeavyArtilleryDamage(true, false));
         assertFalse(VigilanteVeteranTraitService.shouldRetryHeavyArtilleryDamage(false, true));
+        assertFalse(VigilanteVeteranTraitService.shouldRetryHeavyArtilleryDamage(true, true, true));
+        assertTrue(VigilanteVeteranTraitService.shouldRetryHeavyArtilleryDamage(true, true, false));
     }
 
     @Test
