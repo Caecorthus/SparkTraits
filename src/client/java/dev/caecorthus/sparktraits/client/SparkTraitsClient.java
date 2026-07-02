@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.client;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.client.net.SparkTraitsClientVersionHandshake;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.SparkTraitsParticles;
@@ -21,6 +22,7 @@ import net.minecraft.entity.player.PlayerEntity;
 public class SparkTraitsClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        SparkTraitsClientVersionHandshake.registerClient();
         ParticleFactoryRegistry.getInstance().register(SparkTraitsParticles.BLUE_POISON, PoisonParticle.Factory::new);
         registerFinalMomentHighlight();
         registerGoingDarkInstinctSkip();
