@@ -79,5 +79,16 @@
   "subtitle.sparktraits.final_moment": "The final three minutes begin.",
   "message.sparktraits.silenced_killer.ability": "You are silenced and cannot use abilities.",
   "shop.error.sparktraits.silenced_killer": "You are silenced and cannot buy items.",
-  "death_reason.sparktraits.self_realization": "self realization"
+  "death_reason.sparktraits.self_realization": "self realization",
+  "trait.sparktraits.yuusha.name": "Yuusha",
+  "trait.sparktraits.yuusha.description": "Gain a phone for 「Full Bloom」.\n60s: weapon/speed/shield.\nPay the price when it ends.",
+  "item.sparktraits.hero_phone": "Please Pretend This Is A Phone",
+  "item.sparktraits.hero_phone.tooltip": "Phone used for 「Full Bloom」. Starts with 60s CD, then 180s CD. A price must be paid~",
+  "message.sparktraits.hero.full_bloom": "「Full Bloom」.",
+  "message.sparktraits.hero.cooldown": "Phone cooldown: %s seconds remaining.",
+  "message.sparktraits.hero.bloom_active": "Already in Full Bloom: %s seconds remaining.",
+  "message.sparktraits.hero.cost.blindness": "Price of 「Full Bloom」: you lost your sight.",
+  "message.sparktraits.hero.cost.slowness": "Price of 「Full Bloom」: your body becomes heavy.",
+  "message.sparktraits.hero.cost.taste_loss": "Price of 「Full Bloom」: you lost your sense of taste.",
+  "message.sparktraits.hero.taste_lost": "You lost your sense of taste and cannot recover san through food or drink."
 }

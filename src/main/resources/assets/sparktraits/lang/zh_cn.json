@@ -79,5 +79,16 @@
   "subtitle.sparktraits.final_moment": "最后三分钟开始了。",
   "message.sparktraits.silenced_killer.ability": "你被静语，无法使用技能",
   "shop.error.sparktraits.silenced_killer": "你被静语，无法购买物品",
-  "death_reason.sparktraits.self_realization": "自我觉悟"
+  "death_reason.sparktraits.self_realization": "自我觉悟",
+  "trait.sparktraits.yuusha.name": "勇者",
+  "trait.sparktraits.yuusha.description": "获得「手机」，可「滿開」。\n60秒：武器/速度/护盾。\n结束后付出代价。",
+  "item.sparktraits.hero_phone": "请假装这是个手机",
+  "item.sparktraits.hero_phone.tooltip": "用于「滿開」的手机，开局cd60s，使用后cd180s，要付出代价的哦~",
+  "message.sparktraits.hero.full_bloom": "「滿開」。",
+  "message.sparktraits.hero.cooldown": "手机还在冷却：剩余%s秒。",
+  "message.sparktraits.hero.bloom_active": "正在「滿開」中：剩余%s秒。",
+  "message.sparktraits.hero.cost.blindness": "「滿開」的代价：你失去了视力。",
+  "message.sparktraits.hero.cost.slowness": "「滿開」的代价：你的身体变得沉重。",
+  "message.sparktraits.hero.cost.taste_loss": "「滿開」的代价：你失去了味觉。",
+  "message.sparktraits.hero.taste_lost": "你失去了味觉，无法通过饮食回san"
 }

@@ -1,11 +1,19 @@
 pluginManagement {
     repositories {
-        maven {
-            name = 'Fabric'
-            url = 'https://maven.fabricmc.net/'
-        }
+        maven { url = 'https://maven.fabricmc.net/' }
         gradlePluginPortal()
+        mavenCentral()
     }
 }
 
-rootProject.name = "SparkTraits"
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://maven.ladysnake.org/releases' }
+        mavenCentral()
+        flatDir { dirs 'libs' }
+    }
+}
+
+rootProject.name = 'sparktraits-yuusha-direct'
