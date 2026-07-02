@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.impl;
 
+import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -330,14 +331,20 @@ class LastStandFinalMomentServiceTest {
     void finalMomentHighlightColorUsesFactionColors() {
         assertEquals(0x36E51B, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.CIVILIAN));
         assertEquals(0xC13838, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.KILLER));
-        assertEquals(0xB567FF, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END));
+        assertEquals(0xFFFF00, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END));
         assertEquals(0xFFFFFF, LastStandFinalMomentService.finalMomentHighlightColor(null));
+    }
+
+    @Test
+    void finalMomentHighlightColorKeepsSparkWitchFactionPurple() {
+        assertEquals(0xB567FF, LastStandFinalMomentService.finalMomentHighlightColor(sparkWitchNeutralRole("grand_witch")));
+        assertEquals(0xB567FF, LastStandFinalMomentService.finalMomentHighlightColor(sparkWitchNeutralRole("accomplice")));
     }
 
     @Test
     void finalMomentLastStandLooseEndUsesPassengerHighlightColor() {
         assertEquals(0x36E51B, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END, true));
-        assertEquals(0xB567FF, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END, false));
+        assertEquals(0xFFFF00, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END, false));
     }
 
     @Test
@@ -439,7 +446,7 @@ class LastStandFinalMomentServiceTest {
 
     private static LastStandFinalMomentService.PlayerState state(
             UUID uuid,
-            dev.doctor4t.wathe.api.Role role,
+            Role role,
             boolean alive,
             boolean lastStandTriggered
     ) {
@@ -449,6 +456,18 @@ class LastStandFinalMomentServiceTest {
                 Set.<Identifier>of(),
                 alive,
                 lastStandTriggered
+        );
+    }
+
+    private static Role sparkWitchNeutralRole(String path) {
+        return new Role(
+                Identifier.of("sparkwitch", path),
+                0xFFFFFF,
+                false,
+                false,
+                Role.MoodType.FAKE,
+                -1,
+                false
         );
     }
 }

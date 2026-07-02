@@ -56,6 +56,13 @@ public final class LastStandFinalMomentService {
     private static final int TITLE_FADE_IN_TICKS = 10;
     private static final int TITLE_STAY_TICKS = 100;
     private static final int TITLE_FADE_OUT_TICKS = 10;
+    private static final int FINAL_MOMENT_CIVILIAN_COLOR = 0x36E51B;
+    private static final int FINAL_MOMENT_KILLER_COLOR = 0xC13838;
+    private static final int FINAL_MOMENT_NEUTRAL_COLOR = 0xFFFF00;
+    private static final int FINAL_MOMENT_WITCH_COLOR = 0xB567FF;
+    private static final int FINAL_MOMENT_NONE_COLOR = 0xFFFFFF;
+    private static final Identifier SPARKWITCH_GRAND_WITCH_ID = Identifier.of("sparkwitch", "grand_witch");
+    private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
 
     private LastStandFinalMomentService() {
     }
@@ -284,14 +291,19 @@ public final class LastStandFinalMomentService {
 
     public static int finalMomentHighlightColor(@Nullable Role role, boolean lastStandFinalMomentLooseEnd) {
         if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
-            return 0x36E51B;
+            return FINAL_MOMENT_CIVILIAN_COLOR;
+        }
+        // SparkWitch's custom witch faction appears as native neutral here, so keep its current purple.
+        // SparkWitch 自定义魔女阵营在这里会表现为原生中立，因此保留当前淡紫色。
+        if (isSparkWitchFactionRole(role)) {
+            return FINAL_MOMENT_WITCH_COLOR;
         }
         Faction faction = role == null ? Faction.NONE : role.getFaction();
         return switch (faction) {
-            case CIVILIAN -> 0x36E51B;
-            case KILLER -> 0xC13838;
-            case NEUTRAL -> 0xB567FF;
-            case NONE -> 0xFFFFFF;
+            case CIVILIAN -> FINAL_MOMENT_CIVILIAN_COLOR;
+            case KILLER -> FINAL_MOMENT_KILLER_COLOR;
+            case NEUTRAL -> FINAL_MOMENT_NEUTRAL_COLOR;
+            case NONE -> FINAL_MOMENT_NONE_COLOR;
         };
     }
 
@@ -424,6 +436,14 @@ public final class LastStandFinalMomentService {
 
     private static boolean isLooseEndRole(@Nullable Role role) {
         return role != null && WatheRoles.LOOSE_END.identifier().equals(role.identifier());
+    }
+
+    private static boolean isSparkWitchFactionRole(@Nullable Role role) {
+        if (role == null) {
+            return false;
+        }
+        Identifier roleId = role.identifier();
+        return SPARKWITCH_GRAND_WITCH_ID.equals(roleId) || SPARKWITCH_ACCOMPLICE_ID.equals(roleId);
     }
 
     private static List<ServerPlayerEntity> livingPlayers(ServerWorld world, GameWorldComponent gameComponent) {
