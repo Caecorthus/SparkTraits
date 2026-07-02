@@ -48,6 +48,7 @@ class EffectiveTraitServiceTest {
     @Test
     void protectedInnocentRolesCanNeverSelectImpostor() {
         assertFalse(EffectiveTraitService.canSelectImpostor(Noellesroles.SURVIVAL_MASTER, 2, Set.of()));
+        assertFalse(EffectiveTraitService.canSelectImpostor(sparkWitchCivilianRole("pig_god"), 2, Set.of()));
         assertFalse(EffectiveTraitService.canSelectImpostor(WatheRoles.VIGILANTE, 2, Set.of()));
         assertFalse(EffectiveTraitService.canSelectImpostor(WatheRoles.VETERAN, 2, Set.of()));
     }
@@ -688,6 +689,18 @@ class EffectiveTraitServiceTest {
                 false,
                 false,
                 Role.MoodType.FAKE,
+                200,
+                false
+        );
+    }
+
+    private static Role sparkWitchCivilianRole(String path) {
+        return new Role(
+                Identifier.of("sparkwitch", path),
+                0xFFFFFF,
+                true,
+                false,
+                Role.MoodType.REAL,
                 200,
                 false
         );

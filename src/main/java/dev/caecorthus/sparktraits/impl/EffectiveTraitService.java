@@ -47,6 +47,7 @@ public final class EffectiveTraitService {
     private static final Identifier SPARKWITCH_GRAND_WITCH_ID = Identifier.of("sparkwitch", "grand_witch");
     private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
     private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
+    private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
     private static final Identifier NOELLES_SHADOW_JESTER_ID = Identifier.of("noellesroles", "shadow_jester");
     private static final Map<UUID, Identifier> poisonSources = new HashMap<>();
 
@@ -560,7 +561,8 @@ public final class EffectiveTraitService {
         return role != null
                 && (role == WatheRoles.VIGILANTE
                 || role == WatheRoles.VETERAN
-                || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID));
+                || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
+                || role.identifier().equals(SPARKWITCH_PIG_GOD_ID));
     }
 
     public static boolean countsAsPublicKiller(Role role, Collection<Identifier> traits) {
