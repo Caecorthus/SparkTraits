@@ -55,7 +55,11 @@
     "TrimmedBedBlockEntityMixin",
     "TrimmedBedBlockMixin",
     "VentHatchBlockMixin",
-    "WorldBlackoutComponentMixin"
+    "WorldBlackoutComponentMixin",
+    "yuusha.mixin.YuushaTraitAssignmentServiceMixin",
+    "yuusha.mixin.YuushaTraitSelectorMixin",
+    "yuusha.mixin.YuushaKnifeStabPayloadReceiverMixin",
+    "yuusha.mixin.YuushaPlayerMoodComponentMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -11,13 +11,15 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "dev.caecorthus.sparktraits.SparkTraits"
+      "dev.caecorthus.sparktraits.SparkTraits",
+      "dev.caecorthus.sparktraits.yuusha.YuushaBootstrap"
     ],
     "client": [
       "dev.caecorthus.sparktraits.client.SparkTraitsClient"
     ],
     "cardinal-components": [
-      "dev.caecorthus.sparktraits.component.SparkTraitsComponents"
+      "dev.caecorthus.sparktraits.component.SparkTraitsComponents",
+      "dev.caecorthus.sparktraits.yuusha.component.YuushaComponents"
     ]
   },
   "custom": {
@@ -25,7 +27,8 @@
       "sparktraits:traits",
       "sparktraits:world",
       "sparktraits:role_enhancements",
-      "sparktraits:role_enhancement_world"
+      "sparktraits:role_enhancement_world",
+      "sparktraits:yuusha"
     ]
   },
   "mixins": [
@@ -36,15 +39,15 @@
     }
   ],
   "depends": {
-    "fabricloader": ">=${loader_version}",
+    "fabricloader": ">=0.17.2",
     "fabric-api": "*",
-    "minecraft": "${minecraft_version}",
+    "minecraft": "1.21.1",
     "java": ">=21",
-    "wathe": "${wathe_version}",
+    "wathe": "1.5.6-spark-1.21.1",
     "noellesroles": "*",
-    "ratatouille": ">=${ratatouille_version}",
-    "cardinal-components-base": ">=${cca_version}",
-    "cardinal-components-entity": ">=${cca_version}",
-    "cardinal-components-world": ">=${cca_version}"
+    "ratatouille": ">=1.4.3-1.21.1",
+    "cardinal-components-base": ">=6.1.1",
+    "cardinal-components-entity": ">=6.1.1",
+    "cardinal-components-world": ">=6.1.1"
   }
 }
