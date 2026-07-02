@@ -54,7 +54,15 @@ public final class TraitSelector {
                 continue;
             }
 
-            Trait picked = pickWeighted(candidates, random);
+            Trait picked = pickWeighted(candidates, random, new TraitSelectionContext(
+                    world,
+                    gameComponent,
+                    player,
+                    role,
+                    selected,
+                    startingPlayerCount,
+                    true
+            ));
             selected.add(picked.id());
             if (picked.uniquePerGame()) {
                 traitWorld.markUniqueTraitUsed(picked.id());
@@ -80,7 +88,8 @@ public final class TraitSelector {
         List<Trait> candidates = new ArrayList<>();
         TraitSelectionContext context = new TraitSelectionContext(world, gameComponent, player, role, selected, startingPlayerCount, true);
         for (Trait trait : TraitRegistry.values()) {
-            if (trait.rollWeight() <= 0.0D) {
+            double rollWeight = trait.rollWeight(context);
+            if (rollWeight <= 0.0D) {
                 continue;
             }
             if (!traitWorld.isTraitEnabled(trait.id())) {
@@ -109,14 +118,18 @@ public final class TraitSelector {
     }
 
     static Trait pickWeighted(List<Trait> candidates, RandomGenerator random) {
+        return pickWeighted(candidates, random, null);
+    }
+
+    static Trait pickWeighted(List<Trait> candidates, RandomGenerator random, TraitSelectionContext context) {
         double totalWeight = 0.0D;
         for (Trait candidate : candidates) {
-            totalWeight += candidate.rollWeight();
+            totalWeight += context == null ? candidate.rollWeight() : candidate.rollWeight(context);
         }
 
         double roll = random.nextDouble() * totalWeight;
         for (Trait candidate : candidates) {
-            roll -= candidate.rollWeight();
+            roll -= context == null ? candidate.rollWeight() : candidate.rollWeight(context);
             if (roll < 0.0D) {
                 return candidate;
             }

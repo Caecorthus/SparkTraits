@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(value = Noellesroles.class, remap = false)
 public abstract class NoellesRolesSerialKillerRewardMixin {
     @Redirect(
-            method = "lambda$registerEvents$20",
+            method = {"lambda$registerEvents$20(Lnet/minecraft/class_1937;Lnet/minecraft/class_2338;Ldev/doctor4t/wathe/block_entity/DoorBlockEntity;)V", "lambda$registerEvents$16(Lnet/minecraft/class_3222;Lnet/minecraft/class_3222;Lnet/minecraft/class_2960;)V"},
             at = @At(
                     value = "INVOKE",
                     target = "Ldev/doctor4t/wathe/cca/PlayerShopComponent;addToBalance(I)V",

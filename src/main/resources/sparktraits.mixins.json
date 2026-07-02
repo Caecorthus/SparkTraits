@@ -55,7 +55,10 @@
     "TrimmedBedBlockEntityMixin",
     "TrimmedBedBlockMixin",
     "VentHatchBlockMixin",
-    "WorldBlackoutComponentMixin"
+    "WorldBlackoutComponentMixin",
+    "YuushaDrinkingMixin",
+    "YuushaEatingMixin",
+    "YuushaKnifeCooldownMixin"
   ],
   "injectors": {
     "defaultRequire": 1

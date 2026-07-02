@@ -27,6 +27,14 @@ public interface Trait {
         return weight();
     }
 
+    /**
+     * Context-aware random weight hook.
+     * 带上下文的随机权重入口，用于按身份或人数调整刷新概率。
+     */
+    default double rollWeight(TraitSelectionContext context) {
+        return rollWeight();
+    }
+
     default boolean uniquePerGame() {
         return false;
     }

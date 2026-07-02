@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.mixin;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.ImpostorRevolverService;
+import dev.caecorthus.sparktraits.impl.YuushaTraitService;
 import dev.doctor4t.wathe.index.tag.WatheItemTags;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -23,6 +24,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ItemEntityMixin {
     @Shadow
     public abstract ItemStack getStack();
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void sparktraits$discardDroppedYuushaTemporaryWeapon(CallbackInfo ci) {
+        YuushaTraitService.discardTemporaryWeaponEntity((ItemEntity) (Object) this);
+    }
 
     @Inject(method = "onPlayerCollision", at = @At("HEAD"), cancellable = true)
     private void sparktraits$blockImpostorGroundGunPickup(PlayerEntity player, CallbackInfo ci) {

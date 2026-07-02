@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.client.ArrogantAsfHud;
+import dev.caecorthus.sparktraits.client.YuushaHud;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -32,5 +33,6 @@ public abstract class ArrogantAsfInGameHudMixin {
         }
         TextRenderer renderer = this.client.textRenderer;
         ArrogantAsfHud.render(renderer, player, context);
+        YuushaHud.render(renderer, player, context);
     }
 }

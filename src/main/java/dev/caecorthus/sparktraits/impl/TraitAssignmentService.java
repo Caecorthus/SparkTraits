@@ -120,6 +120,7 @@ public final class TraitAssignmentService {
         forceArrogantAsfOntoCorruptCop(gameComponent, traitWorld, plans);
         forcePigOntoPigGod(gameComponent, traitWorld, plans);
         enforceRandomDepressionCap(plans, players.size());
+        enforceRandomYuushaCap(plans, players.size());
 
         traitWorld.clearRoundState();
         for (PlayerPlan plan : plans) {
@@ -613,6 +614,18 @@ public final class TraitAssignmentService {
         }
     }
 
+    /**
+     * Caps randomly rolled Yuusha traits by player count: 18 players gives one, then +1 per 6 players.
+     * 按人数限制随机刷出的“勇者”：18人一个，之后每多6人加一个。
+     */
+    static void enforceRandomYuushaCap(List<PlayerPlan> plans, int startingPlayerCount) {
+        int cap = YuushaTraitService.randomCap(startingPlayerCount);
+        int keptRandomYuusha = 0;
+        for (PlayerPlan plan : plans) {
+            keptRandomYuusha = plan.removeRandomTraitsOverLimit(YuushaTrait.ID, cap, keptRandomYuusha);
+        }
+    }
+
     private static boolean isUniqueTrait(Identifier traitId) {
         Trait trait = TraitRegistry.get(traitId);
         return trait != null && trait.uniquePerGame();
@@ -691,9 +704,13 @@ public final class TraitAssignmentService {
         }
 
         int removeRandomDepressionsOverLimit(int cap, int alreadyKept) {
+            return removeRandomTraitsOverLimit(GoodTraits.DEPRESSION, cap, alreadyKept);
+        }
+
+        int removeRandomTraitsOverLimit(Identifier traitId, int cap, int alreadyKept) {
             int kept = alreadyKept;
             for (int i = 0; i < randomTraits.size(); ) {
-                if (!GoodTraits.DEPRESSION.equals(randomTraits.get(i))) {
+                if (!traitId.equals(randomTraits.get(i))) {
                     i++;
                     continue;
                 }
