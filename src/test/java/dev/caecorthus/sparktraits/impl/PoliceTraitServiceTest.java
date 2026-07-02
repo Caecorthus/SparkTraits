@@ -408,6 +408,89 @@ class PoliceTraitServiceTest {
     }
 
     @Test
+    void nikoNightVisionUsesLongDurationToAvoidFlicker() {
+        assertTrue(VigilanteVeteranTraitService.NIKO_NIGHT_VISION_TICKS >= 200);
+    }
+
+    @Test
+    void nikoNightVisionSyncAppliesOnlyWhenEligibleAndNoOtherSourceOwnsTheEffect() {
+        assertEquals(
+                VigilanteVeteranTraitService.NikoNightVisionAction.APPLY,
+                VigilanteVeteranTraitService.nextNikoNightVisionAction(true, false, 0, 0, 100L, 0L)
+        );
+        assertEquals(
+                VigilanteVeteranTraitService.NikoNightVisionAction.KEEP,
+                VigilanteVeteranTraitService.nextNikoNightVisionAction(true, false, 200, 0, 100L, 0L)
+        );
+    }
+
+    @Test
+    void nikoNightVisionSyncRefreshesOnlyOwnedExpiringEffects() {
+        long appliedAt = 100L;
+        long expiresAt = appliedAt + VigilanteVeteranTraitService.NIKO_NIGHT_VISION_TICKS;
+
+        assertEquals(
+                VigilanteVeteranTraitService.NikoNightVisionAction.KEEP,
+                VigilanteVeteranTraitService.nextNikoNightVisionAction(
+                        true,
+                        true,
+                        VigilanteVeteranTraitService.NIKO_NIGHT_VISION_TICKS - 10,
+                        0,
+                        appliedAt + 10,
+                        expiresAt
+                )
+        );
+        assertEquals(
+                VigilanteVeteranTraitService.NikoNightVisionAction.APPLY,
+                VigilanteVeteranTraitService.nextNikoNightVisionAction(
+                        true,
+                        true,
+                        VigilanteVeteranTraitService.NIKO_NIGHT_VISION_TICKS / 2,
+                        0,
+                        appliedAt + VigilanteVeteranTraitService.NIKO_NIGHT_VISION_TICKS / 2,
+                        expiresAt
+                )
+        );
+    }
+
+    @Test
+    void nikoNightVisionSyncRemovesOnlyOwnedEffectsWhenNoLongerEligible() {
+        long appliedAt = 100L;
+        long expiresAt = appliedAt + VigilanteVeteranTraitService.NIKO_NIGHT_VISION_TICKS;
+
+        assertEquals(
+                VigilanteVeteranTraitService.NikoNightVisionAction.REMOVE,
+                VigilanteVeteranTraitService.nextNikoNightVisionAction(
+                        false,
+                        true,
+                        VigilanteVeteranTraitService.NIKO_NIGHT_VISION_TICKS - 20,
+                        0,
+                        appliedAt + 20,
+                        expiresAt
+                )
+        );
+        assertEquals(
+                VigilanteVeteranTraitService.NikoNightVisionAction.KEEP,
+                VigilanteVeteranTraitService.nextNikoNightVisionAction(false, false, 200, 0, appliedAt + 20, expiresAt)
+        );
+    }
+
+    @Test
+    void nikoNightVisionSyncClearsMarkerWithoutRemovingWhenAnotherSourceTakesOver() {
+        long appliedAt = 100L;
+        long expiresAt = appliedAt + VigilanteVeteranTraitService.NIKO_NIGHT_VISION_TICKS;
+
+        assertEquals(
+                VigilanteVeteranTraitService.NikoNightVisionAction.CLEAR_MARKER,
+                VigilanteVeteranTraitService.nextNikoNightVisionAction(false, true, 400, 0, appliedAt + 20, expiresAt)
+        );
+        assertEquals(
+                VigilanteVeteranTraitService.NikoNightVisionAction.CLEAR_MARKER,
+                VigilanteVeteranTraitService.nextNikoNightVisionAction(false, true, 200, 1, appliedAt + 20, expiresAt)
+        );
+    }
+
+    @Test
     void heavyArtilleryRetriesCloseGunDamageOnlyWhileTargetSurvives() {
         assertTrue(VigilanteVeteranTraitService.isHeavyArtilleryShot(
                 WatheRoles.VIGILANTE,

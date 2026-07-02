@@ -25,7 +25,10 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.EntityHitResult;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.jester.JesterPlayerComponent;
 
@@ -42,12 +45,22 @@ public final class VigilanteVeteranTraitService {
     public static final int NIKO_REVOLVER_COOLDOWN_TICKS = GameConstants.getInTicks(1, 0);
     public static final int NIKO_BURST_INTERVAL_TICKS = 2;
     public static final int NIKO_BURST_SHOTS = 3;
-    public static final int NIKO_NIGHT_VISION_TICKS = 60;
+    public static final int NIKO_NIGHT_VISION_TICKS = 240;
     public static final float NIKO_REVOLVER_RECOIL_MULTIPLIER = 0.1f;
     public static final float FAST_RELOAD_MULTIPLIER = 0.7f;
     public static final float WELL_TRAINED_DRAIN_MULTIPLIER = 0.7f;
+    private static final int NIKO_NIGHT_VISION_AMPLIFIER = 0;
+    private static final int NIKO_NIGHT_VISION_TOLERANCE_TICKS = 5;
+    private static final Map<UUID, NikoNightVisionState> NIKO_NIGHT_VISION = new HashMap<>();
 
     private VigilanteVeteranTraitService() {
+    }
+
+    public enum NikoNightVisionAction {
+        APPLY,
+        REMOVE,
+        CLEAR_MARKER,
+        KEEP
     }
 
     public static void register() {
@@ -368,6 +381,41 @@ public final class VigilanteVeteranTraitService {
         return playerPlayingAndAlive && canUseNikoTrait(role, traits, sneaking);
     }
 
+    public static NikoNightVisionAction nextNikoNightVisionAction(
+            boolean eligible,
+            boolean ownedByNiko,
+            int currentNightVisionDurationTicks,
+            int currentNightVisionAmplifier,
+            long currentWorldTick,
+            long ownedExpiresAtTick
+    ) {
+        boolean hasNightVision = currentNightVisionDurationTicks > 0;
+        if (ownedByNiko && !hasNightVision) {
+            return eligible ? NikoNightVisionAction.APPLY : NikoNightVisionAction.CLEAR_MARKER;
+        }
+        if (ownedByNiko && !matchesNikoOwnedNightVision(
+                currentNightVisionDurationTicks,
+                currentNightVisionAmplifier,
+                currentWorldTick,
+                ownedExpiresAtTick
+        )) {
+            return NikoNightVisionAction.CLEAR_MARKER;
+        }
+        if (!eligible) {
+            return ownedByNiko && hasNightVision ? NikoNightVisionAction.REMOVE : NikoNightVisionAction.KEEP;
+        }
+        if (!hasNightVision) {
+            return NikoNightVisionAction.APPLY;
+        }
+        if (!ownedByNiko) {
+            return NikoNightVisionAction.KEEP;
+        }
+        if (currentNightVisionDurationTicks <= NIKO_NIGHT_VISION_TICKS / 2) {
+            return NikoNightVisionAction.APPLY;
+        }
+        return NikoNightVisionAction.KEEP;
+    }
+
     public static void scheduleNikoRevolverBurstRepeats(ServerPlayerEntity shooter) {
         if (!shouldStartNikoRevolverBurst(shooter)) {
             return;
@@ -433,36 +481,82 @@ public final class VigilanteVeteranTraitService {
     private static void tickWorld(ServerWorld world) {
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
         if (game == null || !game.isRunning()) {
+            clearNikoNightVision(world);
             return;
         }
+        long worldTick = world.getTime();
         for (ServerPlayerEntity player : world.getPlayers()) {
             TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
-            if (shouldRefreshNikoNightVision(
+            boolean eligible = shouldRefreshNikoNightVision(
                     GameFunctions.isPlayerPlayingAndAlive(player),
                     game.getRole(player),
                     traits.getActiveTraitIds(),
                     player.isSneaking()
-            )) {
-                refreshNikoNightVision(player);
-            }
+            );
+            syncNikoNightVision(player, eligible, worldTick);
         }
     }
 
-    private static void refreshNikoNightVision(ServerPlayerEntity player) {
+    private static void syncNikoNightVision(ServerPlayerEntity player, boolean eligible, long worldTick) {
+        UUID playerUuid = player.getUuid();
+        NikoNightVisionState state = NIKO_NIGHT_VISION.get(playerUuid);
         StatusEffectInstance current = player.getStatusEffect(StatusEffects.NIGHT_VISION);
-        if (current != null && current.getDuration() > NIKO_NIGHT_VISION_TICKS / 2) {
-            return;
+        int duration = current == null ? 0 : current.getDuration();
+        int amplifier = current == null ? NIKO_NIGHT_VISION_AMPLIFIER : current.getAmplifier();
+        long expiresAtTick = state == null ? 0L : state.expiresAtTick();
+        NikoNightVisionAction action = nextNikoNightVisionAction(
+                eligible,
+                state != null,
+                duration,
+                amplifier,
+                worldTick,
+                expiresAtTick
+        );
+        if (action == NikoNightVisionAction.APPLY) {
+            applyNikoNightVision(player, worldTick);
+        } else if (action == NikoNightVisionAction.REMOVE) {
+            player.removeStatusEffect(StatusEffects.NIGHT_VISION);
+            NIKO_NIGHT_VISION.remove(playerUuid);
+        } else if (action == NikoNightVisionAction.CLEAR_MARKER) {
+            NIKO_NIGHT_VISION.remove(playerUuid);
         }
-        // Refresh a short effect without removing it later, so other night-vision sources stay intact.
-        // 只刷新短时夜视，不在失效时主动移除，避免误删其他模组或关灯给予的夜视。
+    }
+
+    private static void applyNikoNightVision(ServerPlayerEntity player, long worldTick) {
         player.addStatusEffect(new StatusEffectInstance(
                 StatusEffects.NIGHT_VISION,
                 NIKO_NIGHT_VISION_TICKS,
-                0,
+                NIKO_NIGHT_VISION_AMPLIFIER,
                 false,
                 false,
                 true
         ));
+        NIKO_NIGHT_VISION.put(player.getUuid(), new NikoNightVisionState(worldTick + NIKO_NIGHT_VISION_TICKS));
+    }
+
+    private static void clearNikoNightVision(ServerWorld world) {
+        long worldTick = world.getTime();
+        for (ServerPlayerEntity player : world.getPlayers()) {
+            syncNikoNightVision(player, false, worldTick);
+        }
+    }
+
+    private static boolean matchesNikoOwnedNightVision(
+            int currentNightVisionDurationTicks,
+            int currentNightVisionAmplifier,
+            long currentWorldTick,
+            long ownedExpiresAtTick
+    ) {
+        if (currentNightVisionDurationTicks <= 0 || currentNightVisionAmplifier != NIKO_NIGHT_VISION_AMPLIFIER) {
+            return false;
+        }
+        long expectedRemainingTicks = ownedExpiresAtTick - currentWorldTick;
+        if (expectedRemainingTicks <= 0) {
+            return false;
+        }
+        // Only remove effects that still match SparkTraits' own Niko refresh window.
+        // 只移除仍匹配 SparkTraits Niko 刷新窗口的夜视，避免误删关灯、金酒、人鱼等来源。
+        return Math.abs(currentNightVisionDurationTicks - expectedRemainingTicks) <= NIKO_NIGHT_VISION_TOLERANCE_TICKS;
     }
 
     private static boolean canUseNikoTrait(PlayerEntity player) {
@@ -501,5 +595,8 @@ public final class VigilanteVeteranTraitService {
 
     private static Collection<Identifier> safeTraits(Collection<Identifier> traits) {
         return traits == null ? List.of() : traits;
+    }
+
+    private record NikoNightVisionState(long expiresAtTick) {
     }
 }
