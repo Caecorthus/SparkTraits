@@ -14,6 +14,12 @@ public final class SparkTraitsDataComponentTypes {
             ComponentType.<String>builder().codec(Codec.STRING).packetCodec(PacketCodecs.STRING).build()
     );
 
+    public static final ComponentType<Boolean> YUUSHA_TEMPORARY_WEAPON = Registry.register(
+            Registries.DATA_COMPONENT_TYPE,
+            SparkTraits.id("yuusha_temporary_weapon"),
+            ComponentType.<Boolean>builder().codec(Codec.BOOL).packetCodec(PacketCodecs.BOOL).build()
+    );
+
     private SparkTraitsDataComponentTypes() {
     }
 

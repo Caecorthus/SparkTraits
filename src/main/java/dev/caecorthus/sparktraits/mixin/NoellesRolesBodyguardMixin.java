@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(value = Noellesroles.class, remap = false)
 public abstract class NoellesRolesBodyguardMixin {
     @Redirect(
-            method = "lambda$registerEvents$9",
+            method = {"lambda$registerEvents$9(Lnet/minecraft/class_3222;)V", "lambda$registerEvents$5(Lnet/minecraft/class_3222;Lnet/minecraft/class_3222;Lnet/minecraft/class_2960;)Ldev/doctor4t/wathe/api/event/KillPlayer$KillResult;"},
             at = @At(
                     value = "INVOKE",
                     target = "Ldev/doctor4t/wathe/game/GameFunctions;isPlayerPlayingAndAlive(Lnet/minecraft/entity/player/PlayerEntity;)Z",

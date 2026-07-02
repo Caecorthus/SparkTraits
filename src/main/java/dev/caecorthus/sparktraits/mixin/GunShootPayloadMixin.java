@@ -4,6 +4,7 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.GoodTraitService;
 import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
+import dev.caecorthus.sparktraits.impl.YuushaTraitService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.util.GunShootPayload;
@@ -106,7 +107,8 @@ public abstract class GunShootPayloadMixin {
     ) {
         ServerPlayerEntity shooter = context.player();
         GameWorldComponent game = GameWorldComponent.KEY.get(shooter.getWorld());
-        if (GoodTraitService.shouldPreventGunMoodPenalty(
+        if (YuushaTraitService.preventsGunMoodPenalty(shooter)
+                || GoodTraitService.shouldPreventGunMoodPenalty(
                 game.getRole(shooter),
                 TraitPlayerComponent.KEY.get(shooter).getActiveTraitIds()
         )) {

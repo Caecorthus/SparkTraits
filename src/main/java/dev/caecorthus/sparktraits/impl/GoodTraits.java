@@ -16,6 +16,7 @@ public final class GoodTraits {
     public static final Identifier MONEY_TREE = SparkTraits.id("money_tree");
     public static final Identifier FOCUS = SparkTraits.id("focus");
     public static final Identifier DEPRESSION = SparkTraits.id("depression");
+    public static final Identifier YUUSHA = YuushaTrait.ID;
 
     private GoodTraits() {
     }
@@ -55,6 +56,7 @@ public final class GoodTraits {
                 ))
                 .build());
         TraitRegistry.register(new DepressionTrait());
+        TraitRegistry.register(new YuushaTrait());
     }
 
     private static TraitDefinition.Builder base(Identifier id, int color) {

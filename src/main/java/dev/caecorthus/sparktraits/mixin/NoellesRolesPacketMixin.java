@@ -5,6 +5,7 @@ import dev.caecorthus.sparktraits.impl.CorruptCopTraitService;
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.caecorthus.sparktraits.impl.SilencedKillerRestrictionService;
+import dev.caecorthus.sparktraits.impl.YuushaTraitService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -35,24 +36,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = Noellesroles.class, remap = false)
 public abstract class NoellesRolesPacketMixin {
-    @Inject(method = "lambda$registerPackets$30", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$30", "lambda$registerPackets$0(Lorg/agmas/noellesroles/packet/MorphC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedMorph(MorphC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         sparktraits$blockSilencedKillerAbility(context.player(), ci);
     }
 
-    @Inject(method = "lambda$registerPackets$31", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$31", "lambda$registerPackets$1(Lorg/agmas/noellesroles/packet/MorphCorpseToggleC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedMorphCorpseToggle(MorphCorpseToggleC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         sparktraits$blockSilencedKillerAbility(context.player(), ci);
     }
 
-    @Inject(method = "lambda$registerPackets$33", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$33", "lambda$registerPackets$2(Lorg/agmas/noellesroles/packet/VultureEatC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedVultureEat(VultureEatC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         sparktraits$blockSilencedKillerAbility(context.player(), ci);
     }
 
-    @Inject(method = "lambda$registerPackets$35", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$35", "lambda$registerPackets$5(Lorg/agmas/noellesroles/packet/AbilityC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedSharedAbility(AbilityC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         if (sparktraits$blockSilencedKillerAbility(context.player(), ci)) {
+            return;
+        }
+        if (YuushaTraitService.tryActivate(context.player())) {
+            ci.cancel();
             return;
         }
         if (CorruptCopTraitService.toggleArrogantAsfAbility(context.player())) {
@@ -60,7 +65,7 @@ public abstract class NoellesRolesPacketMixin {
         }
     }
 
-    @Inject(method = "lambda$registerPackets$36", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$36", "lambda$registerPackets$6(Lorg/agmas/noellesroles/packet/AssassinGuessRoleC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockLastStandAssassination(AssassinGuessRoleC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         ServerPlayerEntity assassin = context.player();
         if (sparktraits$blockSilencedKillerAbility(assassin, ci)) {
@@ -93,7 +98,7 @@ public abstract class NoellesRolesPacketMixin {
         }
     }
 
-    @Inject(method = "lambda$registerPackets$34", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$34", "lambda$registerPackets$4(Lorg/agmas/noellesroles/packet/SwapperC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockLastStandSwap(SwapperC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         ServerPlayerEntity swapper = context.player();
         if (sparktraits$blockSilencedKillerAbility(swapper, ci)) {
@@ -127,33 +132,33 @@ public abstract class NoellesRolesPacketMixin {
         }
     }
 
-    @Inject(method = "lambda$registerPackets$37", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$37", "lambda$registerPackets$7(Lorg/agmas/noellesroles/packet/ReporterMarkC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedReporterMark(ReporterMarkC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         sparktraits$blockSilencedKillerAbility(context.player(), ci);
     }
 
-    @Inject(method = "lambda$registerPackets$38", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$38", "lambda$registerPackets$8(Lorg/agmas/noellesroles/packet/DetectiveInvestigateC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedDetectiveInvestigate(DetectiveInvestigateC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         sparktraits$blockSilencedKillerAbility(context.player(), ci);
     }
 
-    @Inject(method = "lambda$registerPackets$39", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$39", "lambda$registerPackets$9(Lorg/agmas/noellesroles/packet/TaotieSwallowC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedTaotieSwallow(TaotieSwallowC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         sparktraits$blockSilencedKillerAbility(context.player(), ci);
     }
 
-    @Inject(method = "lambda$registerPackets$40", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$40", "lambda$registerPackets$12(Lorg/agmas/noellesroles/packet/SilencerSilenceC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedSilencerSilence(SilencerSilenceC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         sparktraits$blockSilencedKillerAbility(context.player(), ci);
     }
 
-    @Inject(method = "lambda$registerPackets$41", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$41", "lambda$registerPackets$13(Lorg/agmas/noellesroles/packet/PartyAnimalBuzzC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedPartyAnimalBuzz(PartyAnimalBuzzC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         sparktraits$blockSilencedKillerAbility(context.player(), ci);
     }
 
     @Redirect(
-            method = "lambda$registerPackets$41",
+            method = {"lambda$registerPackets$41", "lambda$registerPackets$13(Lorg/agmas/noellesroles/packet/PartyAnimalBuzzC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"},
             at = @At(
                     value = "INVOKE",
                     target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;canUseKillerFeatures(Lnet/minecraft/entity/player/PlayerEntity;)Z"
@@ -168,7 +173,7 @@ public abstract class NoellesRolesPacketMixin {
     }
 
     @Redirect(
-            method = "lambda$registerPackets$41",
+            method = {"lambda$registerPackets$41", "lambda$registerPackets$13(Lorg/agmas/noellesroles/packet/PartyAnimalBuzzC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"},
             at = @At(
                     value = "INVOKE",
                     target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;isRole(Lnet/minecraft/entity/player/PlayerEntity;Ldev/doctor4t/wathe/api/Role;)Z",
@@ -187,7 +192,7 @@ public abstract class NoellesRolesPacketMixin {
         );
     }
 
-    @Inject(method = "lambda$registerPackets$42", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = {"lambda$registerPackets$42", "lambda$registerPackets$14(Lorg/agmas/noellesroles/packet/SpiritProjectC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private static void sparktraits$blockSilencedSpiritProject(SpiritProjectC2SPacket payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         sparktraits$blockSilencedKillerAbility(context.player(), ci);
     }

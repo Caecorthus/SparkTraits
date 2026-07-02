@@ -13,6 +13,7 @@ import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.ArrogantAsfTrait;
 import dev.caecorthus.sparktraits.impl.PigTrait;
+import dev.caecorthus.sparktraits.impl.YuushaTraitService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -83,6 +84,22 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Owner-visible active-skill state for Arrogant ASF speed.
     // “展示豪度”的主动技能开关状态，同步给本人用于移动预测。
     private boolean arrogantAsfActive;
+    // Runtime Yuusha / Mankai state; permanent here means until the round resets.
+    // 勇者/満開运行时状态；这里的永久指持续到本局重置。
+    public static final int YUUSHA_PENALTY_NONE = 0;
+    public static final int YUUSHA_PENALTY_BLINDNESS = 1;
+    public static final int YUUSHA_PENALTY_SLOWNESS = 2;
+    public static final int YUUSHA_PENALTY_TASTELESS = 4;
+    public static final int YUUSHA_WEAPON_UNSET = 0;
+    public static final int YUUSHA_WEAPON_REVOLVER = 1;
+    public static final int YUUSHA_WEAPON_KNIFE = 2;
+    private int yuushaCooldownTicks;
+    private int yuushaActiveTicks;
+    private int yuushaPenaltyMask;
+    private int yuushaSlownessAmplifier;
+    private boolean yuushaUsed;
+    private boolean yuushaAppliedIronManBuff;
+    private int yuushaWeaponType;
     // Runtime-only Pig ambient cadence, mirroring vanilla pig sound delay.
     // 运行期猪哼声节奏计数，模拟原版猪的环境音延迟。
     private int pigAmbientSoundChance;
@@ -198,6 +215,131 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             this.arrogantAsfActive = normalizedActive;
             sync();
         }
+    }
+
+    public int getYuushaCooldownTicks() {
+        return yuushaCooldownTicks;
+    }
+
+    public void setYuushaCooldownTicks(int ticks) {
+        this.yuushaCooldownTicks = Math.max(0, ticks);
+    }
+
+    public int getYuushaActiveTicks() {
+        return yuushaActiveTicks;
+    }
+
+    public void setYuushaActiveTicks(int ticks) {
+        this.yuushaActiveTicks = Math.max(0, ticks);
+    }
+
+    public boolean isYuushaActive() {
+        return yuushaActiveTicks > 0;
+    }
+
+    public boolean hasYuushaUsed() {
+        return yuushaUsed;
+    }
+
+    public void setYuushaUsed(boolean yuushaUsed) {
+        this.yuushaUsed = yuushaUsed;
+    }
+
+    public boolean hasYuushaAppliedIronManBuff() {
+        return yuushaAppliedIronManBuff;
+    }
+
+    public void setYuushaAppliedIronManBuff(boolean yuushaAppliedIronManBuff) {
+        this.yuushaAppliedIronManBuff = yuushaAppliedIronManBuff;
+    }
+
+    public int getYuushaWeaponType() {
+        return yuushaWeaponType;
+    }
+
+    public void setYuushaWeaponType(int weaponType) {
+        if (weaponType == YUUSHA_WEAPON_REVOLVER || weaponType == YUUSHA_WEAPON_KNIFE) {
+            this.yuushaWeaponType = weaponType;
+        } else {
+            this.yuushaWeaponType = YUUSHA_WEAPON_UNSET;
+        }
+    }
+
+    public int getYuushaPenalty() {
+        return yuushaPenaltyMask;
+    }
+
+    public int getYuushaPenaltyMask() {
+        return yuushaPenaltyMask;
+    }
+
+    public boolean hasYuushaPenalty() {
+        return yuushaPenaltyMask != YUUSHA_PENALTY_NONE || yuushaSlownessAmplifier > 0;
+    }
+
+    public boolean hasYuushaBlindnessPenalty() {
+        return (yuushaPenaltyMask & YUUSHA_PENALTY_BLINDNESS) != 0;
+    }
+
+    public boolean hasYuushaTastelessPenalty() {
+        return (yuushaPenaltyMask & YUUSHA_PENALTY_TASTELESS) != 0;
+    }
+
+    public int getYuushaSlownessAmplifier() {
+        return yuushaSlownessAmplifier;
+    }
+
+    public boolean hasYuushaSlownessPenalty() {
+        return yuushaSlownessAmplifier > 0;
+    }
+
+    public void setYuushaPenalty(int penalty) {
+        switch (penalty) {
+            case YUUSHA_PENALTY_BLINDNESS -> addYuushaPenaltyFlag(YUUSHA_PENALTY_BLINDNESS);
+            case YUUSHA_PENALTY_SLOWNESS -> setYuushaSlownessAmplifier(Math.max(1, yuushaSlownessAmplifier));
+            case YUUSHA_PENALTY_TASTELESS -> addYuushaPenaltyFlag(YUUSHA_PENALTY_TASTELESS);
+            default -> {
+                yuushaPenaltyMask = YUUSHA_PENALTY_NONE;
+                yuushaSlownessAmplifier = 0;
+            }
+        }
+    }
+
+    public void addYuushaPenaltyFlag(int penaltyFlag) {
+        if (penaltyFlag == YUUSHA_PENALTY_BLINDNESS || penaltyFlag == YUUSHA_PENALTY_TASTELESS) {
+            yuushaPenaltyMask |= penaltyFlag;
+        }
+    }
+
+    public void setYuushaPenaltyMask(int penaltyMask) {
+        this.yuushaPenaltyMask = penaltyMask & (YUUSHA_PENALTY_BLINDNESS | YUUSHA_PENALTY_TASTELESS);
+    }
+
+    public void setYuushaSlownessAmplifier(int amplifier) {
+        this.yuushaSlownessAmplifier = amplifier > 0 ? Math.min(3, amplifier) : 0;
+    }
+
+    public void prepareYuusha(int cooldownTicks) {
+        yuushaCooldownTicks = Math.max(0, cooldownTicks);
+        yuushaActiveTicks = 0;
+        yuushaPenaltyMask = YUUSHA_PENALTY_NONE;
+        yuushaSlownessAmplifier = 0;
+        yuushaUsed = false;
+        yuushaAppliedIronManBuff = false;
+        yuushaWeaponType = YUUSHA_WEAPON_UNSET;
+    }
+
+    public void clearYuushaState() {
+        if (player instanceof ServerPlayerEntity serverPlayer) {
+            YuushaTraitService.clearMankaiRuntimeEffects(serverPlayer, yuushaAppliedIronManBuff, yuushaPenaltyMask, yuushaSlownessAmplifier);
+        }
+        yuushaCooldownTicks = 0;
+        yuushaActiveTicks = 0;
+        yuushaPenaltyMask = YUUSHA_PENALTY_NONE;
+        yuushaSlownessAmplifier = 0;
+        yuushaUsed = false;
+        yuushaAppliedIronManBuff = false;
+        yuushaWeaponType = YUUSHA_WEAPON_UNSET;
     }
 
     public int getPigAmbientSoundChance() {
@@ -335,7 +477,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid
                 && depressionSuicideTicks <= 0 && !depressionPsychoActive
                 && depressionPsychoAttacker == null && depressionCounterTarget == null
-                && !pigActive && !arrogantAsfActive) {
+                && !pigActive && !arrogantAsfActive
+                && yuushaCooldownTicks <= 0 && yuushaActiveTicks <= 0 && yuushaPenaltyMask == YUUSHA_PENALTY_NONE
+                && yuushaSlownessAmplifier <= 0 && !yuushaUsed && !yuushaAppliedIronManBuff
+                && yuushaWeaponType == YUUSHA_WEAPON_UNSET) {
             return;
         }
         // Pig dimensions read the active trait set, so reset once after the set is cleared.
@@ -369,6 +514,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionCounterTarget = null;
         pigActive = false;
         arrogantAsfActive = false;
+        clearYuushaState();
         resetPigAmbientSoundChance();
         if (hadPigActive) {
             player.calculateDimensions();
@@ -400,8 +546,20 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         return true;
     }
 
+    public void clientTickYuushaTimers() {
+        if (yuushaCooldownTicks > 0) {
+            yuushaCooldownTicks--;
+        }
+        if (yuushaActiveTicks > 0) {
+            yuushaActiveTicks--;
+        }
+    }
+
     @Override
     public void serverTick() {
+        if (player instanceof ServerPlayerEntity serverPlayer) {
+            YuushaTraitService.tickYuusha(serverPlayer, this);
+        }
         if (consciencePoisonTicks <= 0) {
             return;
         }
@@ -453,6 +611,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         writeOptionalUuid(buf, owner ? depressionCounterTarget : null);
         buf.writeBoolean(activeTraits.contains(PigTrait.ID));
         buf.writeBoolean(owner && isArrogantAsfActive());
+        buf.writeVarInt(owner ? yuushaCooldownTicks : 0);
+        buf.writeVarInt(owner ? yuushaActiveTicks : 0);
+        buf.writeVarInt(owner ? yuushaPenaltyMask : 0);
+        buf.writeVarInt(owner ? yuushaSlownessAmplifier : 0);
     }
 
     @Override
@@ -481,6 +643,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionCounterTarget = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;
         pigActive = buf.readableBytes() > 0 && buf.readBoolean();
         arrogantAsfActive = buf.readableBytes() > 0 && buf.readBoolean();
+        yuushaCooldownTicks = buf.readableBytes() > 0 ? buf.readVarInt() : 0;
+        yuushaActiveTicks = buf.readableBytes() > 0 ? buf.readVarInt() : 0;
+        yuushaPenaltyMask = buf.readableBytes() > 0 ? buf.readVarInt() : 0;
+        yuushaSlownessAmplifier = buf.readableBytes() > 0 ? buf.readVarInt() : 0;
         if (wasPigActive != isPigActive()) {
             player.calculateDimensions();
         }
@@ -530,6 +696,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionCounterTarget = null;
         pigActive = false;
         arrogantAsfActive = false;
+        clearYuushaState();
         resetPigAmbientSoundChance();
         fromNbt(tag.getList("ActiveTraits", NbtElement.STRING_TYPE), activeTraits);
         fromNbt(tag.getList("PendingTraits", NbtElement.STRING_TYPE), pendingTraits);

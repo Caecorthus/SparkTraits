@@ -6,6 +6,7 @@ import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class TraitClientTexts {
@@ -35,6 +36,14 @@ public final class TraitClientTexts {
         if (trait == null) {
             return List.of(Text.literal(traitId.toString()));
         }
-        return List.of(trait.name(), trait.description());
+
+        List<Text> lines = new ArrayList<>();
+        lines.add(trait.name());
+        for (String line : trait.description().getString().split("\\n")) {
+            if (!line.isBlank()) {
+                lines.add(Text.literal(line));
+            }
+        }
+        return lines;
     }
 }
