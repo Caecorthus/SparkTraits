@@ -59,7 +59,6 @@
     "yuusha.mixin.YuushaTraitAssignmentServiceMixin",
     "yuusha.mixin.YuushaTraitSelectorMixin",
     "yuusha.mixin.YuushaKnifeStabPayloadReceiverMixin",
-    "yuusha.mixin.YuushaGunShootPayloadReceiverMixin",
     "yuusha.mixin.YuushaPlayerMoodComponentMixin"
   ],
   "injectors": {
