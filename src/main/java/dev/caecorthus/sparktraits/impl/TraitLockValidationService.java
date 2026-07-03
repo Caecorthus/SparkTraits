@@ -20,6 +20,8 @@ import java.util.Collection;
  * 下局天赋与身份锁定的命令期共用校验入口。
  */
 public final class TraitLockValidationService {
+    private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
+
     private TraitLockValidationService() {
     }
 
@@ -29,7 +31,7 @@ public final class TraitLockValidationService {
     }
 
     public static RoleConflict findAudienceConflict(Trait trait, Role role) {
-        if (isAudienceCompatibleWithRole(trait, role)) {
+        if (isCommandLockCompatibleWithRole(trait, role)) {
             return null;
         }
         return new RoleConflict(trait, role);
@@ -45,7 +47,7 @@ public final class TraitLockValidationService {
         }
         for (Identifier traitId : traitIds) {
             Trait trait = TraitRegistry.get(traitId);
-            if (trait != null && !isAudienceCompatibleWithRole(trait, role)) {
+            if (trait != null && !isCommandLockCompatibleWithRole(trait, role)) {
                 return new RoleConflict(trait, role);
             }
         }
@@ -66,6 +68,19 @@ public final class TraitLockValidationService {
             case INNOCENT_ONLY -> faction == Faction.CIVILIAN;
             case NEUTRAL_ONLY -> faction == Faction.NEUTRAL;
         };
+    }
+
+    /**
+     * Command locks do not know the future round's full player counts, so keep this to permanent role exclusions.
+     * 命令锁定不知道下局完整人数；这里只处理永久性的身份互斥，避免误挡普通锁定。
+     */
+    private static boolean isCommandLockCompatibleWithRole(Trait trait, Role role) {
+        if (!isAudienceCompatibleWithRole(trait, role)) {
+            return false;
+        }
+        return !trait.id().equals(ImpostorTrait.ID)
+                || isUnknownRole(role)
+                || !role.identifier().equals(SPARKWITCH_PIG_GOD_ID);
     }
 
     public static ServerPlayerEntity findOtherPendingUniqueTraitOwner(MinecraftServer server, ServerPlayerEntity target, Trait trait) {

@@ -15,6 +15,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TraitLockValidationServiceTest {
@@ -28,6 +29,9 @@ class TraitLockValidationServiceTest {
         }
         if (!TraitRegistry.contains(REGISTERED_UNIVERSAL_TRAIT_ID)) {
             TraitRegistry.register(trait(REGISTERED_UNIVERSAL_TRAIT_ID, TraitAudience.UNIVERSAL));
+        }
+        if (!TraitRegistry.contains(ImpostorTrait.ID)) {
+            TraitRegistry.register(new ImpostorTrait());
         }
     }
 
@@ -88,6 +92,42 @@ class TraitLockValidationServiceTest {
     }
 
     @Test
+    void pigGodRoleLockRejectsImpostorTraitLock() {
+        TraitLockValidationService.RoleConflict conflict = TraitLockValidationService.findAudienceConflict(
+                new ImpostorTrait(),
+                sparkWitchCivilianRole("pig_god")
+        );
+
+        assertNotNull(conflict);
+        assertEquals(ImpostorTrait.ID, conflict.trait().id());
+        assertEquals(Identifier.of("sparkwitch", "pig_god"), conflict.role().identifier());
+    }
+
+    @Test
+    void pigGodRoleLockStillAllowsOrdinaryTraitLock() {
+        assertNull(TraitLockValidationService.findAudienceConflict(
+                new PigTrait(),
+                sparkWitchCivilianRole("pig_god")
+        ));
+    }
+
+    @Test
+    void pendingImpostorTraitBlocksPigGodRoleForcedLater() {
+        TraitLockValidationService.RoleConflict conflict = TraitLockValidationService.findPendingTraitAudienceConflict(
+                List.of(ImpostorTrait.ID),
+                sparkWitchCivilianRole("pig_god")
+        );
+
+        assertNotNull(conflict);
+        assertEquals(ImpostorTrait.ID, conflict.trait().id());
+        assertEquals(Identifier.of("sparkwitch", "pig_god"), conflict.role().identifier());
+        assertNull(TraitLockValidationService.findPendingTraitAudienceConflict(
+                List.of(ImpostorTrait.ID),
+                WatheRoles.CIVILIAN
+        ));
+    }
+
+    @Test
     void addTraitRoleConflictMessageNamesTraitAndRole() {
         assertEquals(
                 "无法添加，因为 conscience 与 civilian 冲突。",
@@ -135,6 +175,18 @@ class TraitLockValidationServiceTest {
                 false,
                 false,
                 Role.MoodType.FAKE,
+                200,
+                false
+        );
+    }
+
+    private static Role sparkWitchCivilianRole(String path) {
+        return new Role(
+                Identifier.of("sparkwitch", path),
+                0xFFFFFF,
+                true,
+                false,
+                Role.MoodType.REAL,
                 200,
                 false
         );
