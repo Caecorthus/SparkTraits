@@ -11,3 +11,9 @@ This version includes Yuusha (`sparktraits:yuusha`) with infinite 「滿開」 u
 - 只有「滿開」期间，勇者枪击好人才会补回 san 损失。
 - 勇者非「滿開」期间枪击好人仍正常掉 san。
 - 小脑/枪击好人判定仍走 Wathe 原本逻辑。
+
+
+## v10 changes
+
+- Removed Yuusha gun sanity immunity. Shooting now follows the original SparkTraits/Wathe sanity and 小脑 behavior in all states.
+- Changed temporary Yuusha knife cooldown after successful stab from 20s to 30s.

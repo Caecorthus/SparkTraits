@@ -13,9 +13,7 @@ import dev.caecorthus.sparktraits.yuusha.component.YuushaComponents;
 import dev.caecorthus.sparktraits.yuusha.component.YuushaPlayerComponent;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.index.WatheItems;
-import dev.doctor4t.wathe.util.Scheduler;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.LoreComponent;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -340,39 +338,6 @@ public final class YuushaTrait implements Trait {
             || item == WatheItems.MARTINI
             || item == WatheItems.COSMOPOLITAN
             || item == WatheItems.CHAMPAGNE;
-    }
-
-    public static boolean isYuushaShooter(PlayerEntity shooter) {
-        return shooter != null && hasYuusha(shooter);
-    }
-
-    public static void scheduleGunSanityRestoreIfNeeded(PlayerEntity shooter, PlayerEntity target) {
-        if (!(shooter instanceof ServerPlayerEntity serverShooter)) return;
-        if (target == null || !hasYuusha(serverShooter)) return;
-
-        YuushaPlayerComponent yuusha = YuushaComponents.YUUSHA.get(serverShooter);
-        if (yuusha.bloomActiveTicks() <= 0) return;
-
-        GameWorldComponent game = GameWorldComponent.KEY.get(serverShooter.getWorld());
-        if (!game.isInnocent(target)) return;
-        if (!game.isInnocent(serverShooter)) return;
-        if (game.isRole(serverShooter, WatheRoles.VIGILANTE)) return;
-        if (game.isRole(serverShooter, WatheRoles.VETERAN)) return;
-
-        PlayerMoodComponent mood = PlayerMoodComponent.KEY.get(serverShooter);
-        float moodBeforeShot = mood.getMood();
-
-        // Let Wathe's normal shoot-innocent / 小脑 logic run first.
-        // After it applies the -0.35 sanity loss, restore only that loss for Yuusha.
-        Scheduler.schedule(() -> {
-            if (serverShooter.isRemoved()) return;
-
-            PlayerMoodComponent currentMoodComponent = PlayerMoodComponent.KEY.get(serverShooter);
-            float currentMood = currentMoodComponent.getMood();
-            if (currentMood <= moodBeforeShot - 0.34f) {
-                currentMoodComponent.setMood(Math.min(moodBeforeShot, currentMood + 0.35f));
-            }
-        }, 5);
     }
 
     public static boolean isPriorityRole(dev.doctor4t.wathe.api.Role role) {

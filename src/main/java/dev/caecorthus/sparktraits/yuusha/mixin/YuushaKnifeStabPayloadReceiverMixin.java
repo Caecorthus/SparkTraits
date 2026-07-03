@@ -16,7 +16,7 @@ public abstract class YuushaKnifeStabPayloadReceiverMixin {
     private void sparktraits$overrideTemporaryYuushaKnifeCooldown(KnifeStabPayload payload, ServerPlayNetworking.Context context, CallbackInfo ci) {
         ServerPlayerEntity player = context.player();
         if (YuushaTrait.hasTemporaryYuushaKnife(player)) {
-            player.getItemCooldownManager().set(WatheItems.KNIFE, 20 * 20);
+            player.getItemCooldownManager().set(WatheItems.KNIFE, 20 * 30);
         }
     }
 }
