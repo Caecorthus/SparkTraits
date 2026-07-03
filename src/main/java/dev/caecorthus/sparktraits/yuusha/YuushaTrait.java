@@ -152,7 +152,7 @@ public final class YuushaTrait implements Trait {
         return false;
     }
 
-    private static boolean isTemporaryYuushaWeapon(ItemStack stack) {
+    public static boolean isTemporaryYuushaWeapon(ItemStack stack) {
         return (stack.isOf(WatheItems.REVOLVER) && hasExactCustomName(stack, TEMP_REVOLVER_NAME))
             || isTemporaryYuushaKnife(stack);
     }
@@ -218,7 +218,7 @@ public final class YuushaTrait implements Trait {
         weapon.set(DataComponentTypes.CUSTOM_NAME, Text.literal(giveRevolver ? TEMP_REVOLVER_NAME : TEMP_KNIFE_NAME).formatted(Formatting.LIGHT_PURPLE));
         weapon.set(DataComponentTypes.LORE, new LoreComponent(List.of(
             Text.literal("「滿開」结束后消失").formatted(Formatting.GRAY),
-            Text.literal(giveRevolver ? "临时左轮手枪" : "临时刀：冷却20秒").formatted(Formatting.GRAY)
+            Text.literal(giveRevolver ? "临时左轮手枪" : "临时刀：冷却30秒").formatted(Formatting.GRAY)
         )));
         return weapon;
     }
