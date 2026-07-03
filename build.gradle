@@ -95,6 +95,45 @@ processResources {
     }
 }
 
+def remappedModJar = tasks.named("remapJar")
+
+tasks.register("verifyModJarVersion") {
+    dependsOn remappedModJar
+    inputs.file(remappedModJar.flatMap { it.archiveFile })
+
+    doLast {
+        def jarFile = remappedModJar.get().archiveFile.get().asFile
+        def archiveName = remappedModJar.get().archiveBaseName.get()
+        def suffix = ".jar"
+        if (!jarFile.name.startsWith("${archiveName}-") || !jarFile.name.endsWith(suffix)) {
+            throw new GradleException("Cannot read version from jar filename: ${jarFile.name}")
+        }
+
+        // Keep the loader-visible mod version tied to the shipped jar filename.
+        // 将加载器可见版本绑定到发布 jar 文件名，避免软件里显示旧版本。
+        def jarVersion = jarFile.name.substring(archiveName.length() + 1, jarFile.name.length() - suffix.length())
+        def zipFile = new java.util.zip.ZipFile(jarFile)
+        try {
+            def entry = zipFile.getEntry("fabric.mod.json")
+            if (entry == null) {
+                throw new GradleException("Missing fabric.mod.json in ${jarFile.name}")
+            }
+
+            def metadata = new groovy.json.JsonSlurper().parse(zipFile.getInputStream(entry))
+            def metadataVersion = metadata.version?.toString()
+            if (metadataVersion != jarVersion) {
+                throw new GradleException("Jar version mismatch: ${jarFile.name} says ${jarVersion}, but fabric.mod.json says ${metadataVersion}")
+            }
+        } finally {
+            zipFile.close()
+        }
+    }
+}
+
+tasks.named("build") {
+    dependsOn tasks.named("verifyModJarVersion")
+}
+
 def targetJavaVersion = 21
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
