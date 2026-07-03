@@ -1,19 +1,78 @@
-# SparkTraits Yuusha Direct Replacement
+## 更新日志：新增 Yuusha / 勇者词条
 
-Direct SparkTraits replacement project for Minecraft 1.21.1 / Fabric / Loom 1.13.6.
+新增好人侧稀有词条：**Yuusha / 勇者**，核心机制为「滿開」。
 
-This version includes Yuusha (`sparktraits:yuusha`) with infinite 「滿開」 uses. The phone shows remaining cooldown/active time when used while unavailable.
+### 词条刷新
 
+- 新增词条 ID：`yuusha`
+- 18 人及以上对局才会自然刷新
+- 18–23 人自然上限为 1，此后每多 6 人上限 +1
+- 仅好人侧角色可自然获得
+- 指令/管理员锁定的勇者不受人数、阵营、上限限制影响
+- 侦探、计时员、毒理学家、保镖、生存大师、乘务员拥有更高自然刷新权重
+- 以上职业不是白名单，其他普通好人仍可自然获得
+- 若自然勇者超出上限，被移除者会补抽其他合法词条，避免少词条
 
-## v9 fixes
+### 手机
 
-- 手机 180 秒冷却改为「滿開」结束后才开始。
-- 只有「滿開」期间，勇者枪击好人才会补回 san 损失。
-- 勇者非「滿開」期间枪击好人仍正常掉 san。
-- 小脑/枪击好人判定仍走 Wathe 原本逻辑。
+勇者开局获得特殊回响碎片：
 
+- 名称：请假装这是个手机
+- 描述：用于「滿開」的手机，开局cd60s，使用后cd180s，要付出代价的哦~
+- 开局冷却 60 秒
+- 右键发动「滿開」
+- 「滿開」期间再次右键会提示剩余时间
+- 「滿開」结束后进入 180 秒冷却，并显示冷却提示
 
-## v10 changes
+### 「滿開」
 
-- Removed Yuusha gun sanity immunity. Shooting now follows the original SparkTraits/Wathe sanity and 小脑 behavior in all states.
-- Changed temporary Yuusha knife cooldown after successful stab from 20s to 30s.
+「滿開」持续 60 秒，期间获得：
+
+- 速度 II
+- 一层护盾
+- 一个临时武器
+
+第一次「滿開」会随机决定临时武器类型：
+
+- 左轮手枪
+- 临时刀
+
+之后每次「滿開」都会继续获得第一次随机到的同类武器。
+
+临时武器会在「滿開」结束后移除，不会永久保留。  
+临时刀只有成功刀人后才进入冷却，冷却为 30 秒。
+
+### 代价
+
+每次「滿開」结束后，随机获得一个整局持续的代价：
+
+- 失明
+- 缓慢 II
+- 失去味觉
+
+缓慢可重复一次，第二次会升级为缓慢 IV。  
+失明和失去味觉不会重复获得。  
+当失明、失去味觉、缓慢 IV 都已获得后，后续「滿開」不再追加代价，但仍可继续使用。
+
+### 失去味觉
+
+获得失去味觉后：
+
+- 无法进食
+- 无法饮用饮料
+- 无法通过饮食恢复 san
+- 尝试进食或饮用时提示：
+
+> 你失去了味觉，无法通过饮食回san
+
+### 状态重置
+
+新一局开始时，勇者相关状态会重置：
+
+- 手机与开局冷却
+- 「滿開」状态
+- 手机冷却
+- 临时武器
+- 临时护盾
+- 所有代价
+- 固定武器类型记录
