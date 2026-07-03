@@ -9,6 +9,7 @@ import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.LastStandService;
 import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
@@ -33,6 +34,9 @@ import java.util.UUID;
 public abstract class WatheClientMixin {
     @Inject(method = "isKiller", at = @At("HEAD"), cancellable = true)
     private static void sparktraits$impostorCanUseInstinct(CallbackInfoReturnable<Boolean> cir) {
+        if (!SparkTraitsServerConnection.isConfirmedServer()) {
+            return;
+        }
         PlayerEntity player = MinecraftClient.getInstance().player;
         if (EffectiveTraitService.hasImpostor(player)) {
             cir.setReturnValue(true);
@@ -41,6 +45,9 @@ public abstract class WatheClientMixin {
 
     @Inject(method = "getInstinctHighlight", at = @At("HEAD"), cancellable = true)
     private static void sparktraits$effectiveInstinctHighlight(Entity target, CallbackInfoReturnable<Integer> cir) {
+        if (!SparkTraitsServerConnection.isConfirmedServer()) {
+            return;
+        }
         PlayerEntity viewer = MinecraftClient.getInstance().player;
         if (viewer == null) {
             return;

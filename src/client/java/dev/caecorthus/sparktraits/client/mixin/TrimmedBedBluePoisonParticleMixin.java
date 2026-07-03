@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.client.mixin;
 import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.ConscienceScorpionBed;
 import dev.caecorthus.sparktraits.impl.SparkTraitsParticles;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.block_entity.TrimmedBedBlockEntity;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.client.WatheClient;
@@ -29,7 +30,8 @@ public abstract class TrimmedBedBluePoisonParticleMixin {
             BlockEntity blockEntity,
             CallbackInfo ci
     ) {
-        if (!(blockEntity instanceof ConscienceScorpionBed bed)
+        if (!SparkTraitsServerConnection.isConfirmedServer()
+                || !(blockEntity instanceof ConscienceScorpionBed bed)
                 || !bed.sparktraits$hasConscienceScorpion()
                 || !sparktraits$canSeeBluePoison(world)) {
             return;

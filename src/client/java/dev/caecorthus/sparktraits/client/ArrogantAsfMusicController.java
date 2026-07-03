@@ -5,6 +5,7 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.ArrogantAsfMusicRules;
 import dev.caecorthus.sparktraits.impl.ArrogantAsfTrait;
 import dev.caecorthus.sparktraits.impl.SparkTraitsSounds;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -25,7 +26,10 @@ public final class ArrogantAsfMusicController {
     }
 
     public static void tick(MinecraftClient client) {
-        if (client == null || client.player == null || client.world == null) {
+        if (!SparkTraitsServerConnection.isConfirmedServer()
+                || client == null
+                || client.player == null
+                || client.world == null) {
             stopAndClear(client);
             return;
         }
@@ -46,7 +50,7 @@ public final class ArrogantAsfMusicController {
     }
 
     public static int remainingResumeSeconds() {
-        if (!paused || music == null) {
+        if (!SparkTraitsServerConnection.isConfirmedServer() || !paused || music == null) {
             return 0;
         }
         return ArrogantAsfMusicRules.remainingResumeSeconds(pausedTicks);

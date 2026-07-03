@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.client.gui.RoundTextRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -22,6 +23,9 @@ public abstract class RoundTextRendererMixin {
             at = @At(value = "INVOKE", target = "Ljava/util/function/Function;apply(Ljava/lang/Object;)Ljava/lang/Object;", ordinal = 1)
     )
     private static Object sparktraits$effectiveAlignmentGoalText(Function<Integer, Text> goalText, Object targets) {
+        if (!SparkTraitsServerConnection.isConfirmedServer()) {
+            return goalText.apply((Integer) targets);
+        }
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
         if (EffectiveTraitService.hasConscience(player)) {
             return Text.translatable("announcement.goal.sparktraits.conscience")

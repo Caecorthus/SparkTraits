@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.entity.PlayerEntityRenderer;
@@ -20,7 +21,9 @@ public abstract class DepressionPsychoArmSkinMixin {
     @ModifyVariable(method = "renderArm", at = @At("STORE"), ordinal = 0)
     private Identifier sparktraits$depressionPsychoArmTextureAfterWathe(Identifier skinTexture) {
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
-        if (player == null || !TraitPlayerComponent.KEY.get(player).isDepressionPsychoActive()) {
+        if (!SparkTraitsServerConnection.isConfirmedServer()
+                || player == null
+                || !TraitPlayerComponent.KEY.get(player).isDepressionPsychoActive()) {
             return skinTexture;
         }
         String suffix = player.getSkinTextures().model() == SkinTextures.Model.SLIM ? "_thin" : "";

@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.client.ArrogantAsfHud;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -26,6 +27,9 @@ public abstract class ArrogantAsfInGameHudMixin {
 
     @Inject(method = "renderMainHud", at = @At("TAIL"))
     private void sparktraits$renderArrogantAsfHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
+        if (!SparkTraitsServerConnection.isConfirmedServer()) {
+            return;
+        }
         ClientPlayerEntity player = this.client.player;
         if (player == null) {
             return;

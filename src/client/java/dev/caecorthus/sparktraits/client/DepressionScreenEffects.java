@@ -5,6 +5,7 @@ import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.GoodTraits;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
@@ -30,6 +31,10 @@ public final class DepressionScreenEffects {
     }
 
     public static void render(ClientPlayerEntity player, float delta) {
+        if (!SparkTraitsServerConnection.isConfirmedServer()) {
+            closeProcessor();
+            return;
+        }
         float strength = grayscaleStrength(player);
         if (strength <= 0.001f) {
             closeProcessor();

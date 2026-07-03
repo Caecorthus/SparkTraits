@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.client.TraitClientTexts;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.client.gui.screen.ingame.LimitedHandledScreen;
 import dev.doctor4t.wathe.client.gui.screen.ingame.LimitedInventoryScreen;
 import net.minecraft.client.gui.DrawContext;
@@ -35,6 +36,9 @@ public abstract class TraitInventoryScreenMixin extends LimitedHandledScreen<Pla
 
     @Inject(method = "render", at = @At("TAIL"))
     private void sparktraits$renderOwnerTraits(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        if (!SparkTraitsServerConnection.isConfirmedServer()) {
+            return;
+        }
         TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
         List<Identifier> visibleTraits = traits.getActiveTraitIds().stream()
                 .filter(traits::isVisibleToOwner)

@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.client.gui.CrosshairRenderer;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
@@ -23,6 +24,9 @@ public abstract class MarksmanCrosshairMixin {
             double range,
             CallbackInfoReturnable<HitResult> cir
     ) {
+        if (!SparkTraitsServerConnection.isConfirmedServer()) {
+            return;
+        }
         double extendedRange = VigilanteVeteranTraitService.gunRange(user, range);
         if (extendedRange == range) {
             return;

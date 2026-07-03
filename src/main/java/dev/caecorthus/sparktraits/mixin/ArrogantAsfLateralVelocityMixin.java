@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.impl.CorruptCopTraitService;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Vec3d;
@@ -17,7 +18,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ArrogantAsfLateralVelocityMixin {
     @Inject(method = "updateVelocity", at = @At("TAIL"))
     private void sparktraits$addArrogantAsfLateralVelocity(float speed, Vec3d movementInput, CallbackInfo ci) {
-        if (!((Object) this instanceof PlayerEntity player)) {
+        Entity entity = (Entity) (Object) this;
+        if (entity.getWorld().isClient() && !SparkTraitsServerConnection.isConfirmedServer()) {
+            return;
+        }
+        if (!(entity instanceof PlayerEntity player)) {
             return;
         }
 

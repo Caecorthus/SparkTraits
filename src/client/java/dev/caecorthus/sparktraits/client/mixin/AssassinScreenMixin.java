@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.impl.AssassinRolePage;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -57,6 +58,9 @@ public abstract class AssassinScreenMixin extends Screen {
 
     @Inject(method = {"init", "method_25426"}, at = @At("TAIL"), remap = false)
     private void sparktraits$paginateRoleGuessPanel(CallbackInfo ci) {
+        if (!SparkTraitsServerConnection.isConfirmedServer()) {
+            return;
+        }
         if (selectedTarget == null) {
             sparktraits$rolePage = 0;
             return;

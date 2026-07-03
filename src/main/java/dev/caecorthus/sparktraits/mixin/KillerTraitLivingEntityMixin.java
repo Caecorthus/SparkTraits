@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.impl.KillerTraitService;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,7 +17,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class KillerTraitLivingEntityMixin {
     @Inject(method = "tick", at = @At("HEAD"))
     private void sparktraits$updateThrustKnockback(CallbackInfo ci) {
-        if ((Object) this instanceof PlayerEntity player) {
+        if ((Object) this instanceof PlayerEntity player
+                && !SparkTraitsServerConnection.isUnconfirmedClientEntity(player)) {
             KillerTraitService.updateThrustKnockback(player);
         }
     }

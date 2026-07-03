@@ -133,6 +133,7 @@ tasks.register("verifyModJarVersion") {
 
             [
                     "dev/caecorthus/sparktraits/client/SparkTraitsClient.class",
+                    "dev/caecorthus/sparktraits/net/SparkTraitsServerConnection.class",
                     "dev/caecorthus/sparktraits/client/net/SparkTraitsClientVersionHandshake.class"
             ].each { requiredEntry ->
                 // The login version gate only works if the shipped client jar can answer the server query.

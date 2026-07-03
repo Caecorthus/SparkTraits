@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.impl.GlobalTraitService;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.BlockPos;
@@ -17,28 +18,36 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class CautiousEntitySoundMixin {
     @Inject(method = "playStepSounds", at = @At("HEAD"), cancellable = true)
     private void sparktraits$skipCautiousStepSounds(BlockPos pos, BlockState state, CallbackInfo ci) {
-        if (GlobalTraitService.shouldSuppressCautiousStepSounds((Entity) (Object) this)) {
+        Entity entity = (Entity) (Object) this;
+        if (!SparkTraitsServerConnection.isUnconfirmedClientEntity(entity)
+                && GlobalTraitService.shouldSuppressCautiousStepSounds(entity)) {
             ci.cancel();
         }
     }
 
     @Inject(method = "playStepSound", at = @At("HEAD"), cancellable = true)
     private void sparktraits$skipCautiousDirectStepSound(BlockPos pos, BlockState state, CallbackInfo ci) {
-        if (GlobalTraitService.shouldSuppressCautiousStepSounds((Entity) (Object) this)) {
+        Entity entity = (Entity) (Object) this;
+        if (!SparkTraitsServerConnection.isUnconfirmedClientEntity(entity)
+                && GlobalTraitService.shouldSuppressCautiousStepSounds(entity)) {
             ci.cancel();
         }
     }
 
     @Inject(method = "playCombinationStepSounds", at = @At("HEAD"), cancellable = true)
     private void sparktraits$skipCautiousCombinationStepSounds(BlockState primaryState, BlockState secondaryState, CallbackInfo ci) {
-        if (GlobalTraitService.shouldSuppressCautiousStepSounds((Entity) (Object) this)) {
+        Entity entity = (Entity) (Object) this;
+        if (!SparkTraitsServerConnection.isUnconfirmedClientEntity(entity)
+                && GlobalTraitService.shouldSuppressCautiousStepSounds(entity)) {
             ci.cancel();
         }
     }
 
     @Inject(method = "playSecondaryStepSound", at = @At("HEAD"), cancellable = true)
     private void sparktraits$skipCautiousSecondaryStepSound(BlockState state, CallbackInfo ci) {
-        if (GlobalTraitService.shouldSuppressCautiousStepSounds((Entity) (Object) this)) {
+        Entity entity = (Entity) (Object) this;
+        if (!SparkTraitsServerConnection.isUnconfirmedClientEntity(entity)
+                && GlobalTraitService.shouldSuppressCautiousStepSounds(entity)) {
             ci.cancel();
         }
     }

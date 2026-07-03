@@ -7,6 +7,7 @@ import dev.caecorthus.sparktraits.impl.GoodTraitService;
 import dev.caecorthus.sparktraits.impl.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.KillerTraitService;
 import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
@@ -41,6 +42,9 @@ public abstract class PlayerMoodComponentMixin {
             at = @At(value = "INVOKE", target = "Ldev/doctor4t/wathe/api/Role;getMoodType()Ldev/doctor4t/wathe/api/Role$MoodType;")
     )
     private Role.MoodType sparktraits$effectiveMoodType(Role role) {
+        if (SparkTraitsServerConnection.isUnconfirmedClientEntity(this.player)) {
+            return role == null ? Role.MoodType.NONE : role.getMoodType();
+        }
         return EffectiveTraitService.effectiveMoodType(this.player, role);
     }
 
@@ -49,6 +53,9 @@ public abstract class PlayerMoodComponentMixin {
             at = @At(value = "INVOKE", target = "Ljava/lang/Math;clamp(FFF)F")
     )
     private float sparktraits$clampMoodWithSteady(float mood, float min, float max) {
+        if (SparkTraitsServerConnection.isUnconfirmedClientEntity(this.player)) {
+            return Math.clamp(mood, min, max);
+        }
         GameWorldComponent game = GameWorldComponent.KEY.get(this.player.getWorld());
         Role role = game.getRole(this.player);
         return GlobalTraitService.clampMood(
@@ -64,6 +71,9 @@ public abstract class PlayerMoodComponentMixin {
             index = 0
     )
     private float sparktraits$applyMoodDrainTraits(float proposedMood) {
+        if (SparkTraitsServerConnection.isUnconfirmedClientEntity(this.player)) {
+            return proposedMood;
+        }
         float adjustedMood = KillerTraitService.oppressiveAdjustedMood(this.mood, proposedMood, this.player);
         adjustedMood = VigilanteVeteranTraitService.wellTrainedAdjustedMood(this.mood, adjustedMood, this.player);
         adjustedMood = GoodTraitService.socialMoodAdjustedMood(this.mood, adjustedMood, this.player);
@@ -108,6 +118,9 @@ public abstract class PlayerMoodComponentMixin {
 
     @Inject(method = {"isLowerThanMid", "isLowerThanDepressed"}, at = @At("HEAD"), cancellable = true)
     private void sparktraits$wellTrainedIgnoresLowMood(CallbackInfoReturnable<Boolean> cir) {
+        if (SparkTraitsServerConnection.isUnconfirmedClientEntity(this.player)) {
+            return;
+        }
         if (VigilanteVeteranTraitService.ignoresLowMood(this.player)) {
             cir.setReturnValue(false);
         }
@@ -115,6 +128,9 @@ public abstract class PlayerMoodComponentMixin {
 
     @Inject(method = "isLowerThanDepressed", at = @At("HEAD"), cancellable = true)
     private void sparktraits$depressionPsychoIgnoresSprintBlock(CallbackInfoReturnable<Boolean> cir) {
+        if (SparkTraitsServerConnection.isUnconfirmedClientEntity(this.player)) {
+            return;
+        }
         if (DepressionTraitService.shouldAllowLowMoodSprint(this.player)) {
             cir.setReturnValue(false);
         }

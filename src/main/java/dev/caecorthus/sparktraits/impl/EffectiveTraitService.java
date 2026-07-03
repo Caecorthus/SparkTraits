@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl;
 
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
@@ -76,6 +77,9 @@ public final class EffectiveTraitService {
             return null;
         });
         ShouldShowCohort.EVENT.register((viewer, target) -> {
+            if (SparkTraitsServerConnection.isUnconfirmedClientEntity(viewer)) {
+                return null;
+            }
             GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
             Collection<Identifier> viewerTraits = TraitPlayerComponent.KEY.get(viewer).getActiveTraitIds();
             Boolean morphlingOverride = conscienceMorphlingCohortOverride(viewer, target, game, viewerTraits);

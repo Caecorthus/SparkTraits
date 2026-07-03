@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.impl.GlobalTraitService;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -19,7 +20,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class CautiousPlayerMoveEffectMixin {
     @Inject(method = "playStepSound", at = @At("HEAD"), cancellable = true)
     private void sparktraits$skipCautiousPlayerStepSound(BlockPos pos, BlockState state, CallbackInfo ci) {
-        if (GlobalTraitService.shouldSuppressCautiousStepSounds((PlayerEntity) (Object) this)) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        if (!SparkTraitsServerConnection.isUnconfirmedClientEntity(player)
+                && GlobalTraitService.shouldSuppressCautiousStepSounds(player)) {
             ci.cancel();
         }
     }
@@ -27,6 +30,9 @@ public abstract class CautiousPlayerMoveEffectMixin {
     @Inject(method = "getMoveEffect", at = @At("RETURN"), cancellable = true)
     private void sparktraits$skipCautiousMovementSounds(CallbackInfoReturnable<Entity.MoveEffect> cir) {
         PlayerEntity player = (PlayerEntity) (Object) this;
+        if (SparkTraitsServerConnection.isUnconfirmedClientEntity(player)) {
+            return;
+        }
         cir.setReturnValue(GlobalTraitService.suppressMovementSounds(
                 cir.getReturnValue(),
                 GlobalTraitService.shouldSuppressCautiousSounds(player)

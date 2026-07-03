@@ -7,6 +7,7 @@ import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.SparkTraitsParticles;
 import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
+import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -14,6 +15,7 @@ import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.client.particle.PoisonParticle;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
 import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.client.MinecraftClient;
@@ -22,16 +24,25 @@ import net.minecraft.entity.player.PlayerEntity;
 public class SparkTraitsClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        SparkTraitsServerConnection.reset();
         SparkTraitsClientVersionHandshake.registerClient();
         ParticleFactoryRegistry.getInstance().register(SparkTraitsParticles.BLUE_POISON, PoisonParticle.Factory::new);
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SparkTraitsServerConnection.reset());
         registerFinalMomentHighlight();
         registerGoingDarkInstinctSkip();
-        ClientTickEvents.END_CLIENT_TICK.register(client -> DepressionHud.tick());
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (SparkTraitsServerConnection.isConfirmedServer()) {
+                DepressionHud.tick();
+            }
+        });
         ClientTickEvents.END_CLIENT_TICK.register(ArrogantAsfMusicController::tick);
     }
 
     private static void registerFinalMomentHighlight() {
         GetInstinctHighlight.EVENT.register(target -> {
+            if (!SparkTraitsServerConnection.isConfirmedServer()) {
+                return null;
+            }
             PlayerEntity viewer = MinecraftClient.getInstance().player;
             if (viewer == null || !(target instanceof PlayerEntity targetPlayer)) {
                 return null;
@@ -60,6 +71,9 @@ public class SparkTraitsClient implements ClientModInitializer {
 
     private static void registerGoingDarkInstinctSkip() {
         GetInstinctHighlight.EVENT.register(target -> {
+            if (!SparkTraitsServerConnection.isConfirmedServer()) {
+                return null;
+            }
             PlayerEntity viewer = MinecraftClient.getInstance().player;
             if (viewer == null || !(target instanceof PlayerEntity targetPlayer)) {
                 return null;
