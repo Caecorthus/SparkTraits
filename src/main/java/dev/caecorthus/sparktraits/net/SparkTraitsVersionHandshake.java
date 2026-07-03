@@ -23,9 +23,19 @@ public final class SparkTraitsVersionHandshake {
             return;
         }
         serverRegistered = true;
+        SparkTraits.LOGGER.info(
+                "Registering SparkTraits login version check on channel {}.",
+                VERSION_CHECK_ID
+        );
 
         ServerLoginConnectionEvents.QUERY_START.register((handler, server, sender, synchronizer) -> {
             String serverVersion = localVersion();
+            SparkTraits.LOGGER.info(
+                    "Sending SparkTraits login version query {} to {} with server version {}.",
+                    VERSION_CHECK_ID,
+                    handler.getConnectionInfo(),
+                    serverVersion
+            );
             ServerLoginNetworking.registerReceiver(handler, VERSION_CHECK_ID,
                     (minecraftServer, networkHandler, understood, buf, loginSynchronizer, responseSender) ->
                             handleResponse(networkHandler, understood, buf, serverVersion));
@@ -61,12 +71,30 @@ public final class SparkTraitsVersionHandshake {
         // Reject before trait state sync can tolerate or mask mixed jar versions.
         // 在天赋状态同步容忍或掩盖混用 jar 版本前拒绝连接。
         if (!understood) {
+            SparkTraits.LOGGER.warn(
+                    "SparkTraits login version query {} was not understood by {}. Expected client version {}.",
+                    VERSION_CHECK_ID,
+                    handler.getConnectionInfo(),
+                    serverVersion
+            );
             handler.disconnect(Text.literal(SparkTraitsVersionCheck.missingClientMessage(serverVersion)));
             return;
         }
 
         String clientVersion = readVersion(buf);
+        SparkTraits.LOGGER.info(
+                "Received SparkTraits login version response from {}: client={}, server={}.",
+                handler.getConnectionInfo(),
+                clientVersion,
+                serverVersion
+        );
         if (!SparkTraitsVersionCheck.isCompatible(serverVersion, clientVersion)) {
+            SparkTraits.LOGGER.warn(
+                    "Rejecting SparkTraits version mismatch for {}: client={}, server={}.",
+                    handler.getConnectionInfo(),
+                    clientVersion,
+                    serverVersion
+            );
             handler.disconnect(Text.literal(SparkTraitsVersionCheck.mismatchMessage(serverVersion, clientVersion)));
         }
     }

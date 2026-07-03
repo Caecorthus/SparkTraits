@@ -124,6 +124,23 @@ tasks.register("verifyModJarVersion") {
             if (metadataVersion != jarVersion) {
                 throw new GradleException("Jar version mismatch: ${jarFile.name} says ${jarVersion}, but fabric.mod.json says ${metadataVersion}")
             }
+
+            def clientEntrypoint = "dev.caecorthus.sparktraits.client.SparkTraitsClient"
+            def clientEntrypoints = metadata.entrypoints?.client ?: []
+            if (!clientEntrypoints.contains(clientEntrypoint)) {
+                throw new GradleException("Missing client entrypoint ${clientEntrypoint} in ${jarFile.name}")
+            }
+
+            [
+                    "dev/caecorthus/sparktraits/client/SparkTraitsClient.class",
+                    "dev/caecorthus/sparktraits/client/net/SparkTraitsClientVersionHandshake.class"
+            ].each { requiredEntry ->
+                // The login version gate only works if the shipped client jar can answer the server query.
+                // 登录版本门禁必须依赖发布给客户端的 jar 能应答服务端查询。
+                if (zipFile.getEntry(requiredEntry) == null) {
+                    throw new GradleException("Missing required client login class ${requiredEntry} in ${jarFile.name}")
+                }
+            }
         } finally {
             zipFile.close()
         }
