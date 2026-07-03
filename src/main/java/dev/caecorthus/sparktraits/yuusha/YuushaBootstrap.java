@@ -1,6 +1,5 @@
 package dev.caecorthus.sparktraits.yuusha;
 
-import dev.doctor4t.wathe.api.event.ShouldPunishGunShooter;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
@@ -14,12 +13,6 @@ public final class YuushaBootstrap implements ModInitializer {
     @Override
     public void onInitialize() {
         YuushaTrait.register();
-
-        ShouldPunishGunShooter.EVENT.register((shooter, target) ->
-            YuushaTrait.isYuushaShooter(shooter)
-                ? ShouldPunishGunShooter.PunishResult.cancel()
-                : ShouldPunishGunShooter.PunishResult.allow()
-        );
 
         UseItemCallback.EVENT.register((player, world, hand) -> {
             ItemStack stack = player.getStackInHand(hand);

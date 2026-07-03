@@ -180,9 +180,8 @@ public final class YuushaTrait implements Trait {
             return TypedActionResult.fail(stack);
         }
 
-        // Only successful 「滿開」 may put the phone into its 180s cooldown.
-        yuusha.setPhoneCooldownTicks(AFTER_USE_COOLDOWN_TICKS);
-        serverPlayer.getItemCooldownManager().set(Items.ECHO_SHARD, AFTER_USE_COOLDOWN_TICKS);
+        // The 180s phone cooldown starts only after 「滿開」 ends.
+        // During 「滿開」 itself, bloomActiveTicks blocks reuse and shows the active-time reminder.
         return TypedActionResult.success(stack);
     }
 
@@ -246,7 +245,16 @@ public final class YuushaTrait implements Trait {
     private static void endBloom(ServerPlayerEntity player, boolean applyCost) {
         removeTemporaryWeapons(player);
         removeBloomShield(player);
-        if (applyCost) applyBloomCost(player);
+        if (applyCost) {
+            applyBloomCost(player);
+            startPhoneCooldown(player);
+        }
+    }
+
+    private static void startPhoneCooldown(ServerPlayerEntity player) {
+        YuushaPlayerComponent yuusha = YuushaComponents.YUUSHA.get(player);
+        yuusha.setPhoneCooldownTicks(AFTER_USE_COOLDOWN_TICKS);
+        player.getItemCooldownManager().set(Items.ECHO_SHARD, AFTER_USE_COOLDOWN_TICKS);
     }
 
     private static void removeTemporaryWeapons(ServerPlayerEntity player) {
