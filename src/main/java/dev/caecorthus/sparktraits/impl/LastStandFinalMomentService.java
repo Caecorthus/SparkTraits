@@ -286,11 +286,28 @@ public final class LastStandFinalMomentService {
     }
 
     public static int finalMomentHighlightColor(@Nullable Role role) {
-        return finalMomentHighlightColor(role, false);
+        return finalMomentHighlightColor(role, List.of(), false);
     }
 
     public static int finalMomentHighlightColor(@Nullable Role role, boolean lastStandFinalMomentLooseEnd) {
+        return finalMomentHighlightColor(role, List.of(), lastStandFinalMomentLooseEnd);
+    }
+
+    public static int finalMomentHighlightColor(
+            @Nullable Role role,
+            @Nullable Collection<Identifier> traits,
+            boolean lastStandFinalMomentLooseEnd
+    ) {
         if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
+            return FINAL_MOMENT_CIVILIAN_COLOR;
+        }
+        Collection<Identifier> activeTraits = traits == null ? List.of() : traits;
+        // Final Moment colors follow effective alignment so flipped traits do not leak base-role colors.
+        // 终局时刻按有效阵营染色，避免阵营翻转天赋泄露原职业颜色。
+        if (EffectiveTraitService.hasImpostor(activeTraits)) {
+            return FINAL_MOMENT_KILLER_COLOR;
+        }
+        if (EffectiveTraitService.hasConscience(activeTraits)) {
             return FINAL_MOMENT_CIVILIAN_COLOR;
         }
         // SparkWitch's custom witch faction appears as native neutral here, so keep its current purple.

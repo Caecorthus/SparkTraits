@@ -8,6 +8,7 @@ import dev.caecorthus.sparktraits.impl.SparkTraitsBuiltInTraits;
 import dev.caecorthus.sparktraits.impl.SparkTraitsParticles;
 import dev.caecorthus.sparktraits.impl.SparkTraitsSounds;
 import dev.caecorthus.sparktraits.impl.TraitGameHooks;
+import dev.caecorthus.sparktraits.net.SparkTraitsPackets;
 import dev.caecorthus.sparktraits.net.SparkTraitsVersionHandshake;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.util.Identifier;
@@ -25,6 +26,7 @@ public class SparkTraits implements ModInitializer {
     @Override
     public void onInitialize() {
         SparkTraitsVersionHandshake.registerServer();
+        SparkTraitsPackets.register();
         SparkTraitsDataComponentTypes.init();
         SparkTraitsParticles.register();
         SparkTraitsSounds.initialize();

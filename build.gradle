@@ -134,12 +134,14 @@ tasks.register("verifyModJarVersion") {
             [
                     "dev/caecorthus/sparktraits/client/SparkTraitsClient.class",
                     "dev/caecorthus/sparktraits/net/SparkTraitsServerConnection.class",
+                    "dev/caecorthus/sparktraits/net/SparkTraitsPackets.class",
+                    "dev/caecorthus/sparktraits/net/SparkTraitsServerConfirmS2CPacket.class",
                     "dev/caecorthus/sparktraits/client/net/SparkTraitsClientVersionHandshake.class"
             ].each { requiredEntry ->
-                // The login version gate only works if the shipped client jar can answer the server query.
-                // 登录版本门禁必须依赖发布给客户端的 jar 能应答服务端查询。
+                // Client display gates need both login and play-stage Spark server confirmation.
+                // 客户端显示开关需要登录阶段和 play 阶段的 Spark 服务端确认。
                 if (zipFile.getEntry(requiredEntry) == null) {
-                    throw new GradleException("Missing required client login class ${requiredEntry} in ${jarFile.name}")
+                    throw new GradleException("Missing required client confirmation class ${requiredEntry} in ${jarFile.name}")
                 }
             }
         } finally {

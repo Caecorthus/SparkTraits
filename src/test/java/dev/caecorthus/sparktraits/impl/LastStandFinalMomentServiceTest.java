@@ -342,6 +342,25 @@ class LastStandFinalMomentServiceTest {
     }
 
     @Test
+    void finalMomentHighlightColorUsesEffectiveAlignmentTraits() {
+        assertEquals(0xC13838, LastStandFinalMomentService.finalMomentHighlightColor(
+                WatheRoles.CIVILIAN,
+                Set.of(ImpostorTrait.ID),
+                false
+        ));
+        assertEquals(0x36E51B, LastStandFinalMomentService.finalMomentHighlightColor(
+                WatheRoles.KILLER,
+                Set.of(ConscienceTrait.ID),
+                false
+        ));
+        assertEquals(0x36E51B, LastStandFinalMomentService.finalMomentHighlightColor(
+                WatheRoles.LOOSE_END,
+                Set.of(ImpostorTrait.ID),
+                true
+        ));
+    }
+
+    @Test
     void finalMomentLastStandLooseEndUsesPassengerHighlightColor() {
         assertEquals(0x36E51B, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END, true));
         assertEquals(0xFFFF00, LastStandFinalMomentService.finalMomentHighlightColor(WatheRoles.LOOSE_END, false));

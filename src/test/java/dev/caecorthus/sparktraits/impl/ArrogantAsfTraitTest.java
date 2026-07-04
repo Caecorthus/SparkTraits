@@ -166,6 +166,32 @@ class ArrogantAsfTraitTest {
     }
 
     @Test
+    void noellesRolesPacketMixinSupportsOldAndNewPacketLambdaNames() throws IOException {
+        String source = Files.readString(Path.of(
+                "src/main/java/dev/caecorthus/sparktraits/mixin/NoellesRolesPacketMixin.java"
+        ));
+        String[][] compatibleTargets = {
+                {"lambda$registerPackets$30", "lambda$registerPackets$0"},
+                {"lambda$registerPackets$31", "lambda$registerPackets$1"},
+                {"lambda$registerPackets$33", "lambda$registerPackets$2"},
+                {"lambda$registerPackets$34", "lambda$registerPackets$4"},
+                {"lambda$registerPackets$35", "lambda$registerPackets$5"},
+                {"lambda$registerPackets$36", "lambda$registerPackets$6"},
+                {"lambda$registerPackets$37", "lambda$registerPackets$7"},
+                {"lambda$registerPackets$38", "lambda$registerPackets$8"},
+                {"lambda$registerPackets$39", "lambda$registerPackets$9"},
+                {"lambda$registerPackets$40", "lambda$registerPackets$12"},
+                {"lambda$registerPackets$41", "lambda$registerPackets$13"},
+                {"lambda$registerPackets$42", "lambda$registerPackets$14"}
+        };
+
+        for (String[] pair : compatibleTargets) {
+            assertTrue(source.contains(pair[0]), "Missing old NoellesRoles packet target " + pair[0]);
+            assertTrue(source.contains(pair[1]), "Missing new NoellesRoles packet target " + pair[1]);
+        }
+    }
+
+    @Test
     void arrogantAsfHudMirrorsNoellesRolesAbilityStatus() throws IOException {
         String clientMixins = Files.readString(CLIENT_RESOURCES.resolve("sparktraits.client.mixins.json"));
         String hudSource = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/ArrogantAsfHud.java"));

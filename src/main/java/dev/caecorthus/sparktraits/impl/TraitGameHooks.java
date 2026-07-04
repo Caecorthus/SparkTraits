@@ -44,7 +44,7 @@ public final class TraitGameHooks {
             boolean lastStandStarted = LastStandService.tryStartAfterKill(victim, killer, deathReason);
             PigTraitService.playDeathSound(victim);
             EffectiveTraitService.handleAfterKill(victim, killer, deathReason);
-            DepressionTraitService.handleAfterKill(victim, killer);
+            DepressionTraitService.handleAfterKill(victim, killer, deathReason);
             if (lastStandStarted) {
                 syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
                 return;

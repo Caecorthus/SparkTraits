@@ -404,6 +404,17 @@ public final class DepressionTraitService {
         );
     }
 
+    public static boolean shouldPunishDepressionPsychoBatKill(
+            boolean depressionPsychoActive,
+            Identifier deathReason,
+            Role victimRole,
+            Collection<Identifier> victimTraits
+    ) {
+        return depressionPsychoActive
+                && GameConstants.DeathReasons.BAT.equals(deathReason)
+                && EffectiveTraitService.isEffectiveCivilian(victimRole, victimTraits);
+    }
+
     public static KillPlayer.KillResult beforeKill(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer, Identifier deathReason) {
         if (forceMentalBreakdownDeaths.remove(victim.getUuid())) {
             return null;
@@ -437,11 +448,18 @@ public final class DepressionTraitService {
         return KillPlayer.KillResult.cancel();
     }
 
-    public static void handleAfterKill(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer) {
+    public static void handleAfterKill(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer, Identifier deathReason) {
         if (killer != null) {
             ActiveState killerState = activePlayers.get(killer.getUuid());
             if (killerState != null) {
                 playRangeSound(victim, meleeKillSound(killer.getRandom().nextBoolean()));
+                GameWorldComponent game = GameWorldComponent.KEY.get(victim.getWorld());
+                Role victimRole = game == null ? null : game.getRole(victim);
+                Collection<Identifier> victimTraits = TraitPlayerComponent.KEY.get(victim).getActiveTraitIds();
+                if (shouldPunishDepressionPsychoBatKill(true, deathReason, victimRole, victimTraits)
+                        && GameFunctions.isPlayerPlayingAndAlive(killer)) {
+                    GameFunctions.killPlayer(killer, true, null, GameConstants.DeathReasons.SHOT_INNOCENT, true);
+                }
                 if (killerState.attackerUuid().equals(victim.getUuid())) {
                     endPsycho(killer, true, true);
                 }
@@ -716,11 +734,15 @@ public final class DepressionTraitService {
         if (state == null) {
             return;
         }
+        ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
         clearActivePsychoState(player, state);
         try {
             stopRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP_ID, SparkTraitsSounds.DEPRESSION_RAGE_LOOP);
+            stopPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE_ID);
             playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);
-            PlayerPsychoComponent.KEY.get(player).stopPsycho();
+            PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
+            psycho.stopPsycho();
+            psycho.sync();
             if (restoreInventory) {
                 state.inventory().restore(player);
             }
@@ -889,6 +911,17 @@ public final class DepressionTraitService {
                 player.squaredDistanceTo(source) <= rangeSquared)) {
             player.networkHandler.sendPacket(packet);
         }
+    }
+
+    private static void stopPairMusicSound(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, Identifier soundId) {
+        stopDirectSound(player, soundId);
+        if (attacker != null && attacker != player) {
+            stopDirectSound(attacker, soundId);
+        }
+    }
+
+    private static void stopDirectSound(ServerPlayerEntity player, Identifier soundId) {
+        player.networkHandler.sendPacket(new StopSoundS2CPacket(soundId, DEPRESSION_AUDIO_CATEGORY));
     }
 
     private static void playDirectSound(ServerPlayerEntity player, SoundEvent sound) {

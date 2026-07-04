@@ -6,6 +6,9 @@ import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -194,5 +197,14 @@ class ConscienceSerialKillerServiceTest {
     void murdererRoleClueIsOwnerFacingRoleOnly() {
         Identifier roleId = Noellesroles.SILENCER_ID;
         assertEquals(roleId, ConscienceSerialKillerService.murdererRoleClue(roleId));
+    }
+
+    @Test
+    void serialKillerRewardMixinSupportsOldAndNewTargetDeathListenerLambdaNames() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/mixin/NoellesRolesSerialKillerRewardMixin.java"));
+
+        assertTrue(source.contains("lambda$registerEvents$20"));
+        assertTrue(source.contains("lambda$registerEvents$16"));
+        assertTrue(source.contains("PlayerShopComponent;addToBalance"));
     }
 }

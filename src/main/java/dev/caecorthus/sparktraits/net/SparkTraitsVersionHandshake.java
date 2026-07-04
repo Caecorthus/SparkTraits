@@ -68,8 +68,8 @@ public final class SparkTraitsVersionHandshake {
             PacketByteBuf buf,
             String serverVersion
     ) {
-        // Reject before trait state sync can tolerate or mask mixed jar versions.
-        // 在天赋状态同步容忍或掩盖混用 jar 版本前拒绝连接。
+        // Reject answered mismatches early, but tolerate unanswered login queries behind proxies.
+        // 已回应但版本不一致时尽早拒绝；代理后的未回应登录查询则允许继续。
         if (!understood) {
             SparkTraits.LOGGER.warn(
                     "SparkTraits login version query {} was not understood by {}. Expected client version {}.",
@@ -77,7 +77,14 @@ public final class SparkTraitsVersionHandshake {
                     handler.getConnectionInfo(),
                     serverVersion
             );
-            handler.disconnect(Text.literal(SparkTraitsVersionCheck.missingClientMessage(serverVersion)));
+            if (SparkTraitsVersionCheck.shouldRejectUnansweredLoginQuery()) {
+                handler.disconnect(Text.literal(SparkTraitsVersionCheck.missingClientMessage(serverVersion)));
+            } else {
+                SparkTraits.LOGGER.warn(
+                        "Allowing {} to continue because proxies can drop Fabric login-query responses.",
+                        handler.getConnectionInfo()
+                );
+            }
             return;
         }
 

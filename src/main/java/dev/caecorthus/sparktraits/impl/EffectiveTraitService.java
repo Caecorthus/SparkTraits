@@ -737,9 +737,43 @@ public final class EffectiveTraitService {
             boolean allied,
             boolean showdownActive
     ) {
-        return role != null
-                && NOELLES_SHADOW_JESTER_ID.equals(role.identifier())
-                && (allied || showdownActive);
+        return shouldDeferTeamWinForNoellesShadowJester(
+                GameFunctions.WinStatus.KILLERS,
+                GameFunctions.WinStatus.KILLERS,
+                role,
+                allied,
+                showdownActive
+        ) || shouldDeferTeamWinForNoellesShadowJester(
+                GameFunctions.WinStatus.PASSENGERS,
+                GameFunctions.WinStatus.PASSENGERS,
+                role,
+                allied,
+                showdownActive
+        );
+    }
+
+    /** Routes only Shadow Jester's killer-win takeover before showdown; active showdown keeps all ordinary wins deferred.
+     *  双影谢幕开始前只接管杀手胜利；谢幕已开始后继续延后所有普通队伍胜利。 */
+    public static boolean shouldDeferTeamWinForNoellesShadowJester(
+            GameFunctions.WinStatus currentStatus,
+            GameFunctions.WinStatus proposedWinStatus,
+            Role role,
+            boolean allied,
+            boolean showdownActive
+    ) {
+        if (proposedWinStatus != GameFunctions.WinStatus.KILLERS
+                && proposedWinStatus != GameFunctions.WinStatus.PASSENGERS) {
+            return false;
+        }
+        if (role == null || !NOELLES_SHADOW_JESTER_ID.equals(role.identifier())) {
+            return false;
+        }
+        if (showdownActive) {
+            return true;
+        }
+        return allied
+                && (currentStatus == GameFunctions.WinStatus.KILLERS
+                || proposedWinStatus == GameFunctions.WinStatus.KILLERS);
     }
 
     public static Role.MoodType effectiveMoodType(PlayerEntity player, Role role) {
@@ -888,6 +922,8 @@ public final class EffectiveTraitService {
         boolean realKillerAlive = false;
         boolean effectiveCivilianAlive = false;
         boolean noellesJesterBlocksTeamWin = false;
+        boolean noellesShadowJesterDefersPassengerWin = false;
+        boolean noellesShadowJesterDefersKillerWin = false;
 
         for (ServerPlayerEntity player : players) {
             if (!GameFunctions.isPlayerPlayingAndAlive(player) || !gameComponent.hasAnyRole(player)) {
@@ -902,8 +938,21 @@ public final class EffectiveTraitService {
                     noellesJesterBlocksTeamWin = true;
                 }
             }
-            if (shouldDeferTeamWinForNoellesShadowJester(player, role)) {
-                noellesJesterBlocksTeamWin = true;
+            if (shouldDeferTeamWinForNoellesShadowJester(
+                    player,
+                    role,
+                    currentStatus,
+                    GameFunctions.WinStatus.PASSENGERS
+            )) {
+                noellesShadowJesterDefersPassengerWin = true;
+            }
+            if (shouldDeferTeamWinForNoellesShadowJester(
+                    player,
+                    role,
+                    currentStatus,
+                    GameFunctions.WinStatus.KILLERS
+            )) {
+                noellesShadowJesterDefersKillerWin = true;
             }
             if (isOriginalKiller(role) && !hasConscience(traits)) {
                 realKillerAlive = true;
@@ -915,13 +964,21 @@ public final class EffectiveTraitService {
 
         if (!realKillerAlive) {
             killUnsupportedImpostors(players, gameComponent, false);
-            if (shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.PASSENGERS, livingRoles, noellesJesterBlocksTeamWin)) {
+            if (shouldDeferTeamWinForBlockingNeutral(
+                    GameFunctions.WinStatus.PASSENGERS,
+                    livingRoles,
+                    noellesJesterBlocksTeamWin || noellesShadowJesterDefersPassengerWin
+            )) {
                 return null;
             }
             return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.PASSENGERS);
         }
         if (!effectiveCivilianAlive) {
-            if (shouldDeferTeamWinForBlockingNeutral(GameFunctions.WinStatus.KILLERS, livingRoles, noellesJesterBlocksTeamWin)) {
+            if (shouldDeferTeamWinForBlockingNeutral(
+                    GameFunctions.WinStatus.KILLERS,
+                    livingRoles,
+                    noellesJesterBlocksTeamWin || noellesShadowJesterDefersKillerWin
+            )) {
                 return null;
             }
             return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.KILLERS);
@@ -932,8 +989,15 @@ public final class EffectiveTraitService {
         return null;
     }
 
-    private static boolean shouldDeferTeamWinForNoellesShadowJester(PlayerEntity player, Role role) {
+    private static boolean shouldDeferTeamWinForNoellesShadowJester(
+            PlayerEntity player,
+            Role role,
+            GameFunctions.WinStatus currentStatus,
+            GameFunctions.WinStatus proposedWinStatus
+    ) {
         return shouldDeferTeamWinForNoellesShadowJester(
+                currentStatus,
+                proposedWinStatus,
                 role,
                 noellesShadowJesterComponentFlag(player, "isAllied"),
                 noellesShadowJesterComponentFlag(player, "isShowdownActive")

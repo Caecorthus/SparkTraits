@@ -3,6 +3,9 @@ package dev.caecorthus.sparktraits.impl;
 import net.minecraft.util.Identifier;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,5 +27,14 @@ class ImpostorBodyguardServiceTest {
         assertEquals(0, ImpostorBodyguardService.targetDeathReward(Set.of(), true, true));
         assertEquals(0, ImpostorBodyguardService.targetDeathReward(impostor, false, true));
         assertEquals(0, ImpostorBodyguardService.targetDeathReward(impostor, true, false));
+    }
+
+    @Test
+    void bodyguardMixinSupportsOldAndNewKillPlayerListenerLambdaNames() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/mixin/NoellesRolesBodyguardMixin.java"));
+
+        assertTrue(source.contains("lambda$registerEvents$9"));
+        assertTrue(source.contains("lambda$registerEvents$5"));
+        assertTrue(source.contains("isPlayerPlayingAndAlive"));
     }
 }

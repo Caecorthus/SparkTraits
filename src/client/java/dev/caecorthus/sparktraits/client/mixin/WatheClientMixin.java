@@ -77,6 +77,7 @@ public abstract class WatheClientMixin {
                 // 终局时刻必须优先于背水一战的普通杀手本能隐藏。
                 cir.setReturnValue(LastStandFinalMomentService.finalMomentHighlightColor(
                         game.getRole(playerTarget),
+                        targetTraits.getActiveTraitIds(),
                         traitWorld.isFinalMomentLooseEnd(playerTarget.getUuid())
                 ));
                 return;

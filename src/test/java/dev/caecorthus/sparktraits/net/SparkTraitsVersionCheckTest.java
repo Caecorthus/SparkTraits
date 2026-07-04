@@ -20,6 +20,11 @@ class SparkTraitsVersionCheckTest {
     }
 
     @Test
+    void unansweredLoginQueriesAreAllowedForProxyTransfers() {
+        assertFalse(SparkTraitsVersionCheck.shouldRejectUnansweredLoginQuery());
+    }
+
+    @Test
     void disconnectMessagesNameExpectedAndActualVersions() {
         assertEquals(
                 "SparkTraits is required on the client with version 0.1.9.1.",

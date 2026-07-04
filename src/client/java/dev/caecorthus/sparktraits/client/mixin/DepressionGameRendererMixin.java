@@ -25,7 +25,9 @@ public abstract class DepressionGameRendererMixin {
     @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gl/Framebuffer;beginWrite(Z)V"))
     private void sparktraits$renderDepressionScreenEffects(RenderTickCounter tickCounter, boolean tick, CallbackInfo ci) {
         ClientPlayerEntity player = this.client.player;
-        if (!tick || this.client.world == null || player == null) {
+        if (!tick
+                || this.client.world == null
+                || player == null) {
             return;
         }
         DepressionScreenEffects.render(player, tickCounter.getTickDelta(true));

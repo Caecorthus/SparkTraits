@@ -309,6 +309,47 @@ class DepressionTraitServiceTest {
     }
 
     @Test
+    void depressionPsychoBatKillPunishesEffectiveCivilianVictimsOnly() {
+        assertTrue(DepressionTraitService.shouldPunishDepressionPsychoBatKill(
+                true,
+                GameConstants.DeathReasons.BAT,
+                WatheRoles.CIVILIAN,
+                Set.of()
+        ));
+        assertTrue(DepressionTraitService.shouldPunishDepressionPsychoBatKill(
+                true,
+                GameConstants.DeathReasons.BAT,
+                WatheRoles.KILLER,
+                Set.of(ConscienceTrait.ID)
+        ));
+
+        assertFalse(DepressionTraitService.shouldPunishDepressionPsychoBatKill(
+                false,
+                GameConstants.DeathReasons.BAT,
+                WatheRoles.CIVILIAN,
+                Set.of()
+        ));
+        assertFalse(DepressionTraitService.shouldPunishDepressionPsychoBatKill(
+                true,
+                GameConstants.DeathReasons.GUN,
+                WatheRoles.CIVILIAN,
+                Set.of()
+        ));
+        assertFalse(DepressionTraitService.shouldPunishDepressionPsychoBatKill(
+                true,
+                GameConstants.DeathReasons.BAT,
+                WatheRoles.KILLER,
+                Set.of()
+        ));
+        assertFalse(DepressionTraitService.shouldPunishDepressionPsychoBatKill(
+                true,
+                GameConstants.DeathReasons.BAT,
+                Noellesroles.JESTER,
+                Set.of()
+        ));
+    }
+
+    @Test
     void depressionPsychoMoodFloorAndRestoreValueAreStable() {
         assertEquals(0.0f, DepressionTraitService.depressionPsychoMoodFloor(-1.0f), 0.0001f);
         assertEquals(0.25f, DepressionTraitService.depressionPsychoMoodFloor(0.25f), 0.0001f);
@@ -325,22 +366,16 @@ class DepressionTraitServiceTest {
     }
 
     @Test
-    void depressionPsychoSkinMixinOverridesPlayerTextureAndArmSkin() throws IOException {
+    void depressionPsychoSkinMixinOverridesArmSkinWithDepressionTexture() throws IOException {
         String source = Files.readString(Path.of(
                 "src/client/java/dev/caecorthus/sparktraits/client/mixin/DepressionPsychoSkinMixin.java"
         ));
 
-        assertTrue(source.contains("ModifyReturnValue"));
-        assertTrue(source.contains("@At(\"RETURN\")"));
-        assertTrue(source.contains("Identifier originalTexture"));
-        assertTrue(source.contains("return texture == null ? originalTexture : texture;"));
         assertTrue(source.contains("@WrapOperation("));
         assertTrue(source.contains("method = \"renderArm\""));
         assertTrue(source.contains("getSkinTextures()Lnet/minecraft/client/util/SkinTextures;"));
         assertTrue(source.contains("return new SkinTextures("));
         assertTrue(source.contains("textures/entity/depression_psycho"));
-        assertFalse(source.contains("cancellable = true"));
-        assertFalse(source.contains("@At(\"HEAD\")"));
     }
 
     @Test
@@ -494,7 +529,7 @@ class DepressionTraitServiceTest {
         String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/TraitGameHooks.java"));
 
         int lastStandStarted = source.indexOf("boolean lastStandStarted = LastStandService.tryStartAfterKill");
-        int depressionAfterKill = source.indexOf("DepressionTraitService.handleAfterKill(victim, killer)");
+        int depressionAfterKill = source.indexOf("DepressionTraitService.handleAfterKill(victim, killer, deathReason)");
         int lastStandReturn = source.indexOf("if (lastStandStarted)");
         int clearTraits = source.indexOf("playerTraits.clearActiveTraits(TraitRemovalReason.DEATH)");
 
@@ -521,12 +556,27 @@ class DepressionTraitServiceTest {
     }
 
     @Test
+    void depressionAfterKillAppliesShotInnocentToPsychoBatMistakes() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
+
+        int afterKill = source.indexOf("public static void handleAfterKill");
+        int punishCheck = source.indexOf("shouldPunishDepressionPsychoBatKill(", afterKill);
+        int shotInnocent = source.indexOf("GameConstants.DeathReasons.SHOT_INNOCENT", punishCheck);
+        int forcedKill = source.indexOf("GameFunctions.killPlayer(killer, true, null", punishCheck);
+
+        assertTrue(afterKill >= 0);
+        assertTrue(punishCheck > afterKill);
+        assertTrue(shotInnocent > punishCheck);
+        assertTrue(forcedKill > punishCheck);
+    }
+
+    @Test
     void depressionEndPsychoClearsSparkTraitsStateBeforeFragileRestores() throws IOException {
         String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
 
         int endPsycho = source.indexOf("private static void endPsycho");
         int firstClear = source.indexOf("clearActivePsychoState(player, state);", endPsycho);
-        int stopPsycho = source.indexOf("PlayerPsychoComponent.KEY.get(player).stopPsycho();", endPsycho);
+        int stopPsycho = source.indexOf("psycho.stopPsycho();", endPsycho);
         int restoreInventory = source.indexOf("state.inventory().restore(player);", endPsycho);
         int finallyBlock = source.indexOf("finally", endPsycho);
         int finalClear = source.indexOf("clearActivePsychoState(player, state);", finallyBlock);
@@ -537,6 +587,38 @@ class DepressionTraitServiceTest {
         assertTrue(restoreInventory > firstClear);
         assertTrue(finallyBlock > firstClear);
         assertTrue(finalClear > finallyBlock);
+    }
+
+    @Test
+    void depressionEndPsychoSyncsWathePsychoAndStopsChaseMusic() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/dev/caecorthus/sparktraits/impl/DepressionTraitService.java"));
+
+        int endPsycho = source.indexOf("private static void endPsycho");
+        int attackerLookup = source.indexOf("ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());", endPsycho);
+        int stopChase = source.indexOf("stopPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE_ID);", endPsycho);
+        int psychoLocal = source.indexOf("PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);", endPsycho);
+        int stopPsycho = source.indexOf("psycho.stopPsycho();", endPsycho);
+        int syncPsycho = source.indexOf("psycho.sync();", stopPsycho);
+        int helper = source.indexOf("private static void stopPairMusicSound(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, Identifier soundId)");
+
+        assertTrue(endPsycho >= 0);
+        assertTrue(attackerLookup > endPsycho);
+        assertTrue(stopChase > attackerLookup);
+        assertTrue(psychoLocal > stopChase);
+        assertTrue(stopPsycho > psychoLocal);
+        assertTrue(syncPsycho > stopPsycho);
+        assertTrue(helper > endPsycho);
+    }
+
+    @Test
+    void depressionPsychoSkinMixinWinsBeforeWatheDefaultPsychoSkin() throws IOException {
+        String source = Files.readString(Path.of("src/client/java/dev/caecorthus/sparktraits/client/mixin/DepressionPsychoSkinMixin.java"));
+
+        assertTrue(source.contains("@Mixin(value = PlayerEntityRenderer.class, priority = 1500)"));
+        assertTrue(source.contains("CallbackInfoReturnable<Identifier> cir"));
+        assertTrue(source.contains("at = @At(\"HEAD\"), cancellable = true"));
+        assertTrue(source.contains("cir.setReturnValue(texture);"));
+        assertTrue(source.contains("TraitPlayerComponent.KEY.get(player).isDepressionPsychoActive()"));
     }
 
     private static Role sparkWitchRole(String path) {

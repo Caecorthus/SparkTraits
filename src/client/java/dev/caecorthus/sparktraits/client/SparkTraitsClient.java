@@ -62,6 +62,7 @@ public class SparkTraitsClient implements ClientModInitializer {
             return GetInstinctHighlight.HighlightResult.always(
                     LastStandFinalMomentService.finalMomentHighlightColor(
                             role,
+                            TraitPlayerComponent.KEY.get(targetPlayer).getActiveTraitIds(),
                             traitWorld.isFinalMomentLooseEnd(targetPlayer.getUuid())
                     ),
                     GetInstinctHighlight.HighlightResult.PRIORITY_HIGH + 1

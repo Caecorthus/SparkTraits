@@ -1,18 +1,22 @@
-# Addvanced Spark
+# Advanced Spark
 
-## Main Repository
+## Repositories
 - https://github.com/Caecorthus/SparkTraits (By default, check this repository first; if it hasn't been cloned locally, use GitHub/gh to retrieve the context)
-
-## Related Repositories
 - https://github.com/XruiDD/TrainMurderMystery (Spark-ver wathe)
 - https://github.com/XruiDD/NoellesRoles (Spark-ver NoellesRoles, a role expansion add-on mod for wathe)
+- https://github.com/Caecorthus/SparkFactionAPI (Faction API)
+- https://github.com/Caecorthus/SparkWitch (Spark-ver Factions & Roles addons)
+- https://github.com/Caecorthus/SparkStrength (Spark-ver roles buff)
+- https://github.com/Caecorthus/SparkAssist (Client-side assist mod)
 
 ## Skills
-- Use these skills in your and your subagents' workflow
-	- [$grill-me](/Users/kricy/.codex/skills/grill-me/SKILL.md) 
-	- [$tdd](/Users/kricy/.codex/skills/tdd/SKILL.md) 
+- Use this skill in your and your subagents' workflow
+	- [$using-superpowers](/Users/kricy/.codex/skills/using-superpowers/SKILL.md)
 
 ## Coding
+
+### Check
+- Please read the code for all three mods (usually you don't need to read SparkWitch), and you need to consider how to ensure your changes do not affect other characters or talents that are outside the scope of the modifications.
 
 ### Subagents
 - You're the coordinator/leader between the subagents.

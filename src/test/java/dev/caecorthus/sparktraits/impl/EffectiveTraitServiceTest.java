@@ -248,6 +248,61 @@ class EffectiveTraitServiceTest {
     }
 
     @Test
+    void alliedNoellesShadowJesterOnlyDefersKillerWinsBeforeShowdown() {
+        Role shadowJester = noellesRole("shadow_jester");
+
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                GameFunctions.WinStatus.KILLERS,
+                GameFunctions.WinStatus.KILLERS,
+                shadowJester,
+                true,
+                false
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                GameFunctions.WinStatus.PASSENGERS,
+                GameFunctions.WinStatus.PASSENGERS,
+                shadowJester,
+                true,
+                false
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                GameFunctions.WinStatus.KILLERS,
+                GameFunctions.WinStatus.PASSENGERS,
+                shadowJester,
+                true,
+                false
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                GameFunctions.WinStatus.KILLERS,
+                GameFunctions.WinStatus.KILLERS,
+                shadowJester,
+                false,
+                true
+        ));
+        assertTrue(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                GameFunctions.WinStatus.PASSENGERS,
+                GameFunctions.WinStatus.PASSENGERS,
+                shadowJester,
+                false,
+                true
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                GameFunctions.WinStatus.TIME,
+                GameFunctions.WinStatus.TIME,
+                shadowJester,
+                true,
+                true
+        ));
+        assertFalse(EffectiveTraitService.shouldDeferTeamWinForNoellesShadowJester(
+                GameFunctions.WinStatus.KILLERS,
+                GameFunctions.WinStatus.KILLERS,
+                Noellesroles.JESTER,
+                true,
+                true
+        ));
+    }
+
+    @Test
     void conscienceViewerForcesCohortHidden() {
         assertEquals(
                 Boolean.FALSE,
