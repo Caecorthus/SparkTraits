@@ -5,19 +5,18 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import dev.caecorthus.sparktraits.SparkTraits;
 
 class SparkTraitsVersionCheckTest {
     @Test
     void matchingVersionsAreCompatible() {
-        assertTrue(SparkTraitsVersionCheck.isCompatible("0.1.9.1", "0.1.9.1"));
+        assertTrue(SparkTraitsVersionCheck.isCompatible("0.1.9.4", "0.1.9.4"));
     }
 
     @Test
     void differentOrBlankVersionsAreRejected() {
-        assertFalse(SparkTraitsVersionCheck.isCompatible("0.1.9.1", "0.1.9"));
-        assertFalse(SparkTraitsVersionCheck.isCompatible("0.1.9.1", ""));
-        assertFalse(SparkTraitsVersionCheck.isCompatible("0.1.9.1", null));
+        assertFalse(SparkTraitsVersionCheck.isCompatible("0.1.9.4", "0.1.0"));
+        assertFalse(SparkTraitsVersionCheck.isCompatible("0.1.9.4", ""));
+        assertFalse(SparkTraitsVersionCheck.isCompatible("0.1.9.4", null));
     }
 
     @Test
@@ -28,13 +27,13 @@ class SparkTraitsVersionCheckTest {
     @Test
     void disconnectMessagesNameExpectedAndActualVersions() {
         assertEquals(
-                "SparkTraits is required on the client with version 0.1.9.1.",
-                SparkTraitsVersionCheck.missingClientMessage("0.1.9.1")
+                "SparkTraits is required on the client with version 0.1.9.4.",
+                SparkTraitsVersionCheck.missingClientMessage("0.1.9.4")
         );
         assertEquals(
-                "SparkTraits version mismatch: server=0.1.9.1, client=0.1.9. "
+                "SparkTraits version mismatch: server=0.1.9.4, client=0.1.0. "
                         + "Please install the same SparkTraits version as the server.",
-                SparkTraitsVersionCheck.mismatchMessage("0.1.9.1", "0.1.9")
+                SparkTraitsVersionCheck.mismatchMessage("0.1.9.4", "0.1.0")
         );
     }
 }
