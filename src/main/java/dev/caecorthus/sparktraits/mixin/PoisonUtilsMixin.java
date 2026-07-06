@@ -2,7 +2,7 @@ package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.SparkTraitsDataComponentTypes;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
-import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
 import dev.doctor4t.wathe.util.PoisonUtils;

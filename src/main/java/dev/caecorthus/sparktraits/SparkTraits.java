@@ -1,15 +1,15 @@
 package dev.caecorthus.sparktraits;
 
 import dev.caecorthus.sparktraits.component.SparkTraitsDataComponentTypes;
-import dev.caecorthus.sparktraits.impl.LastStandFinalMomentService;
-import dev.caecorthus.sparktraits.impl.SparkTraitsCommands;
-import dev.caecorthus.sparktraits.impl.LastStandService;
-import dev.caecorthus.sparktraits.impl.SparkTraitsBuiltInTraits;
-import dev.caecorthus.sparktraits.impl.SparkTraitsParticles;
-import dev.caecorthus.sparktraits.impl.SparkTraitsSounds;
-import dev.caecorthus.sparktraits.impl.TraitGameHooks;
-import dev.caecorthus.sparktraits.net.SparkTraitsPackets;
-import dev.caecorthus.sparktraits.net.SparkTraitsVersionHandshake;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
+import dev.caecorthus.sparktraits.impl.command.admin.SparkTraitsCommands;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
+import dev.caecorthus.sparktraits.impl.registry.SparkTraitsBuiltInTraits;
+import dev.caecorthus.sparktraits.impl.resource.SparkTraitsParticles;
+import dev.caecorthus.sparktraits.impl.resource.SparkTraitsSounds;
+import dev.caecorthus.sparktraits.impl.lifecycle.TraitGameHooks;
+import dev.caecorthus.sparktraits.net.version.SparkTraitsPackets;
+import dev.caecorthus.sparktraits.net.version.SparkTraitsVersionHandshake;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;

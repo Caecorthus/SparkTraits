@@ -1,11 +1,11 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
-import dev.caecorthus.sparktraits.impl.ConscienceSerialKillerService;
-import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
-import dev.caecorthus.sparktraits.impl.LastStandFinalMomentService;
-import dev.caecorthus.sparktraits.impl.LastStandService;
-import dev.caecorthus.sparktraits.impl.TraitAssignmentService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerialKillerService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
+import dev.caecorthus.sparktraits.impl.assignment.TraitAssignmentService;
 import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.ScoreboardRoleSelectorComponent;

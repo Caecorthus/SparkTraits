@@ -1,7 +1,7 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
-import dev.caecorthus.sparktraits.client.ArrogantAsfHud;
-import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
+import dev.caecorthus.sparktraits.client.hud.ArrogantAsfHud;
+import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;

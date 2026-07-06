@@ -1,6 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
 import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import net.minecraft.server.world.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import dev.caecorthus.sparktraits.SparkTraits;
 
 /**
  * Publishes blackout-only Going Dark state through SparkTraits' synced player component.

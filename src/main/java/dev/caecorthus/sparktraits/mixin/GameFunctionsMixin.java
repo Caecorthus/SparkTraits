@@ -1,8 +1,8 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
-import dev.caecorthus.sparktraits.impl.KillerTraitService;
-import dev.caecorthus.sparktraits.impl.LastStandService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;

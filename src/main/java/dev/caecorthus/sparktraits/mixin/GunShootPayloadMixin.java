@@ -1,9 +1,9 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
-import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
-import dev.caecorthus.sparktraits.impl.GoodTraitService;
-import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.util.GunShootPayload;
@@ -18,6 +18,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import dev.caecorthus.sparktraits.SparkTraits;
 
 /** Hooks SparkTraits gun behavior into Wathe's gun packet handler.
  *  将 SparkTraits 的枪械行为接入 Wathe 枪械发包处理。 */
@@ -88,8 +89,8 @@ public abstract class GunShootPayloadMixin {
         VigilanteVeteranTraitService.killPlayerWithPoliceGunTraits(victim, spawnBody, shooter, deathReason);
     }
 
-    /** Skips only the ordinary good-role revolver-hit mood penalty.
-     *  仅跳过普通好人左轮命中后的理智惩罚。 */
+    /** Skips only the ordinary civilian-role revolver-hit mood penalty.
+     *  仅跳过普通平民阵营左轮命中后的理智惩罚。 */
     @Redirect(
             method = "receive(Ldev/doctor4t/wathe/util/GunShootPayload;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V",
             at = @At(
@@ -106,7 +107,7 @@ public abstract class GunShootPayloadMixin {
     ) {
         ServerPlayerEntity shooter = context.player();
         GameWorldComponent game = GameWorldComponent.KEY.get(shooter.getWorld());
-        if (GoodTraitService.shouldPreventGunMoodPenalty(
+        if (CivilianTraitService.shouldPreventGunMoodPenalty(
                 game.getRole(shooter),
                 TraitPlayerComponent.KEY.get(shooter).getActiveTraitIds()
         )) {

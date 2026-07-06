@@ -18,14 +18,15 @@
     ],
     "cardinal-components": [
       "dev.caecorthus.sparktraits.component.SparkTraitsComponents"
+    ],
+    "voicechat": [
+      "dev.caecorthus.sparktraits.voice.SparkTraitsVoiceChatPlugin"
     ]
   },
   "custom": {
     "cardinal-components": [
       "sparktraits:traits",
-      "sparktraits:world",
-      "sparktraits:role_enhancements",
-      "sparktraits:role_enhancement_world"
+      "sparktraits:world"
     ]
   },
   "mixins": [

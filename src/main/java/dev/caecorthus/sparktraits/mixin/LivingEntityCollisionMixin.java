@@ -1,7 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.LastStandService;
-import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
+import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;

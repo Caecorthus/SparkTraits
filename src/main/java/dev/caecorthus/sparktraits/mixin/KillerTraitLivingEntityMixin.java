@@ -1,7 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.KillerTraitService;
-import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
+import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;

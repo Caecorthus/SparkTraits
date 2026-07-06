@@ -1,7 +1,7 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
-import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
-import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.client.gui.RoundTextRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;

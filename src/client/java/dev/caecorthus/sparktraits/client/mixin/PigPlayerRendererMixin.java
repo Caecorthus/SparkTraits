@@ -1,8 +1,8 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
-import dev.caecorthus.sparktraits.client.PigPlayerRenderer;
-import dev.caecorthus.sparktraits.impl.PigTraitService;
-import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
+import dev.caecorthus.sparktraits.client.render.PigPlayerRenderer;
+import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTraitService;
+import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.PlayerEntityRenderer;

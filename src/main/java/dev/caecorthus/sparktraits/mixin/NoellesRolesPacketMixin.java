@@ -1,10 +1,10 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
-import dev.caecorthus.sparktraits.impl.CorruptCopTraitService;
-import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
-import dev.caecorthus.sparktraits.impl.LastStandService;
-import dev.caecorthus.sparktraits.impl.SilencedKillerRestrictionService;
+import dev.caecorthus.sparktraits.impl.traits.neutral.arrogant_asf.ArrogantAsfTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
+import dev.caecorthus.sparktraits.impl.compatibility.noellesroles.SilencedKillerRestrictionService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -57,7 +57,7 @@ public abstract class NoellesRolesPacketMixin {
         if (sparktraits$blockSilencedKillerAbility(context.player(), ci)) {
             return;
         }
-        if (CorruptCopTraitService.toggleArrogantAsfAbility(context.player())) {
+        if (ArrogantAsfTraitService.toggleArrogantAsfAbility(context.player())) {
             ci.cancel();
         }
     }

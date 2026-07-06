@@ -1,6 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.ConscienceSerialKillerService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerialKillerService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerShopComponent;
 import net.minecraft.server.network.ServerPlayerEntity;

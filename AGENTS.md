@@ -15,6 +15,14 @@
 
 ## Coding
 
+### Architecture
+- Before changing code, read `ARCHITECTURE.md` in this project root.
+- `ARCHITECTURE.md` is the architecture constitution for module ownership,
+  refactor approval, target package layout, and verification expectations.
+- Do not treat the architecture backlog as automatic permission to move,
+  rename, delete, split, or merge existing modules; follow the approval
+  template in `ARCHITECTURE.md` first.
+
 ### Check
 - Please read the code for all three mods (usually you don't need to read SparkWitch), and you need to consider how to ensure your changes do not affect other characters or talents that are outside the scope of the modifications.
 

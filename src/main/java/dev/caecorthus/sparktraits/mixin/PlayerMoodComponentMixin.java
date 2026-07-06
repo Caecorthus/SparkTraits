@@ -1,13 +1,13 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
-import dev.caecorthus.sparktraits.impl.DepressionTraitService;
-import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
-import dev.caecorthus.sparktraits.impl.GoodTraitService;
-import dev.caecorthus.sparktraits.impl.GlobalTraitService;
-import dev.caecorthus.sparktraits.impl.KillerTraitService;
-import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
-import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
+import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
+import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
@@ -76,7 +76,7 @@ public abstract class PlayerMoodComponentMixin {
         }
         float adjustedMood = KillerTraitService.oppressiveAdjustedMood(this.mood, proposedMood, this.player);
         adjustedMood = VigilanteVeteranTraitService.wellTrainedAdjustedMood(this.mood, adjustedMood, this.player);
-        adjustedMood = GoodTraitService.socialMoodAdjustedMood(this.mood, adjustedMood, this.player);
+        adjustedMood = CivilianTraitService.socialMoodAdjustedMood(this.mood, adjustedMood, this.player);
         return DepressionTraitService.depressionAdjustedMood(
                 this.mood,
                 adjustedMood,

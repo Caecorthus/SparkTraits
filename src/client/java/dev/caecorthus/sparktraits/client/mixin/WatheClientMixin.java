@@ -2,14 +2,14 @@ package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
-import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
-import dev.caecorthus.sparktraits.impl.ConscienceSerialKillerService;
-import dev.caecorthus.sparktraits.impl.DepressionTraitService;
-import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
-import dev.caecorthus.sparktraits.impl.LastStandFinalMomentService;
-import dev.caecorthus.sparktraits.impl.LastStandService;
-import dev.caecorthus.sparktraits.impl.VigilanteVeteranTraitService;
-import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerialKillerService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
+import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
@@ -29,6 +29,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.UUID;
+import dev.caecorthus.sparktraits.SparkTraits;
 
 @Mixin(value = WatheClient.class, remap = false)
 public abstract class WatheClientMixin {

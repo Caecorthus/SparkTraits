@@ -1,7 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.ConsciencePoisonerService;
-import dev.caecorthus.sparktraits.impl.ConscienceScorpionBed;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceScorpionBed;
 import dev.doctor4t.wathe.block.TrimmedBedBlock;
 import dev.doctor4t.wathe.block_entity.TrimmedBedBlockEntity;
 import dev.doctor4t.wathe.cca.GameWorldComponent;

@@ -1,11 +1,11 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
-import dev.caecorthus.sparktraits.client.ConscienceSerialKillerHud;
-import dev.caecorthus.sparktraits.client.TraitClientTexts;
+import dev.caecorthus.sparktraits.client.hud.ConscienceSerialKillerHud;
+import dev.caecorthus.sparktraits.client.text.TraitClientTexts;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
-import dev.caecorthus.sparktraits.impl.TraitDisplayService;
-import dev.caecorthus.sparktraits.net.SparkTraitsServerConnection;
+import dev.caecorthus.sparktraits.impl.traits.TraitDisplayService;
+import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.CanSeeBodyRole;
 import dev.doctor4t.wathe.api.event.CanTargetBody;

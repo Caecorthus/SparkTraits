@@ -1,6 +1,6 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
-import dev.caecorthus.sparktraits.client.DepressionScreenEffects;
+import dev.caecorthus.sparktraits.client.render.DepressionScreenEffects;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.GameRenderer;

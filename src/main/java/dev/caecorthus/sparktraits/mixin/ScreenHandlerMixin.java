@@ -1,7 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
-import dev.caecorthus.sparktraits.impl.ImpostorRevolverService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorRevolverService;
 import dev.doctor4t.wathe.index.tag.WatheItemTags;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;

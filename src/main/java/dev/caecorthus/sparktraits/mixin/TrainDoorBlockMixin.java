@@ -1,6 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.ChildishDoorSafetyService;
+import dev.caecorthus.sparktraits.impl.traits.global.ChildishDoorSafetyService;
 import dev.doctor4t.wathe.block.TrainDoorBlock;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.player.PlayerEntity;

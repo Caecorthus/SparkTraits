@@ -1,6 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.ConscienceBombService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBombService;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import org.agmas.noellesroles.bomber.BomberPlayerComponent;
