@@ -70,9 +70,6 @@ dependencies {
     }
     modRuntimeOnly "dev.upcraft.datasync:datasync-minecraft-1.21.1-fabric:0.10.2"
     modRuntimeOnly "me.lucko:fabric-permissions-api:0.3.1"
-
-    testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 processResources {
@@ -167,14 +164,27 @@ tasks.withType(JavaCompile).configureEach {
     it.options.release.set(targetJavaVersion)
 }
 
-tasks.test {
-    useJUnitPlatform()
+tasks.named("check") {
+    setDependsOn([])
+    dependsOn tasks.matching { it.name == "validateAccessWidener" }
 }
+
 
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
     if (JavaVersion.current() < javaVersion) {
         toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
     }
     withSourcesJar()
+}
+
+tasks.withType(JavaExec).configureEach {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    if (JavaVersion.current() < javaVersion) {
+        javaLauncher.set(javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+        })
+    }
 }
