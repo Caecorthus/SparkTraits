@@ -8,6 +8,7 @@
     "ArrogantAsfInGameHudMixin",
     "AssassinScreenMixin",
     "BeveragePlateBluePoisonParticleMixin",
+    "CautiousClientWorldSoundMixin",
     "DepressionGameRendererMixin",
     "DepressionPsychoArmSkinMixin",
     "DepressionInGameHudMixin",

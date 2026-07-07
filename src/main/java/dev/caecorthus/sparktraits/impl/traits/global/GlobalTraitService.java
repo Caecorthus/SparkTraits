@@ -156,7 +156,7 @@ public final class GlobalTraitService {
     }
 
     public static boolean shouldSuppressCautiousSounds(PlayerEntity player) {
-        return player != null && TraitPlayerComponent.KEY.get(player).shouldSuppressCautiousSounds();
+        return CautiousSoundRules.shouldSuppressSounds(player);
     }
 
     /**
@@ -164,14 +164,11 @@ public final class GlobalTraitService {
      * 只取消小心翼翼玩家产生的脚步音，避免误伤其他实体或其他动作音。
      */
     public static boolean shouldSuppressCautiousStepSounds(Entity entity) {
-        if (!(entity instanceof PlayerEntity player)) {
-            return false;
-        }
-        return shouldSuppressCautiousStepSounds(true, shouldSuppressCautiousSounds(player));
+        return CautiousSoundRules.shouldSuppressStepSounds(entity);
     }
 
     static boolean shouldSuppressCautiousStepSounds(boolean playerEntity, boolean cautiousSoundsSuppressed) {
-        return playerEntity && cautiousSoundsSuppressed;
+        return CautiousSoundRules.shouldSuppressStepSounds(playerEntity, cautiousSoundsSuppressed);
     }
 
     /**
@@ -179,16 +176,7 @@ public final class GlobalTraitService {
      * 移除移动声音，同时保留移动相关的 game event。
      */
     public static Entity.MoveEffect suppressMovementSounds(Entity.MoveEffect original, boolean suppress) {
-        if (!suppress) {
-            return original;
-        }
-        if (original == Entity.MoveEffect.ALL) {
-            return Entity.MoveEffect.EVENTS;
-        }
-        if (original == Entity.MoveEffect.SOUNDS) {
-            return Entity.MoveEffect.NONE;
-        }
-        return original;
+        return CautiousSoundRules.suppressMovementSounds(original, suppress);
     }
 
     public static void applyChildishScale(ServerPlayerEntity player) {
