@@ -54,4 +54,56 @@ class SparkFactionApiEffectiveFactionBridgeTest {
                 MURDEROUS_WITCH
         ));
     }
+
+    @Test
+    void sparkFactionApi67KillerShopGateKeepsRawWatheShopAccess() {
+        StackTraceElement[] shopStack = shopStack(
+                "dev.caecorthus.sparkfactionapi.impl.shop.FactionShopAccessRules",
+                "canUseKillerShop"
+        );
+
+        assertTrue(SparkFactionApiEffectiveFactionBridge.isSparkFactionApiKillerShopCapabilityLookup(shopStack));
+        assertNull(SparkFactionApiEffectiveFactionBridge.resolveEffectiveFaction(
+                Set.of(ImpostorTrait.ID),
+                CIVILIAN,
+                shopStack
+        ));
+        assertNull(SparkFactionApiEffectiveFactionBridge.resolveEffectiveFaction(
+                Set.of(ConscienceTrait.ID),
+                KILLER,
+                shopStack
+        ));
+    }
+
+    @Test
+    void sparkFactionApi66KillerShopGateKeepsRawWatheShopAccess() {
+        StackTraceElement[] shopStack = shopStack(
+                "dev.caecorthus.sparkfactionapi.impl.FactionCapabilityBridge",
+                "canUseKillerFeatureAccess"
+        );
+
+        assertTrue(SparkFactionApiEffectiveFactionBridge.isSparkFactionApiKillerShopCapabilityLookup(shopStack));
+        assertNull(SparkFactionApiEffectiveFactionBridge.resolveEffectiveFaction(
+                Set.of(ImpostorTrait.ID),
+                CIVILIAN,
+                shopStack
+        ));
+        assertNull(SparkFactionApiEffectiveFactionBridge.resolveEffectiveFaction(
+                Set.of(ConscienceTrait.ID),
+                KILLER,
+                shopStack
+        ));
+    }
+
+    private static StackTraceElement[] shopStack(String sparkFactionClass, String sparkFactionMethod) {
+        return new StackTraceElement[] {
+                new StackTraceElement(sparkFactionClass, sparkFactionMethod, "Unknown Source", -1),
+                new StackTraceElement(
+                        "dev.doctor4t.wathe.game.KillerShopBuilder",
+                        "buildShop",
+                        "KillerShopBuilder.java",
+                        34
+                )
+        };
+    }
 }

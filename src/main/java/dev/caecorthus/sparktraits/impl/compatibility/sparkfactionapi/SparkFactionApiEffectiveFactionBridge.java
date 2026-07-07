@@ -19,6 +19,12 @@ public final class SparkFactionApiEffectiveFactionBridge {
     private static final String MOD_ID = "sparkfactionapi";
     private static final String API_CLASS = "dev.caecorthus.sparkfactionapi.api.SparkFactionApi";
     private static final String RESOLVER_CLASS = "dev.caecorthus.sparkfactionapi.api.EffectiveFactionResolver";
+    private static final String SPARKFACTION_SHOP_ACCESS_RULES_CLASS =
+            "dev.caecorthus.sparkfactionapi.impl.shop.FactionShopAccessRules";
+    private static final String SPARKFACTION_CAPABILITY_BRIDGE_CLASS =
+            "dev.caecorthus.sparkfactionapi.impl.FactionCapabilityBridge";
+    private static final String WATHE_KILLER_SHOP_BUILDER_CLASS =
+            "dev.doctor4t.wathe.game.KillerShopBuilder";
     private static final Identifier CIVILIAN_FACTION = Identifier.of("wathe", "civilian");
     private static final Identifier KILLER_FACTION = Identifier.of("wathe", "killer");
     private static boolean registered;
@@ -50,7 +56,23 @@ public final class SparkFactionApiEffectiveFactionBridge {
     }
 
     static Identifier resolveEffectiveFaction(Collection<Identifier> traits, Identifier currentFaction) {
+        return resolveEffectiveFaction(traits, currentFaction, Thread.currentThread().getStackTrace());
+    }
+
+    static Identifier resolveEffectiveFaction(
+            Collection<Identifier> traits,
+            Identifier currentFaction,
+            StackTraceElement[] stackTrace
+    ) {
         if (traits == null || currentFaction == null) {
+            return null;
+        }
+        if (isSparkFactionApiKillerShopCapabilityLookup(stackTrace)) {
+            // SparkFactionAPI routes Wathe's raw killer-shop gate through effective faction capabilities.
+            // SparkFactionAPI 会把 Wathe 原始杀手商店入口接到有效阵营能力上。
+            // Keep that one gate raw: Impostors then receive only SparkTraits' paid revolver,
+            // while Conscience killers keep the normal killer shop before NoellesRoles rewrites it.
+            // 这里必须保持原始职业判断：内鬼只拿 SparkTraits 付费左轮，善良杀手保留原杀手商店供 NoellesRoles 后续改写。
             return null;
         }
         if (EffectiveTraitService.hasImpostor(traits)) {
@@ -60,6 +82,28 @@ public final class SparkFactionApiEffectiveFactionBridge {
             return KILLER_FACTION.equals(currentFaction) ? CIVILIAN_FACTION : null;
         }
         return null;
+    }
+
+    static boolean isSparkFactionApiKillerShopCapabilityLookup(StackTraceElement[] stackTrace) {
+        if (stackTrace == null) {
+            return false;
+        }
+        boolean fromSparkFactionShopGate = false;
+        boolean fromWatheKillerShopBuilder = false;
+        for (StackTraceElement element : stackTrace) {
+            String className = element.getClassName();
+            String methodName = element.getMethodName();
+            if (SPARKFACTION_SHOP_ACCESS_RULES_CLASS.equals(className)
+                    || (SPARKFACTION_CAPABILITY_BRIDGE_CLASS.equals(className)
+                    && "canUseKillerFeatureAccess".equals(methodName))) {
+                fromSparkFactionShopGate = true;
+            }
+            if (WATHE_KILLER_SHOP_BUILDER_CLASS.equals(className)
+                    && "buildShop".equals(methodName)) {
+                fromWatheKillerShopBuilder = true;
+            }
+        }
+        return fromSparkFactionShopGate && fromWatheKillerShopBuilder;
     }
 
     private static Object invokeResolver(Object proxy, Method method, Object[] args) {
