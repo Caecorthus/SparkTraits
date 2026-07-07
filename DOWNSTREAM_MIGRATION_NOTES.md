@@ -24,3 +24,14 @@ mute bridge when that optional mod is present.
 
 This does not add a hard runtime dependency on Simple Voice Chat. Servers
 without Simple Voice Chat keep the same loader dependency requirements.
+
+## Optional SparkFactionAPI Effective Faction Bridge
+
+SparkTraits now optionally registers its Conscience and Impostor alignment flips
+with SparkFactionAPI when `sparkfactionapi` is loaded. This does not add a hard
+loader dependency on SparkFactionAPI.
+
+Downstream code that already calls `SparkFactionApi.resolveEffectiveFaction(...)`
+will now see raw civilians with `sparktraits:impostor` as `wathe:killer`, and
+raw killers with `sparktraits:conscience` as `wathe:civilian`. Custom effective
+factions, such as `sparkwitch:murderous_witch`, are not overwritten.

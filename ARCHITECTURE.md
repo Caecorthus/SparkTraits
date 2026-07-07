@@ -370,6 +370,8 @@ Target packages:
 
 - `compatibility/noellesroles/`: NoellesRoles role ids, packet compatibility,
   and behavior seams.
+- `compatibility/sparkfactionapi/`: optional SparkFactionAPI effective-faction
+  resolver bridges for SparkTraits alignment flips.
 - `compatibility/sparkwitch/`: SparkWitch role ids and optional mana bridge.
 
 Compatibility Modules should expose small internal Interfaces. They must not
