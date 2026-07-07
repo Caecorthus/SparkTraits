@@ -102,7 +102,26 @@ untouched.
    narrow helpers, per-trait predicates, and local hooks over broad audience or
    faction rewrites.
 
-9. Comments must be English and Chinese when they explain:
+9. Code shape must stay small and single-purpose.
+
+   - In all cases, code aesthetics, human readability, and correct functionality
+     are the highest priorities. Do not game the limits by making code cramped,
+     obscure, or harder to maintain.
+   - A class may own only one responsibility. If it has more than one reason to
+     change, split or delegate through the owning Module instead of adding more
+     behavior.
+   - A method or function should take no more than 5 parameters.
+   - A method or function should normally stay within 30-70 lines and must not
+     exceed 100 lines.
+   - A class should normally stay within 200-300 lines.
+   - Blank lines and comments do not count toward method, function, or class line
+     limits.
+   - If a proposed change would exceed these limits, stop and discuss the reason,
+     scope, impact, and verification plan with the owner before editing. Existing
+     over-limit code is not automatic permission to refactor; use the structural
+     approval process.
+
+10. Comments must be English and Chinese when they explain:
 
    - Public Interface semantics.
    - Wathe, NoellesRoles, Minecraft, Fabric, or Spark-family Seam behavior.
@@ -113,21 +132,21 @@ untouched.
 
    Do not add noise comments to self-explanatory code.
 
-10. Tests should cross the same Interface as callers.
+11. Committed Java test suites are forbidden.
 
-    Prefer testing domain Modules through their real Interface instead of
-    reaching into private helper details. Package-private pure rules are allowed
-    when they preserve Locality and keep Fabric/CCA-heavy objects out of plain
-    unit tests.
+    Do not add `@Test` methods, JUnit dependencies, `src/test/` source files, or
+    production reset helpers that exist only for automated tests. Verify changes
+    with builds, static searches, jar inspection, integration runs, manual
+    reproduction, or one-off uncommitted diagnostic scripts instead.
 
-11. Metadata and resources must match code.
+12. Metadata and resources must match code.
 
     Keep `fabric.mod.json`, mixin configs, CCA component ids, networking packet
     ids, language keys, sounds, shaders, and assets aligned with registered
     code. Do not leave stale ids in metadata after deleting or renaming the
     owning Module.
 
-12. If a change triggers downstream migration, create or update
+13. If a change triggers downstream migration, create or update
     `DOWNSTREAM_MIGRATION_NOTES.md` in the repo root.
 
     Triggering changes include:
@@ -456,15 +475,13 @@ No approval, no edit.
 For documentation-only changes:
 
 ```bash
-./gradlew test
 git diff --check
 ```
 
 For internal code movement with behavior preserved:
 
 ```bash
-./gradlew clean test
-./gradlew build
+./gradlew clean build
 git diff --check
 ```
 
@@ -472,11 +489,10 @@ For public Interface, networking, component, metadata, or cross-mod behavior
 changes:
 
 ```bash
-./gradlew clean test
-./gradlew build
+./gradlew clean build
 git diff --check
 ```
 
 Then identify affected downstream repos and run the smallest meaningful
-downstream compile/test/build checks. At minimum, search downstream imports and
+downstream compile/build or jar-inspection checks. At minimum, search downstream imports and
 usage before claiming no downstream impact.
