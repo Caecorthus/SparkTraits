@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.fabricmc.loader.api.FabricLoader;
@@ -71,14 +72,28 @@ public final class SparkFactionApiEffectiveFactionBridge {
         }
         try {
             if (!(args[0] instanceof PlayerEntity player)
-                    || !(args[1] instanceof GameWorldComponent)
+                    || !(args[1] instanceof GameWorldComponent gameComponent)
                     || !(args[2] instanceof Identifier currentFaction)) {
                 return null;
             }
-            return resolveEffectiveFaction(TraitPlayerComponent.KEY.get(player).getActiveTraitIds(), currentFaction);
+            return resolveEffectiveFaction(effectiveTraitIds(player, gameComponent), currentFaction);
         } catch (RuntimeException | LinkageError ignored) {
             return null;
         }
+    }
+
+    /**
+     * Keeps effective factions stable after death listeners clear active traits.
+     * 死亡监听清理当前天赋后，回退到死亡快照以保持有效阵营判定稳定。
+     */
+    private static Collection<Identifier> effectiveTraitIds(PlayerEntity player, GameWorldComponent gameComponent) {
+        Collection<Identifier> traits = TraitPlayerComponent.KEY.get(player).getActiveTraitIds();
+        if (!traits.isEmpty() || !gameComponent.isPlayerDead(player.getUuid())) {
+            return traits;
+        }
+        Collection<Identifier> deathTraits = TraitWorldComponent.KEY.get(player.getWorld())
+                .getDeathTraitSnapshot(player.getUuid());
+        return deathTraits.isEmpty() ? traits : deathTraits;
     }
 
     private static Object objectMethod(Object proxy, Method method, Object[] args) {
