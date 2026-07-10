@@ -79,5 +79,9 @@
   "subtitle.sparktraits.final_moment": "最后三分钟开始了。",
   "message.sparktraits.silenced_killer.ability": "你被静语，无法使用技能",
   "shop.error.sparktraits.silenced_killer": "你被静语，无法购买物品",
-  "death_reason.sparktraits.self_realization": "自我觉悟"
+  "death_reason.sparktraits.self_realization": "自我觉悟",
+  "replay.death.sparktraits.self_realization.died": "%s 在失去所有真实杀手支援后§c自我了结§r",
+  "replay.global.sparktraits.last_stand_triggered": "%s 触发了§a背水一战§r，进入假死状态",
+  "replay.global.sparktraits.final_moment_start": "§4终局时刻§r开始",
+  "replay.global.sparktraits.loose_end_conversion": "%s 的身份转换为§e亡命徒§r"
 }

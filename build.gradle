@@ -71,6 +71,8 @@ dependencies {
     modRuntimeOnly "dev.upcraft.datasync:datasync-minecraft-1.21.1-fabric:0.10.2"
     modRuntimeOnly "me.lucko:fabric-permissions-api:0.3.1"
 
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 processResources {
@@ -165,8 +167,12 @@ tasks.withType(JavaCompile).configureEach {
     it.options.release.set(targetJavaVersion)
 }
 
+tasks.test {
+    useJUnitPlatform()
+}
+
 tasks.named("check") {
-    setDependsOn([])
+    dependsOn tasks.named("test")
     dependsOn tasks.matching { it.name == "validateAccessWidener" }
 }
 

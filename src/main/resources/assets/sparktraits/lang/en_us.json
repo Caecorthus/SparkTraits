@@ -79,5 +79,9 @@
   "subtitle.sparktraits.final_moment": "The final three minutes begin.",
   "message.sparktraits.silenced_killer.ability": "You are silenced and cannot use abilities.",
   "shop.error.sparktraits.silenced_killer": "You are silenced and cannot buy items.",
-  "death_reason.sparktraits.self_realization": "self realization"
+  "death_reason.sparktraits.self_realization": "self realization",
+  "replay.death.sparktraits.self_realization.died": "%s ended their own life after losing all real killer support",
+  "replay.global.sparktraits.last_stand_triggered": "%s triggered §aLast Stand§r and entered a false-death state",
+  "replay.global.sparktraits.final_moment_start": "§4Final Moment§r began",
+  "replay.global.sparktraits.loose_end_conversion": "%s became a §eLoose End§r"
 }
