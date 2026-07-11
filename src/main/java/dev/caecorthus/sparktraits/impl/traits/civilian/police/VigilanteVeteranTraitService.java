@@ -1,18 +1,25 @@
 package dev.caecorthus.sparktraits.impl.traits.civilian.police;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
+import dev.doctor4t.wathe.api.event.ShouldPunishGunShooter;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.index.WatheSounds;
+import dev.doctor4t.wathe.index.tag.WatheItemTags;
+import dev.doctor4t.wathe.util.GunDropPayload;
 import dev.doctor4t.wathe.util.Scheduler;
 import dev.doctor4t.wathe.util.ShootMuzzleS2CPayload;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
@@ -64,6 +71,23 @@ public final class VigilanteVeteranTraitService {
         KEEP
     }
 
+    enum NikoRepeatShotPunishment {
+        NONE(false),
+        CUSTOM(false),
+        PREVENT_GUN_PICKUP(true),
+        KILL_SHOOTER(true);
+
+        private final boolean attemptsBackfire;
+
+        NikoRepeatShotPunishment(boolean attemptsBackfire) {
+            this.attemptsBackfire = attemptsBackfire;
+        }
+
+        boolean attemptsBackfire() {
+            return attemptsBackfire;
+        }
+    }
+
     public static void register() {
         ServerTickEvents.END_WORLD_TICK.register(VigilanteVeteranTraitService::tickWorld);
     }
@@ -74,6 +98,10 @@ public final class VigilanteVeteranTraitService {
 
     public static boolean canSelectVeteranTrait(Role role) {
         return role == WatheRoles.VETERAN;
+    }
+
+    static Role runtimeVigilanteRole(Role role, boolean finalMomentLooseEnd) {
+        return finalMomentLooseEnd && role == WatheRoles.LOOSE_END ? WatheRoles.VIGILANTE : role;
     }
 
     public static double gunRange(double baseRange, Role role, Collection<Identifier> traits) {
@@ -209,6 +237,25 @@ public final class VigilanteVeteranTraitService {
                 && gameRunning
                 && playerPlayingAndAlive
                 && canUseNikoTrait(role, traits, sneaking);
+    }
+
+    static NikoRepeatShotPunishment decideNikoRepeatShotPunishment(
+            boolean victimIsEffectiveCivilian,
+            ShouldPunishGunShooter.PunishResult eventResult,
+            boolean shooterCreative,
+            GameWorldComponent.ShootInnocentPunishment configuredPunishment
+    ) {
+        if (eventResult != null && eventResult.hasCustomPunishment()) {
+            return NikoRepeatShotPunishment.CUSTOM;
+        }
+        if (!victimIsEffectiveCivilian
+                || shooterCreative
+                || (eventResult != null && !eventResult.shouldPunish())) {
+            return NikoRepeatShotPunishment.NONE;
+        }
+        return configuredPunishment == GameWorldComponent.ShootInnocentPunishment.PREVENT_GUN_PICKUP
+                ? NikoRepeatShotPunishment.PREVENT_GUN_PICKUP
+                : NikoRepeatShotPunishment.KILL_SHOOTER;
     }
 
     public static boolean shouldStartNikoRevolverBurst(PlayerEntity player) {
@@ -440,7 +487,68 @@ public final class VigilanteVeteranTraitService {
         if (target == null) {
             return;
         }
+        resolveNikoBurstShot(shooter, target);
+    }
+
+    /** Mirrors only Wathe's per-hit punishment for synthetic Niko shots, not its packet side effects.
+     *  仅为 Niko 合成补发复用 Wathe 的单发命中惩罚，不重复执行完整枪械包副作用。 */
+    private static void resolveNikoBurstShot(ServerPlayerEntity shooter, ServerPlayerEntity target) {
+        GameWorldComponent game = GameWorldComponent.KEY.get(shooter.getWorld());
+        ShouldPunishGunShooter.PunishResult eventResult = ShouldPunishGunShooter.EVENT.invoker()
+                .shouldPunish(shooter, target);
+        NikoRepeatShotPunishment punishment = decideNikoRepeatShotPunishment(
+                EffectiveTraitService.shouldTreatGunVictimAsInnocent(
+                        game.getRole(target),
+                        TraitPlayerComponent.KEY.get(target).getActiveTraitIds()
+                ),
+                eventResult,
+                shooter.isCreative(),
+                game.getShootInnocentPunishment()
+        );
+
+        if (punishment == NikoRepeatShotPunishment.CUSTOM) {
+            Scheduler.schedule(eventResult::executeCustomPunishment, 4);
+        } else if (punishment.attemptsBackfire()) {
+            if (game.isInnocent(shooter) && shooter.getRandom().nextFloat() <= game.getBackfireChance()) {
+                GameFunctions.killPlayer(shooter, true, shooter, GameConstants.DeathReasons.GUN_BACKFIRE);
+                return;
+            }
+            scheduleNikoRepeatShotPunishment(shooter, game, punishment);
+        }
+
         killPlayerWithHeavyArtillery(target, true, shooter, GameConstants.DeathReasons.GUN);
+    }
+
+    private static void scheduleNikoRepeatShotPunishment(
+            ServerPlayerEntity shooter,
+            GameWorldComponent game,
+            NikoRepeatShotPunishment punishment
+    ) {
+        Scheduler.schedule(() -> {
+            if (!shooter.getInventory().contains(stack -> stack.isIn(WatheItemTags.GUNS))) {
+                return;
+            }
+            shooter.getInventory().remove(
+                    stack -> stack.isOf(WatheItems.REVOLVER),
+                    1,
+                    shooter.getInventory()
+            );
+            if (game.canUseKillerFeatures(shooter)) {
+                return;
+            }
+
+            ItemEntity droppedGun = shooter.dropItem(WatheItems.REVOLVER.getDefaultStack(), false, false);
+            if (droppedGun != null) {
+                droppedGun.setPickupDelay(10);
+                droppedGun.setThrower(shooter);
+            }
+            ServerPlayNetworking.send(shooter, new GunDropPayload());
+            PlayerMoodComponent.KEY.get(shooter).setMood(0);
+            game.addToPreventGunPickup(shooter);
+            if (game.isInnocent(shooter) && punishment == NikoRepeatShotPunishment.KILL_SHOOTER) {
+                GameFunctions.killPlayer(shooter, true, null, GameConstants.DeathReasons.SHOT_INNOCENT);
+            }
+        }, 4);
     }
 
     private static boolean canContinueNikoBurst(ServerPlayerEntity shooter) {
@@ -490,7 +598,7 @@ public final class VigilanteVeteranTraitService {
             TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
             boolean eligible = shouldRefreshNikoNightVision(
                     GameFunctions.isPlayerPlayingAndAlive(player),
-                    game.getRole(player),
+                    roleOf(player),
                     traits.getActiveTraitIds(),
                     player.isSneaking()
             );
@@ -580,7 +688,8 @@ public final class VigilanteVeteranTraitService {
         if (player == null || player.getWorld() == null) {
             return null;
         }
-        return GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
+        Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
+        return runtimeVigilanteRole(role, LastStandFinalMomentService.isFinalMomentLooseEnd(player));
     }
 
     private static Collection<Identifier> traitsOf(PlayerEntity player) {

@@ -1,14 +1,4 @@
 {
-  "music.takediskrush": {
-    "sounds": [
-      {
-        "name": "sparktraits:music/takediskrush",
-        "stream": true,
-        "volume": 0.9
-      }
-    ],
-    "subtitle": "subtitle.sparktraits.music.takediskrush"
-  },
   "depression.docile_to_rage": {
     "sounds": [
       {

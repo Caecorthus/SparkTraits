@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 
 /**
  * Shared runtime rules for killer-only traits.
@@ -40,9 +41,9 @@ import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 public final class KillerTraitService {
     public static final int SHOWMAN_RANGE = 8;
     public static final int SHOWMAN_MAX_PLAYERS = 10;
-    public static final int SHOWMAN_MONEY_PER_PLAYER = 5;
-    public static final int CORNERED_TEAMMATE_REWARD = 50;
-    public static final int CORNERED_LAST_KILLER_REWARD = 100;
+    public static final int SHOWMAN_MONEY_PER_PLAYER = 8;
+    public static final int CORNERED_TEAMMATE_REWARD = 75;
+    public static final int CORNERED_LAST_KILLER_REWARD = 200;
     public static final int PARANOID_EXTRA_TICKS = 20 * 20;
     public static final float OPPRESSIVE_DRAIN_MULTIPLIER = 1.2f;
     public static final double THRUST_EXTRA_KNOCKBACK = 0.25;
@@ -72,6 +73,7 @@ public final class KillerTraitService {
             if (hasEligibleTrait(player, KillerTraits.PARANOID)) {
                 PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
                 psycho.setPsychoTicks(paranoidPsychoTicks(psycho.getPsychoTicks()));
+                psycho.setArmour(paranoidPsychoArmour(psycho.getArmour()));
             }
         });
     }
@@ -88,6 +90,10 @@ public final class KillerTraitService {
 
     public static boolean canSelectThrust(Role role, Collection<Identifier> selectedTraits, boolean hasThrustEntry) {
         return hasThrustEntry && canSelectKillerTrait(role, selectedTraits);
+    }
+
+    static boolean canUseThrust(boolean activeThrust, boolean eligibleKiller, boolean finalMomentLooseEnd) {
+        return activeThrust && (eligibleKiller || finalMomentLooseEnd);
     }
 
     public static boolean hasPsychoModeShopEntry(PlayerEntity player) {
@@ -118,7 +124,7 @@ public final class KillerTraitService {
         if (stacks <= 0) {
             return duration;
         }
-        float multiplier = 1.0f - stacks * 0.03f;
+        float multiplier = 1.0f - stacks * 0.05f;
         return Math.max(1, (int) (duration * multiplier));
     }
 
@@ -139,7 +145,7 @@ public final class KillerTraitService {
     }
 
     public static int plunderedAmount(int victimBalance) {
-        return Math.max(0, victimBalance) / 4;
+        return Math.max(0, victimBalance) / 3;
     }
 
     public static int charismaPrice(int price) {
@@ -158,6 +164,23 @@ public final class KillerTraitService {
 
     public static int paranoidPsychoTicks(int originalTicks) {
         return originalTicks + PARANOID_EXTRA_TICKS;
+    }
+
+    static int paranoidPsychoArmour(int currentArmour) {
+        return currentArmour + 1;
+    }
+
+    static int corneredReward(boolean becomesSoleTeammate) {
+        return becomesSoleTeammate ? CORNERED_LAST_KILLER_REWARD : CORNERED_TEAMMATE_REWARD;
+    }
+
+    static boolean shouldCountShowmanWitness(
+            boolean sameAsVictim,
+            boolean sameAsKiller,
+            boolean playingAndAlive,
+            boolean withinRange
+    ) {
+        return !sameAsVictim && !sameAsKiller && playingAndAlive && withinRange;
     }
 
     public static float oppressiveAdjustedMood(float currentMood, float proposedMood, boolean oppressiveActive) {
@@ -235,7 +258,7 @@ public final class KillerTraitService {
                 killerTraits.incrementBloodthirstyKillCount();
             }
             if (killerTraits.hasActiveTrait(KillerTraits.THE_SHOWMAN)) {
-                int reward = showmanReward(countNearbyAlivePlayers(victim));
+                int reward = showmanReward(countNearbyAlivePlayers(victim, killer));
                 if (reward > 0) {
                     PlayerShopComponent.KEY.get(killer).addToBalance(reward);
                 }
@@ -264,7 +287,12 @@ public final class KillerTraitService {
         if (knockback == null) {
             return;
         }
-        boolean active = hasEligibleTrait(player, KillerTraits.THRUST) && isHoldingThrustWeapon(player);
+        TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
+        boolean active = canUseThrust(
+                traits.hasActiveTrait(KillerTraits.THRUST),
+                hasEligibleKillerTraitOwner(player),
+                LastStandFinalMomentService.isFinalMomentLooseEnd(player)
+        ) && isHoldingThrustWeapon(player);
         if (active && !knockback.hasModifier(THRUST_KNOCKBACK_MODIFIER_ID)) {
             knockback.addTemporaryModifier(THRUST_KNOCKBACK_MODIFIER);
         } else if (!active && knockback.hasModifier(THRUST_KNOCKBACK_MODIFIER_ID)) {
@@ -279,7 +307,7 @@ public final class KillerTraitService {
         return new DiscountedShopEntry(entry);
     }
 
-    private static int countNearbyAlivePlayers(ServerPlayerEntity victim) {
+    private static int countNearbyAlivePlayers(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer) {
         if (!(victim.getWorld() instanceof ServerWorld world)) {
             return 0;
         }
@@ -287,10 +315,11 @@ public final class KillerTraitService {
         double rangeSquared = SHOWMAN_RANGE * SHOWMAN_RANGE;
         int count = 0;
         for (ServerPlayerEntity player : world.getPlayers()) {
-            if (player.getUuid().equals(victim.getUuid())) {
-                continue;
-            }
-            if (game.hasAnyRole(player) && !game.isPlayerDead(player.getUuid()) && player.squaredDistanceTo(victim) <= rangeSquared) {
+            boolean sameAsVictim = player.getUuid().equals(victim.getUuid());
+            boolean sameAsKiller = killer != null && player.getUuid().equals(killer.getUuid());
+            boolean alive = game.hasAnyRole(player) && !game.isPlayerDead(player.getUuid());
+            boolean withinRange = player.squaredDistanceTo(victim) <= rangeSquared;
+            if (shouldCountShowmanWitness(sameAsVictim, sameAsKiller, alive, withinRange)) {
                 count++;
             }
         }
@@ -313,12 +342,11 @@ public final class KillerTraitService {
             if (!traits.hasActiveTrait(KillerTraits.CORNERED) || !hasEligibleKillerTraitOwner(player)) {
                 continue;
             }
-            PlayerShopComponent shop = PlayerShopComponent.KEY.get(player);
-            shop.addToBalance(CORNERED_TEAMMATE_REWARD);
-            if (aliveTeamMembers == 1
+            boolean becomesSoleTeammate = aliveTeamMembers == 1
                     && isCorneredTeamMember(game.getRole(player), traits.getActiveTraitIds())
-                    && !traits.hasCorneredLastKillerRewardPaid()) {
-                shop.addToBalance(CORNERED_LAST_KILLER_REWARD);
+                    && !traits.hasCorneredLastKillerRewardPaid();
+            PlayerShopComponent.KEY.get(player).addToBalance(corneredReward(becomesSoleTeammate));
+            if (becomesSoleTeammate) {
                 traits.markCorneredLastKillerRewardPaid();
             }
         }

@@ -13,8 +13,6 @@ import net.minecraft.util.Identifier;
 public final class SparkTraitsSounds {
     private static final SoundEventRegistrar registrar = new SoundEventRegistrar(SparkTraits.MOD_ID);
 
-    public static final Identifier MUSIC_TAKEDISKRUSH_ID = SparkTraits.id("music.takediskrush");
-    public static final SoundEvent MUSIC_TAKEDISKRUSH = registrar.create("music.takediskrush");
     public static final Identifier DEPRESSION_DOCILE_TO_RAGE_ID = SparkTraits.id("depression.docile_to_rage");
     public static final SoundEvent DEPRESSION_DOCILE_TO_RAGE = registrar.create("depression.docile_to_rage");
     public static final Identifier DEPRESSION_RAGE_LOOP_ID = SparkTraits.id("depression.rage_loop");
@@ -42,7 +40,6 @@ public final class SparkTraitsSounds {
         // English: Keep this explicit so /playsound visibility failures leave a clear startup clue.
         // 中文：显式校验注册结果，让 /playsound 不可见时启动日志能给出清晰线索。
         for (Identifier id : new Identifier[]{
-                MUSIC_TAKEDISKRUSH_ID,
                 DEPRESSION_DOCILE_TO_RAGE_ID,
                 DEPRESSION_RAGE_LOOP_ID,
                 DEPRESSION_BLIND_RAGE_ENRAGE_ID,

@@ -11,7 +11,8 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoison
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
-import dev.caecorthus.sparktraits.impl.traits.neutral.arrogant_asf.ArrogantAsfTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceTraits;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTrait;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameConstants;
@@ -80,9 +81,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Public Pig shape flag lets regular clients render and size Pig players.
     // 公开猪形态标记用于让普通客户端渲染并计算猪玩家体积。
     private boolean pigActive;
-    // Owner-visible active-skill state for Arrogant ASF speed.
-    // “展示豪度”的主动技能开关状态，同步给本人用于移动预测。
-    private boolean arrogantAsfActive;
     // Runtime-only Pig ambient cadence, mirroring vanilla pig sound delay.
     // 运行期猪哼声节奏计数，模拟原版猪的环境音延迟。
     private int pigAmbientSoundChance;
@@ -188,18 +186,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         return activeTraits.contains(PigTrait.ID) || pigActive;
     }
 
-    public boolean isArrogantAsfActive() {
-        return activeTraits.contains(ArrogantAsfTrait.ID) && arrogantAsfActive;
-    }
-
-    public void setArrogantAsfActive(boolean active) {
-        boolean normalizedActive = active && activeTraits.contains(ArrogantAsfTrait.ID);
-        if (this.arrogantAsfActive != normalizedActive) {
-            this.arrogantAsfActive = normalizedActive;
-            sync();
-        }
-    }
-
     public int getPigAmbientSoundChance() {
         return pigAmbientSoundChance;
     }
@@ -283,6 +269,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     }
 
     public boolean addPendingTrait(Identifier traitId) {
+        if (RetiredTraitIds.isRetired(traitId)) {
+            return false;
+        }
         if (pendingTraits.size() >= MAX_TRAITS && !pendingTraits.contains(traitId)) {
             return false;
         }
@@ -311,6 +300,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     public void setActiveTraits(Collection<Identifier> traitIds, TraitAssignmentReason reason) {
         clearActiveTraits(TraitRemovalReason.INTERNAL);
         for (Identifier traitId : traitIds) {
+            if (RetiredTraitIds.isRetired(traitId)) {
+                continue;
+            }
             if (activeTraits.size() >= MAX_TRAITS) {
                 break;
             }
@@ -327,6 +319,71 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         sync();
     }
 
+    /**
+     * Replaces a validated mid-round runtime loadout without applying the normal three-slot cap.
+     * 用已验证的局中运行时套装替换天赋，不套用普通三槽上限。
+     */
+    public void replaceActiveTraitsForRuntime(Collection<Identifier> traitIds, TraitAssignmentReason reason) {
+        LinkedHashSet<Identifier> normalizedTraits = new LinkedHashSet<>();
+        for (Identifier traitId : traitIds) {
+            if (!RetiredTraitIds.isRetired(traitId)) {
+                normalizedTraits.add(traitId);
+            }
+        }
+
+        TraitActiveReplacement.Plan<Identifier> plan = TraitActiveReplacement.plan(
+                activeTraits,
+                revealedTraits,
+                normalizedTraits
+        );
+        boolean hadPigActive = isPigActive();
+
+        if (player instanceof ServerPlayerEntity serverPlayer) {
+            for (Identifier traitId : plan.removed()) {
+                Trait trait = TraitRegistry.get(traitId);
+                if (trait != null) {
+                    trait.onRemoved(serverPlayer, TraitRemovalReason.INTERNAL);
+                    TraitEvents.REMOVED.invoker().onTraitRemoved(serverPlayer, trait, TraitRemovalReason.INTERNAL);
+                }
+            }
+        }
+
+        activeTraits.clear();
+        activeTraits.addAll(plan.target());
+        revealedTraits.clear();
+        revealedTraits.addAll(plan.retainedRevealed());
+        for (Identifier traitId : plan.missing()) {
+            Trait trait = TraitRegistry.get(traitId);
+            if (trait == null || !trait.hiddenFromOwnerAtStart()) {
+                revealedTraits.add(traitId);
+            }
+        }
+        if (activeTraits.contains(LastStandTrait.ID)) {
+            revealedTraits.add(LastStandTrait.ID);
+        }
+
+        if (!activeTraits.contains(PoliceTraits.GOING_DARK)) {
+            goingDarkInstinctHidden = false;
+        }
+        if (!activeTraits.contains(PigTrait.ID)) {
+            pigActive = false;
+        }
+
+        if (player instanceof ServerPlayerEntity serverPlayer) {
+            for (Identifier traitId : plan.missing()) {
+                Trait trait = TraitRegistry.get(traitId);
+                if (trait != null) {
+                    trait.onAssigned(serverPlayer, reason);
+                    TraitEvents.ASSIGNED.invoker().onTraitAssigned(serverPlayer, trait, reason);
+                }
+            }
+        }
+        if (hadPigActive != isPigActive()) {
+            player.calculateDimensions();
+        }
+        sync();
+    }
+
     public void clearActiveTraits(TraitRemovalReason reason) {
         if (activeTraits.isEmpty() && revealedTraits.isEmpty() && !killerInstinctHidden && !lastStandPending
                 && !goingDarkInstinctHidden && !cautiousSoundSuppressed
@@ -335,7 +392,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid
                 && depressionSuicideTicks <= 0 && !depressionPsychoActive
                 && depressionPsychoAttacker == null && depressionCounterTarget == null
-                && !pigActive && !arrogantAsfActive) {
+                && !pigActive) {
             return;
         }
         // Pig dimensions read the active trait set, so reset once after the set is cleared.
@@ -368,7 +425,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionPsychoAttacker = null;
         depressionCounterTarget = null;
         pigActive = false;
-        arrogantAsfActive = false;
         resetPigAmbientSoundChance();
         if (hadPigActive) {
             player.calculateDimensions();
@@ -438,7 +494,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         // 本人同步已揭示天赋，旁观者同步完整天赋，普通玩家只同步必要标记。
         writeIdentifierSet(buf, visibleActiveTraitsFor(owner, spectator));
         writeIdentifierSet(buf, owner ? pendingTraits : Set.of());
-        writeIdentifierSet(buf, revealedTraits);
+        writeIdentifierSet(
+                buf,
+                TraitSyncVisibility.revealedTraitsFor(owner, spectator, activeTraits, revealedTraits)
+        );
         buf.writeBoolean(killerInstinctHidden);
         buf.writeBoolean(lastStandPending);
         buf.writeBoolean(goingDarkInstinctHidden);
@@ -452,7 +511,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         writeOptionalUuid(buf, owner ? depressionPsychoAttacker : null);
         writeOptionalUuid(buf, owner ? depressionCounterTarget : null);
         buf.writeBoolean(activeTraits.contains(PigTrait.ID));
-        buf.writeBoolean(owner && isArrogantAsfActive());
+        // Field 17 is a protocol tombstone: keep writing false for older clients.
+        // 第 17 个字段是协议墓碑：继续写入 false 以兼容旧客户端。
+        buf.writeBoolean(false);
     }
 
     @Override
@@ -480,7 +541,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionPsychoAttacker = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;
         depressionCounterTarget = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;
         pigActive = buf.readableBytes() > 0 && buf.readBoolean();
-        arrogantAsfActive = buf.readableBytes() > 0 && buf.readBoolean();
+        // Read and discard the optional legacy field without reusing its slot.
+        // 可选读取并丢弃旧字段，不复用该协议位置。
+        if (buf.readableBytes() > 0) {
+            buf.readBoolean();
+        }
         if (wasPigActive != isPigActive()) {
             player.calculateDimensions();
         }
@@ -529,7 +594,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionPsychoAttacker = null;
         depressionCounterTarget = null;
         pigActive = false;
-        arrogantAsfActive = false;
         resetPigAmbientSoundChance();
         fromNbt(tag.getList("ActiveTraits", NbtElement.STRING_TYPE), activeTraits);
         fromNbt(tag.getList("PendingTraits", NbtElement.STRING_TYPE), pendingTraits);
@@ -559,7 +623,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     private static void fromNbt(NbtList list, Set<Identifier> ids) {
         for (int i = 0; i < list.size(); i++) {
             Identifier id = Identifier.tryParse(list.getString(i));
-            if (id != null) {
+            if (id != null && !RetiredTraitIds.isRetired(id)) {
                 ids.add(id);
             }
         }
@@ -601,7 +665,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         int size = buf.readVarInt();
         for (int i = 0; i < size; i++) {
             Identifier id = Identifier.tryParse(buf.readString());
-            if (id != null) {
+            if (id != null && !RetiredTraitIds.isRetired(id)) {
                 ids.add(id);
             }
         }
