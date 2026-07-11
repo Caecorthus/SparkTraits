@@ -9,7 +9,7 @@ import net.minecraft.server.world.ServerWorld;
 /** Owns Conscience rewards that apply independently of direct-kill rewards.
  *  统一处理不依赖直接击杀奖励的善良经济规则。 */
 public final class ConscienceEconomyService {
-    public static final int DEATH_DIVIDEND = 50;
+    public static final int DEATH_DIVIDEND = 10;
 
     private ConscienceEconomyService() {
     }

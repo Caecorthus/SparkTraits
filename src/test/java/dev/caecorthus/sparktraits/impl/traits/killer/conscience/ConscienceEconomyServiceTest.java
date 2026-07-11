@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 class ConscienceEconomyServiceTest {
     @Test
     void dividendRequiresAnotherPlayersConfirmedDeathAndLivingConscienceOwner() {
-        assertEquals(50, ConscienceEconomyService.deathDividend(true, true, true, false));
+        assertEquals(10, ConscienceEconomyService.deathDividend(true, true, true, false));
         assertEquals(0, ConscienceEconomyService.deathDividend(false, true, true, false));
         assertEquals(0, ConscienceEconomyService.deathDividend(true, false, true, false));
         assertEquals(0, ConscienceEconomyService.deathDividend(true, true, false, false));
@@ -25,8 +25,9 @@ class ConscienceEconomyServiceTest {
         assertEquals(100, ConscienceSerialKillerService.conscienceKillReward(false, true, false));
         assertEquals(150, ConscienceSerialKillerService.conscienceKillReward(true, true, false));
         assertEquals(200, ConscienceSerialKillerService.conscienceKillReward(true, true, true));
-        assertEquals(200, 150 + ConscienceEconomyService.DEATH_DIVIDEND);
-        assertEquals(250, 200 + ConscienceEconomyService.DEATH_DIVIDEND);
+        assertEquals(110, 100 + ConscienceEconomyService.DEATH_DIVIDEND);
+        assertEquals(160, 150 + ConscienceEconomyService.DEATH_DIVIDEND);
+        assertEquals(210, 200 + ConscienceEconomyService.DEATH_DIVIDEND);
     }
 
     @Test

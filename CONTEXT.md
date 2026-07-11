@@ -52,7 +52,7 @@ it is dropped, the mode expires, its owner truly dies or resets, the owner
 reconnects, or the round ends. A Last Stand false death does not remove it.
 
 **Conscience death dividend / 善良死亡分红**:
-An independent 50-coin award paid to a Conscience killer when a player dies,
+An independent 10-coin award paid to a Conscience killer when a player dies,
 stacking with the owner's existing direct-kill or Serial Killer reward.
 
 A dividend requires another player's confirmed real death while the Conscience

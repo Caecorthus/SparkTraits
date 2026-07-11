@@ -22,7 +22,7 @@
 - Bomb Maniac launch properties are snapshotted on the projectile. A grenade thrown before expiry remains special after expiry.
 - Effective civilians are protected from Bomb Maniac explosions except exact role ids `sparkwitch:grand_witch`, `sparkwitch:accomplice`, and `sparkwitch:murderous_witch`. `sparkwitch:apprentice_witch` follows effective alignment and is not an exception.
 - The marked grenade is owner-bound and disappears on manual drop, true death, reset, expiry, reconnect cleanup, or round finalization. A Last Stand false death must not remove it. In-flight grenades are not removed.
-- Conscience death dividend is `50` coins for every other player's confirmed real death while the Conscience owner is alive. It stacks with existing direct rewards and ignores cause and faction.
+- Conscience death dividend is `10` coins for every other player's confirmed real death while the Conscience owner is alive. It stacks with existing direct rewards and ignores cause and faction.
 - All Conscience killers use Wathe's existing passive income: `5` coins every `200` ticks while balance is below the existing `200` cap.
 - Bloodthirsty changes only from 3 percent to 5 percent per counted stack; retain `floor(round player count / 3)` as the stack cap.
 - Plunderer transfers `floor(victim balance / 3)` with no minimum.
@@ -369,14 +369,14 @@ git commit -m "feat: rebalance killer traits"
 
 **Interfaces:**
 - Produces: `ConscienceEconomyService.deathDividend(boolean, boolean, boolean, boolean)` and `rewardAfterConfirmedRealDeath(ServerPlayerEntity)`.
-- Preserves: current direct rewards from `EffectiveTraitService`/`ConscienceSerialKillerService`, including 100 ordinary, 150 Serial Killer, and 200 murderer-target rewards before adding the independent 50.
+- Preserves: current direct rewards from `EffectiveTraitService`/`ConscienceSerialKillerService`, including 100 ordinary, 150 Serial Killer, and 200 murderer-target rewards before adding the independent 10.
 
 - [ ] **Step 1: Write failing dividend and dependency-contract tests**
 
 ```java
 @Test
 void dividendRequiresAnotherPlayersConfirmedDeathAndLivingConscienceOwner() {
-    assertEquals(50, ConscienceEconomyService.deathDividend(true, true, true, false));
+    assertEquals(10, ConscienceEconomyService.deathDividend(true, true, true, false));
     assertEquals(0, ConscienceEconomyService.deathDividend(false, true, true, false));
     assertEquals(0, ConscienceEconomyService.deathDividend(true, false, true, false));
     assertEquals(0, ConscienceEconomyService.deathDividend(true, true, false, false));
@@ -388,8 +388,9 @@ void existingDirectRewardsRemainIndependent() {
     assertEquals(100, ConscienceSerialKillerService.conscienceKillReward(false, true, false));
     assertEquals(150, ConscienceSerialKillerService.conscienceKillReward(true, true, false));
     assertEquals(200, ConscienceSerialKillerService.conscienceKillReward(true, true, true));
-    assertEquals(200, 150 + ConscienceEconomyService.DEATH_DIVIDEND);
-    assertEquals(250, 200 + ConscienceEconomyService.DEATH_DIVIDEND);
+    assertEquals(110, 100 + ConscienceEconomyService.DEATH_DIVIDEND);
+    assertEquals(160, 150 + ConscienceEconomyService.DEATH_DIVIDEND);
+    assertEquals(210, 200 + ConscienceEconomyService.DEATH_DIVIDEND);
 }
 
 @Test
@@ -441,7 +442,7 @@ Expected: missing service, existing passive redirect still present, and missing 
 
 ```java
 public final class ConscienceEconomyService {
-    public static final int DEATH_DIVIDEND = 50;
+    public static final int DEATH_DIVIDEND = 10;
 
     private ConscienceEconomyService() {
     }
@@ -1268,7 +1269,7 @@ Verify these exact cases in a local round:
 7. Bomb Maniac explosions spare effective civilians and the Conscience Bomber, kill effective killers/Impostors/neutrals, kill the exact three specified witch roles, and spare an effectively civilian apprentice witch.
 8. Throw at approximately tick 399, wait for the mode to expire, then let the projectile collide: it still has 1.5-speed launch and protected-target behavior.
 9. Manual drop deletes the marked grenade and ends the mode. True death, reset, reconnect, and round end also remove it. Last Stand false death does not.
-10. On another player's confirmed death, every living Conscience killer receives 50, the dead player does not pay themself, and existing 100/150/200 rewards produce 150/200/250 totals where applicable.
+10. On another player's confirmed death, every living Conscience killer receives 10, the dead player does not pay themself, and existing 100/150/200 rewards produce 110/160/210 totals where applicable.
 
 Stop the client cleanly after the smoke test; do not leave the Gradle session running.
 
