@@ -196,8 +196,6 @@ tasks.test {
 
 def architectureFiles = [
         "AGENTS.md",
-        "ARCHITECTURE.md",
-        "ARCHITECTURE_LOGS.md",
         "CONTEXT.md",
         "DOWNSTREAM_MIGRATION_NOTES.md"
 ]

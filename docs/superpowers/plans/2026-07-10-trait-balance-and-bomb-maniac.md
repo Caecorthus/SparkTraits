@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Read `ARCHITECTURE.md` and `CONTEXT.md` again immediately before implementation; the approval gate below is binding.
+- Read `CONTEXT.md` again immediately before implementation; the approval gate below is binding.
 - Work in `/Users/kricy/Documents/Codex-Projects/SparkTraits` with Java 21.
 - Preserve the dirty worktree. In particular, do not revert or rewrite unrelated Final Moment, Thrust, Cautious, Depression, Arrogant ASF retirement, build, version, or resource changes already present.
 - Do not give Demon Hunter Vigilante-only or Veteran-only traits. Do not change its pistol behavior.
@@ -86,7 +86,6 @@ Implementation must not begin until the owner explicitly approves this exact tem
 - `src/client/resources/sparktraits.client.mixins.json`
 - `src/main/resources/assets/sparktraits/lang/en_us.json`
 - `src/main/resources/assets/sparktraits/lang/zh_cn.json`
-- `ARCHITECTURE.md`
 - `CONTEXT.md` only if implementation discoveries require correcting the already recorded final definitions; do not rewrite unrelated sections.
 
 ## Task 1: Faction-Scoped Random Weight
@@ -1102,13 +1101,12 @@ JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew test \
 
 Expected: PASS. `./gradlew classes clientClasses` must also pass before moving on, proving all descriptors and signatures compile.
 
-## Task 6: Lifecycle, Language, and Governance Documentation
+## Task 6: Lifecycle, Language, and Documentation
 
 **Files:**
 - Modify: `src/main/java/dev/caecorthus/sparktraits/impl/lifecycle/TraitGameHooks.java`
 - Modify: `src/main/resources/assets/sparktraits/lang/en_us.json`
 - Modify: `src/main/resources/assets/sparktraits/lang/zh_cn.json`
-- Modify: `ARCHITECTURE.md`
 - Review: `CONTEXT.md`
 
 **Interfaces:**
@@ -1182,9 +1180,9 @@ Replace the affected trait descriptions with accurate behavior:
 
 Keep Conscience's general description concise; the role-specific shop entry itself carries the Bomb Maniac name.
 
-- [ ] **Step 3: Update the architecture lifecycle paragraph**
+- [ ] **Step 3: Confirm the lifecycle ordering**
 
-Amend only the kill-order paragraph in `ARCHITECTURE.md` to state:
+Confirm `TraitGameHooks` preserves this ordering:
 
 ```text
 A Last Stand transition syncs new spectator views and returns. A real death then

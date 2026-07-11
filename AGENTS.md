@@ -2,16 +2,15 @@
 
 ## Required Context
 
-Before changing code, read `ARCHITECTURE.md` and `CONTEXT.md`. The architecture
-constitution is binding. Its watch-only list and backlog are not permission to
-move, split, rename, delete, or rewrite existing modules.
+Before changing code, read `CONTEXT.md`. The scope and compatibility rules in
+this file are binding.
 
 Use the workflow skill at
 `/Users/kricy/.codex/skills/using-superpowers/SKILL.md` for this repository.
 
-When a requested change touches a watch-only hotspot or changes a public API,
-component id, trait id, packet/NBT schema, lifecycle order, or dependency
-contract, submit the approval template from `ARCHITECTURE.md` and wait for the
+When a requested change changes a public API, component id, trait id,
+packet/NBT schema, lifecycle order, or dependency contract, describe the exact
+scope, invariants, downstream impact, and verification plan, then wait for the
 owner's explicit approval.
 
 ## Scope
@@ -34,8 +33,6 @@ owner's explicit approval.
   pass with the smallest implementation.
 - Tests are allowed and expected for pure rules, protocol contracts, and public
   API behavior. Do not add production-only reset hooks for tests.
-- Treat code-size numbers in `ARCHITECTURE.md` only as review prompts. They are
-  never hard caps and never justify mechanical splitting.
 - Use subagents for independent work and communicate with them in English.
 
 ## Repositories

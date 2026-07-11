@@ -8,3 +8,6 @@ test-shots/
 _sources/
 .worktrees/
 *.iml
+/ARCHITECTURE.md
+/ARCHITECTURE_LOGS.md
+/ARCHITECTURE LOGS.md
