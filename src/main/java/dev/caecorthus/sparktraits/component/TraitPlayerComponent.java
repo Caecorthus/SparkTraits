@@ -59,8 +59,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Client-visible Last Stand pending flag for rendering and collision checks.
     // 用于客户端渲染与碰撞判断的背水一战等待复活标记。
     private boolean lastStandPending;
-    // Public blackout-only flag used to suppress default killer instinct.
-    // 仅用于关灯期间压制默认杀手本能的公开状态标记。
+    // Public blackout-only flag used by Going Dark's instinct suppression.
+    // 仅供隐蔽行动在关灯期间压制指定本能的公开状态标记。
     private boolean goingDarkInstinctHidden;
     // Public sound-only flag used to mute remote Cautious players without revealing trait text.
     // 仅用于声音静音的公开标记，让远端小心翼翼玩家静音但不暴露天赋文本。

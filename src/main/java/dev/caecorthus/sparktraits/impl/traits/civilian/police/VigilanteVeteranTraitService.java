@@ -388,38 +388,6 @@ public final class VigilanteVeteranTraitService {
         return ignoresLowMood(roleOf(player), traitsOf(player));
     }
 
-    public static boolean goingDarkInstinctHidden(
-            boolean blackoutActive,
-            boolean playerPlayingAndAlive,
-            Role role,
-            Collection<Identifier> traits
-    ) {
-        return blackoutActive
-                && playerPlayingAndAlive
-                && canUseVeteranTrait(role, traits, PoliceTraits.GOING_DARK);
-    }
-
-    public static boolean shouldSkipGoingDarkDefaultInstinct(
-            boolean targetGoingDarkInstinctHidden,
-            boolean defaultInstinctBranch,
-            boolean spectatorBranch
-    ) {
-        return targetGoingDarkInstinctHidden && defaultInstinctBranch && !spectatorBranch;
-    }
-
-    public static void syncGoingDarkInstinct(ServerWorld world, boolean blackoutActive) {
-        GameWorldComponent game = GameWorldComponent.KEY.get(world);
-        for (ServerPlayerEntity player : world.getPlayers()) {
-            TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
-            traits.setGoingDarkInstinctHidden(goingDarkInstinctHidden(
-                    blackoutActive,
-                    GameFunctions.isPlayerPlayingAndAlive(player),
-                    game.getRole(player),
-                    traits.getActiveTraitIds()
-            ));
-        }
-    }
-
     public static boolean shouldRefreshNikoNightVision(
             boolean playerPlayingAndAlive,
             Role role,

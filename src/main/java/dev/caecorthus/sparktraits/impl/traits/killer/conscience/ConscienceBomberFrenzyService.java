@@ -12,6 +12,7 @@ import dev.doctor4t.wathe.util.ShopEntry;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.LoreComponent;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -283,6 +284,14 @@ public final class ConscienceBomberFrenzyService {
                 DataComponentTypes.CUSTOM_NAME,
                 Text.translatable("shop.sparktraits.bomb_maniac").formatted(Formatting.RED)
         );
+        // Wathe renders display-stack lore as the shop description.
+        // Wathe 会把展示物品的 lore 渲染为商店说明。
+        display.set(DataComponentTypes.LORE, new LoreComponent(List.of(
+                shopDescription("shop.sparktraits.bomb_maniac.description.1"),
+                shopDescription("shop.sparktraits.bomb_maniac.description.2"),
+                shopDescription("shop.sparktraits.bomb_maniac.description.3"),
+                shopDescription("shop.sparktraits.bomb_maniac.description.4")
+        )));
         context.addEntry(new ShopEntry.Builder(
                 SHOP_ID.toString(),
                 display,
@@ -293,6 +302,11 @@ public final class ConscienceBomberFrenzyService {
                 .onBuy(candidate -> candidate instanceof ServerPlayerEntity serverPlayer
                         && startMode(serverPlayer))
                 .build());
+    }
+
+    private static Text shopDescription(String translationKey) {
+        return Text.translatable(translationKey)
+                .styled(style -> style.withItalic(false).withColor(0x808080));
     }
 
     private static ItemStack markedGrenade(UUID ownerUuid, long expiresAtTick) {
