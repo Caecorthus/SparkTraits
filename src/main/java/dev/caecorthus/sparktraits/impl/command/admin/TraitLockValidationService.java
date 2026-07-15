@@ -23,6 +23,7 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
  */
 public final class TraitLockValidationService {
     private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
+    private static final Identifier SPARKWITCH_SAINT_ID = Identifier.of("sparkwitch", "saint");
 
     private TraitLockValidationService() {
     }
@@ -82,7 +83,8 @@ public final class TraitLockValidationService {
         }
         return !trait.id().equals(ImpostorTrait.ID)
                 || isUnknownRole(role)
-                || !role.identifier().equals(SPARKWITCH_PIG_GOD_ID);
+                || (!role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
+                && !role.identifier().equals(SPARKWITCH_SAINT_ID));
     }
 
     public static ServerPlayerEntity findOtherPendingUniqueTraitOwner(MinecraftServer server, ServerPlayerEntity target, Trait trait) {

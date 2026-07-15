@@ -55,6 +55,7 @@ public final class EffectiveTraitService {
     private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
     private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
     private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
+    private static final Identifier SPARKWITCH_SAINT_ID = Identifier.of("sparkwitch", "saint");
     private static final Identifier NOELLES_SHADOW_JESTER_ID = Identifier.of("noellesroles", "shadow_jester");
 
     private EffectiveTraitService() {
@@ -571,7 +572,8 @@ public final class EffectiveTraitService {
                 && (role == WatheRoles.VIGILANTE
                 || role == WatheRoles.VETERAN
                 || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
-                || role.identifier().equals(SPARKWITCH_PIG_GOD_ID));
+                || role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
+                || role.identifier().equals(SPARKWITCH_SAINT_ID));
     }
 
     public static boolean countsAsPublicKiller(Role role, Collection<Identifier> traits) {
