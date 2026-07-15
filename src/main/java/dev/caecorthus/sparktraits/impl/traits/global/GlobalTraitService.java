@@ -36,6 +36,7 @@ public final class GlobalTraitService {
     public static final int CHILDISH_COLOR = 0xFF9ACD;
     public static final int STEADY_COLOR = 0x6AA6FF;
     public static final int EXCELLENT_PHYSIQUE_COLOR = 0x7ED957;
+    public static final int SPIRIT_SLEUTH_COLOR = 0xB8A7FF;
     public static final int TASK_MASTER_MONEY_REWARD = 25;
     public static final float TASK_MASTER_MOOD_GAIN_MULTIPLIER = 0.20f;
     public static final float EXCELLENT_PHYSIQUE_RECOVERY_BONUS = 0.25f;
