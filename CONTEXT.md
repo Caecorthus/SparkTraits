@@ -106,6 +106,8 @@ extension and adds one armour layer to the current Psycho Mode armour value.
   their own owner-visible and revealed state.
 - Packet field order, NBT keys, kill/reset/finalize ordering, and optional bridge
   fallbacks are compatibility contracts.
+- `SparkTraitsApi.isFakeDeathBody(Entity)` is the supported exact-body query for
+  downstream integrations; internal pending maps and trackers are not API.
 - Replay records only match-defining runtime transitions: successful Last Stand,
   Final Moment start, and actual conversion to `wathe:loose_end`. Startup
   effective-alignment flips and compensation assignments are excluded.

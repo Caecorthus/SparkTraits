@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.api;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -20,6 +21,7 @@ class SparkTraitsApiContractTest {
         assertPublicStaticBooleanMethod("hasActiveTrait", PlayerEntity.class, Identifier.class);
         assertPublicStaticBooleanMethod("hasLastStandTriggeredThisRound", ServerWorld.class, UUID.class);
         assertPublicStaticBooleanMethod("isFinalMomentActive", World.class);
+        assertPublicStaticBooleanMethod("isFakeDeathBody", Entity.class);
     }
 
     @Test
@@ -27,6 +29,7 @@ class SparkTraitsApiContractTest {
         assertFalse(SparkTraitsApi.hasActiveTrait(null, null));
         assertFalse(SparkTraitsApi.hasLastStandTriggeredThisRound(null, null));
         assertFalse(SparkTraitsApi.isFinalMomentActive(null));
+        assertFalse(SparkTraitsApi.isFakeDeathBody(null));
     }
 
     private static void assertPublicStaticBooleanMethod(String name, Class<?>... parameterTypes)

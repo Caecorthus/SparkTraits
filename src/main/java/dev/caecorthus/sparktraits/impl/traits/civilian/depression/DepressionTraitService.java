@@ -97,6 +97,7 @@ public final class DepressionTraitService {
     private static final Text ATTACKER_TITLE = Text.literal("跑").withColor(ATTACKER_HIGHLIGHT_COLOR);
     private static final Map<UUID, PendingState> pendingPlayers = new HashMap<>();
     private static final Map<UUID, ActiveState> activePlayers = new HashMap<>();
+    private static final DepressionFakeBodyTracker fakeBodies = new DepressionFakeBodyTracker();
     private static final Set<UUID> forceMentalBreakdownDeaths = new java.util.HashSet<>();
 
     private DepressionTraitService() {
@@ -392,6 +393,14 @@ public final class DepressionTraitService {
         return pendingPlayers.containsKey(player.getUuid());
     }
 
+    public static boolean isFakeDeathBody(PlayerBodyEntity body) {
+        return body != null && fakeBodies.isTracked(
+                body.getPlayerUuid(),
+                body.getWorld().getRegistryKey().getValue(),
+                body.getUuid()
+        );
+    }
+
     public static boolean isPsychoActive(net.minecraft.entity.player.PlayerEntity player) {
         return player != null && activePlayers.containsKey(player.getUuid());
     }
@@ -501,6 +510,7 @@ public final class DepressionTraitService {
         }
         pendingPlayers.clear();
         activePlayers.clear();
+        fakeBodies.clear();
         forceMentalBreakdownDeaths.clear();
     }
 
@@ -615,6 +625,7 @@ public final class DepressionTraitService {
             body.setYaw(player.getHeadYaw());
             body.setHeadYaw(player.getHeadYaw());
             world.spawnEntity(body);
+            fakeBodies.track(uuid, world.getRegistryKey().getValue(), body.getUuid());
         }
         PendingState state = new PendingState(
                 uuid,

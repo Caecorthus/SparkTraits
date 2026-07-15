@@ -2,7 +2,10 @@ package dev.caecorthus.sparktraits.api;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
+import dev.doctor4t.wathe.entity.PlayerBodyEntity;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -49,5 +52,14 @@ public final class SparkTraitsApi {
                 && TraitWorldComponent.KEY.maybeGet(world)
                         .map(TraitWorldComponent::isFinalMomentActive)
                         .orElse(false);
+    }
+
+    /**
+     * Returns whether the entity is an exact fake-death body owned by SparkTraits runtime state.
+     * 返回该实体是否为 SparkTraits 运行时状态精确记录的假死尸体。
+     */
+    public static boolean isFakeDeathBody(Entity entity) {
+        return entity instanceof PlayerBodyEntity body
+                && (LastStandService.isFakeDeathBody(body) || DepressionTraitService.isFakeDeathBody(body));
     }
 }

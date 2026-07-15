@@ -390,6 +390,18 @@ public final class LastStandService {
         return pendingPlayers.containsKey(uuid);
     }
 
+    public static boolean isFakeDeathBody(PlayerBodyEntity body) {
+        if (body == null) {
+            return false;
+        }
+        PendingState state = pendingPlayers.get(body.getPlayerUuid());
+        return state != null && matchesPendingBodyUuid(body.getUuid(), state.bodyUuid());
+    }
+
+    static boolean matchesPendingBodyUuid(UUID bodyUuid, @Nullable UUID pendingBodyUuid) {
+        return pendingBodyUuid != null && pendingBodyUuid.equals(bodyUuid);
+    }
+
     public static boolean hasTriggeredThisRound(UUID uuid) {
         return consumedPlayers.contains(uuid);
     }
