@@ -28,7 +28,7 @@ public final class CivilianTraitService {
     public static final int FOCUS_COLOR = 0x5DADEC;
     public static final int SOCIAL_RADIUS = 8;
     public static final int MONEY_TREE_REWARD = 5;
-    public static final int MONEY_TREE_INTERVAL_TICKS = 20 * 30;
+    public static final int MONEY_TREE_INTERVAL_TICKS = 20 * 10;
     private static final double SOCIAL_RADIUS_SQUARED = SOCIAL_RADIUS * SOCIAL_RADIUS;
 
     private CivilianTraitService() {

@@ -40,7 +40,7 @@
   "trait.sparktraits.introverted.name": "Introverted",
   "trait.sparktraits.introverted.description": "Your sanity does not drain while at most one other living player is within eight blocks.",
   "trait.sparktraits.money_tree.name": "Money Tree",
-  "trait.sparktraits.money_tree.description": "If your role uses money, gain 5 money every 30 seconds.",
+  "trait.sparktraits.money_tree.description": "If your role uses money, gain 5 money every 10 seconds.",
   "trait.sparktraits.focus.name": "Focus",
   "trait.sparktraits.focus.description": "After hitting with a revolver, ordinary civilian roles keep their sanity.",
   "trait.sparktraits.depression.name": "Depression",
