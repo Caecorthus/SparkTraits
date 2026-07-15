@@ -24,6 +24,7 @@
     "RoundTextRendererMixin",
     "SoundManagerAccessor",
     "SoundSystemAccessor",
+    "SpiritSleuthLivingEntityRendererMixin",
     "TrimmedBedBluePoisonParticleMixin",
     "TraitInventoryScreenMixin",
     "TraitRoleNameRendererMixin",
