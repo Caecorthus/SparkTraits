@@ -9,6 +9,7 @@ services/components. Use `dev.caecorthus.sparktraits.api.SparkTraitsApi`:
 SparkTraitsApi.hasActiveTrait(player, traitId);
 SparkTraitsApi.hasLastStandTriggeredThisRound(serverWorld, playerUuid);
 SparkTraitsApi.isFinalMomentActive(world);
+SparkTraitsApi.isInstinctHidden(viewer, target);
 ```
 
 These methods are static and null-safe. Optional integrations may continue to
@@ -24,6 +25,10 @@ Known replacements:
 - SparkWitch Last Stand and final-moment probes should call
   `hasLastStandTriggeredThisRound` and `isFinalMomentActive` instead of
   reflecting `LastStandService` or `TraitWorldComponent`.
+- SparkWitch custom instinct modes should call `isInstinctHidden` instead of
+  reading SparkTraits components, Going Dark rules, or spirit-projection state.
+  The query is safe to load on a dedicated server and preserves Wathe's Final
+  Moment override across Going Dark, Last Stand, and spirit projection.
 
 No existing trait id, component id, API trait definition, or lifecycle event
 was renamed by this migration.
@@ -36,9 +41,11 @@ The existing third player-component sync field is now recipient-filtered:
 - the owner receives `revealedTraits`;
 - spectator/creative recipients receive `activeTraits`.
 
-Packet field order is unchanged. Downstream client code must not rely on seeing
-another regular player's revealed trait ids. Public boolean flags used for
-rendering and instinct behavior remain available.
+Existing packet fields keep their order. Field 18 appends a non-persistent,
+public spirit-projection instinct flag derived on the server; NoellesRoles'
+owner-only body coordinates are never relayed. Downstream client code must not
+rely on seeing another regular player's revealed trait ids. Public boolean flags
+used for rendering and instinct behavior remain available.
 
 ## NoellesRoles Version Contract
 

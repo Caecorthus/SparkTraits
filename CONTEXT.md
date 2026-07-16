@@ -108,11 +108,18 @@ extension and adds one armour layer to the current Psycho Mode armour value.
   fallbacks are compatibility contracts.
 - `SparkTraitsApi.isFakeDeathBody(Entity)` is the supported exact-body query for
   downstream integrations; internal pending maps and trackers are not API.
+- `SparkTraitsApi.isInstinctHidden(viewer, target)` is the common-side,
+  null-safe query for SparkTraits-owned instinct suppression. Wathe's Final
+  Moment highlight overrides every suppression exposed by this query;
+  downstream mods must not inspect synced trait flags or NoellesRoles
+  projection state directly.
 - Replay records only match-defining runtime transitions: successful Last Stand,
   Final Moment start, and actual conversion to `wathe:loose_end`. Startup
   effective-alignment flips and compensation assignments are excluded.
 - `sparktraits:arrogant_asf` is retired. Component state filters that exact id,
   while player sync field 17 remains a written-false/read-and-discard tombstone.
+  Field 18 is the non-persistent public spirit-projection instinct flag derived
+  server-side from NoellesRoles; its owner-only body coordinates remain private.
 
 ## Integrations
 

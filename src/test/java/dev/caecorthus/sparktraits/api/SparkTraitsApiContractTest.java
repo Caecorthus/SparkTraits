@@ -13,6 +13,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SparkTraitsApiContractTest {
@@ -22,6 +23,7 @@ class SparkTraitsApiContractTest {
         assertPublicStaticBooleanMethod("hasLastStandTriggeredThisRound", ServerWorld.class, UUID.class);
         assertPublicStaticBooleanMethod("isFinalMomentActive", World.class);
         assertPublicStaticBooleanMethod("isFakeDeathBody", Entity.class);
+        assertPublicStaticBooleanMethod("isInstinctHidden", PlayerEntity.class, PlayerEntity.class);
     }
 
     @Test
@@ -30,14 +32,23 @@ class SparkTraitsApiContractTest {
         assertFalse(SparkTraitsApi.hasLastStandTriggeredThisRound(null, null));
         assertFalse(SparkTraitsApi.isFinalMomentActive(null));
         assertFalse(SparkTraitsApi.isFakeDeathBody(null));
+        assertFalse(SparkTraitsApi.isInstinctHidden(null, null));
     }
 
-    private static void assertPublicStaticBooleanMethod(String name, Class<?>... parameterTypes)
-            throws NoSuchMethodException {
-        Method method = SparkTraitsApi.class.getDeclaredMethod(name, parameterTypes);
+    private static void assertPublicStaticBooleanMethod(String name, Class<?>... parameterTypes) {
+        Method method = findMethod(name, parameterTypes);
 
+        assertNotNull(method);
         assertEquals(boolean.class, method.getReturnType());
         assertTrue(Modifier.isPublic(method.getModifiers()));
         assertTrue(Modifier.isStatic(method.getModifiers()));
+    }
+
+    private static Method findMethod(String name, Class<?>... parameterTypes) {
+        try {
+            return SparkTraitsApi.class.getDeclaredMethod(name, parameterTypes);
+        } catch (NoSuchMethodException ignored) {
+            return null;
+        }
     }
 }

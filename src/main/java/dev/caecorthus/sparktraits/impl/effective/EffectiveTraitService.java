@@ -166,6 +166,23 @@ public final class EffectiveTraitService {
         return lastStandPending || killerInstinctHidden || spiritProjecting;
     }
 
+    /** Final Moment overrides every SparkTraits-owned instinct suppression, matching Wathe's highlight priority.
+     *  终局时刻覆盖所有 SparkTraits 本能屏蔽，与 Wathe 的高亮优先级保持一致。 */
+    public static boolean shouldHideFromInstinct(
+            boolean finalMomentActive,
+            boolean lastStandPending,
+            boolean killerInstinctHidden,
+            boolean spiritProjecting,
+            boolean goingDarkSuppressed
+    ) {
+        return !finalMomentActive
+                && (goingDarkSuppressed || shouldHideFromKillerInstinct(
+                        lastStandPending,
+                        killerInstinctHidden,
+                        spiritProjecting
+                ));
+    }
+
     /** Keeps Phantom invisibility from leaking through SparkTraits instinct overrides.
      *  防止幽灵隐身被 SparkTraits 的本能透视覆盖逻辑暴露。 */
     public static boolean shouldSkipInvisibleTargetFromEffectiveInstinct(
@@ -209,7 +226,17 @@ public final class EffectiveTraitService {
     }
 
     public static boolean isSpiritProjecting(PlayerEntity player) {
-        return player != null && SpiritPlayerComponent.KEY.get(player).isProjecting();
+        if (player == null) {
+            return false;
+        }
+        if (player.getWorld().isClient) {
+            return TraitPlayerComponent.KEY.maybeGet(player)
+                    .map(TraitPlayerComponent::isSpiritProjectionInstinctHidden)
+                    .orElse(false);
+        }
+        return SpiritPlayerComponent.KEY.maybeGet(player)
+                .map(SpiritPlayerComponent::isProjecting)
+                .orElse(false);
     }
 
     public static boolean shouldConscienceInstinctHighlightTarget(

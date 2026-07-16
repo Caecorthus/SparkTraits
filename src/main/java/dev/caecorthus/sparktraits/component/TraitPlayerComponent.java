@@ -28,6 +28,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.agmas.noellesroles.Noellesroles;
+import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
 import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
@@ -62,6 +63,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Public blackout-only flag used by Going Dark's instinct suppression.
     // 仅供隐蔽行动在关灯期间压制指定本能的公开状态标记。
     private boolean goingDarkInstinctHidden;
+    // Public derived flag relays projection without exposing NoellesRoles' owner-only body coordinates.
+    // 公开派生标记仅转发出窍状态，不暴露 NoellesRoles 只同步给本人的本体坐标。
+    private boolean spiritProjectionInstinctHidden;
     // Public sound-only flag used to mute remote Cautious players without revealing trait text.
     // 仅用于声音静音的公开标记，让远端小心翼翼玩家静音但不暴露天赋文本。
     private boolean cautiousSoundSuppressed;
@@ -124,6 +128,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     public boolean isGoingDarkInstinctHidden() {
         return goingDarkInstinctHidden;
+    }
+
+    public boolean isSpiritProjectionInstinctHidden() {
+        return spiritProjectionInstinctHidden;
     }
 
     public boolean isConscienceInstinctVisible() {
@@ -458,6 +466,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     @Override
     public void serverTick() {
+        syncSpiritProjectionInstinctState();
         if (consciencePoisonTicks <= 0) {
             return;
         }
@@ -483,6 +492,16 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             killer = serverPoisoner;
         }
         GameFunctions.killPlayer(serverPlayer, true, killer, GameConstants.DeathReasons.POISON);
+    }
+
+    private void syncSpiritProjectionInstinctState() {
+        boolean projecting = SpiritPlayerComponent.KEY.maybeGet(player)
+                .map(SpiritPlayerComponent::isProjecting)
+                .orElse(false);
+        if (spiritProjectionInstinctHidden != projecting) {
+            spiritProjectionInstinctHidden = projecting;
+            sync();
+        }
     }
 
     @Override
@@ -514,6 +533,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         // Field 17 is a protocol tombstone: keep writing false for older clients.
         // 第 17 个字段是协议墓碑：继续写入 false 以兼容旧客户端。
         buf.writeBoolean(false);
+        buf.writeBoolean(spiritProjectionInstinctHidden);
     }
 
     @Override
@@ -546,6 +566,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         if (buf.readableBytes() > 0) {
             buf.readBoolean();
         }
+        spiritProjectionInstinctHidden = buf.readableBytes() > 0 && buf.readBoolean();
         if (wasPigActive != isPigActive()) {
             player.calculateDimensions();
         }
@@ -583,6 +604,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         impostorInstinctVisible = false;
         lastStandPending = false;
         goingDarkInstinctHidden = false;
+        spiritProjectionInstinctHidden = false;
         cautiousSoundSuppressed = false;
         consciencePoisonTicks = -1;
         consciencePoisoner = null;
