@@ -4,8 +4,8 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
 /**
- * Compatibility rules for Wathe knife left-click knockback.
- * Wathe 刀左键击退的兼容规则。
+ * Compatibility rules for knife-like left-click knockback.
+ * 匕首类武器左键击退的兼容规则。
  */
 public final class KnifeKnockbackService {
     public static final double WATHE_KNIFE_ATTACK_KNOCKBACK = 0.5d;
@@ -15,7 +15,7 @@ public final class KnifeKnockbackService {
 
     public static boolean shouldApplyCooldownBypassKnockback(
             boolean damageSucceeded,
-            boolean attackerHoldingKnife,
+            boolean attackerHoldingThrustWeapon,
             boolean attackerPlayingAndAlive,
             boolean targetPlayingAndAlive,
             boolean targetAliveAndSurvival,
@@ -25,7 +25,7 @@ public final class KnifeKnockbackService {
             float targetLastDamageTaken
     ) {
         return !damageSucceeded
-                && attackerHoldingKnife
+                && attackerHoldingThrustWeapon
                 && attackerPlayingAndAlive
                 && targetPlayingAndAlive
                 && targetAliveAndSurvival

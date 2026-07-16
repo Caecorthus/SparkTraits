@@ -10,13 +10,14 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
+import org.agmas.noellesroles.ModItems;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
- * Keeps Wathe's documented no-cooldown knife shove working through vanilla hurt cooldown.
- * 让 Wathe 文档中的“刀左键无冷却击退”穿过原版受伤无敌帧继续生效。
+ * Keeps Wathe/NoellesRoles thrust-weapon shove working through vanilla hurt cooldown.
+ * 让 Wathe/NoellesRoles 匕首类武器的左键击退穿过原版受伤无敌帧继续生效。
  */
 @Mixin(PlayerEntity.class)
 public abstract class KnifeCooldownKnockbackMixin {
@@ -48,7 +49,8 @@ public abstract class KnifeCooldownKnockbackMixin {
         LivingEntityDamageCooldownAccessor cooldown = (LivingEntityDamageCooldownAccessor) target;
         return KnifeKnockbackService.shouldApplyCooldownBypassKnockback(
                 damageSucceeded,
-                attacker.getMainHandStack().isOf(WatheItems.KNIFE),
+                attacker.getMainHandStack().isOf(WatheItems.KNIFE)
+                        || attacker.getMainHandStack().isOf(ModItems.POISON_NEEDLE),
                 GameFunctions.isPlayerPlayingAndAlive(attacker) && GameFunctions.isPlayerAliveAndSurvival(attacker),
                 GameFunctions.isPlayerPlayingAndAlive(target),
                 GameFunctions.isPlayerAliveAndSurvival(target),
