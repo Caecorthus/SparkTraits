@@ -1,8 +1,8 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.impl.traits.killer.KnifeKnockbackService;
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerWeaponTags;
 import dev.doctor4t.wathe.game.GameFunctions;
-import dev.doctor4t.wathe.index.WatheItems;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
@@ -10,14 +10,13 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
-import org.agmas.noellesroles.ModItems;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
- * Keeps Wathe/NoellesRoles thrust-weapon shove working through vanilla hurt cooldown.
- * 让 Wathe/NoellesRoles 匕首类武器的左键击退穿过原版受伤无敌帧继续生效。
+ * Keeps tagged Thrust-weapon shove working through vanilla hurt cooldown.
+ * 让已标记的突刺武器左键击退穿过原版受伤无敌帧继续生效。
  */
 @Mixin(PlayerEntity.class)
 public abstract class KnifeCooldownKnockbackMixin {
@@ -49,8 +48,7 @@ public abstract class KnifeCooldownKnockbackMixin {
         LivingEntityDamageCooldownAccessor cooldown = (LivingEntityDamageCooldownAccessor) target;
         return KnifeKnockbackService.shouldApplyCooldownBypassKnockback(
                 damageSucceeded,
-                attacker.getMainHandStack().isOf(WatheItems.KNIFE)
-                        || attacker.getMainHandStack().isOf(ModItems.POISON_NEEDLE),
+                KillerWeaponTags.isThrustWeapon(attacker.getMainHandStack()),
                 GameFunctions.isPlayerPlayingAndAlive(attacker) && GameFunctions.isPlayerAliveAndSurvival(attacker),
                 GameFunctions.isPlayerPlayingAndAlive(target),
                 GameFunctions.isPlayerAliveAndSurvival(target),

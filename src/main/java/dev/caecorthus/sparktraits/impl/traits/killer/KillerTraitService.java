@@ -22,7 +22,6 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.ModEffects;
-import org.agmas.noellesroles.ModItems;
 import org.agmas.noellesroles.professor.IronManPlayerComponent;
 import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
 import org.jetbrains.annotations.Nullable;
@@ -88,8 +87,8 @@ public final class KillerTraitService {
         return hasPsychoModeEntry && canSelectKillerTrait(role, selectedTraits);
     }
 
-    public static boolean canSelectThrust(Role role, Collection<Identifier> selectedTraits, boolean hasThrustEntry) {
-        return hasThrustEntry && canSelectKillerTrait(role, selectedTraits);
+    public static boolean canSelectThrust(Role role, Collection<Identifier> selectedTraits, boolean hasThrustWeaponAccess) {
+        return hasThrustWeaponAccess && canSelectKillerTrait(role, selectedTraits);
     }
 
     static boolean canUseThrust(boolean activeThrust, boolean eligibleKiller, boolean finalMomentLooseEnd) {
@@ -100,8 +99,16 @@ public final class KillerTraitService {
         return hasShopEntry(player, List.of("psycho_mode"), List.of(WatheItems.PSYCHO_MODE));
     }
 
-    public static boolean hasThrustShopEntry(PlayerEntity player) {
-        return hasShopEntry(player, List.of("knife", "poison_needle"), List.of(WatheItems.KNIFE, ModItems.POISON_NEEDLE));
+    public static boolean hasThrustWeaponAccess(PlayerEntity player) {
+        if (player == null) {
+            return false;
+        }
+        for (ShopEntry entry : ShopUtils.getShopEntriesForPlayer(player)) {
+            if (KillerWeaponTags.isThrustWeapon(entry.stack())) {
+                return true;
+            }
+        }
+        return player.getInventory().contains(KillerWeaponTags::isThrustWeapon);
     }
 
     private static boolean hasShopEntry(PlayerEntity player, Collection<String> ids, Collection<Item> items) {
@@ -384,8 +391,7 @@ public final class KillerTraitService {
     }
 
     private static boolean isHoldingThrustWeapon(PlayerEntity player) {
-        return player.getMainHandStack().isOf(WatheItems.KNIFE)
-                || player.getMainHandStack().isOf(ModItems.POISON_NEEDLE);
+        return KillerWeaponTags.isThrustWeapon(player.getMainHandStack());
     }
 
     private static boolean hasEligibleTrait(PlayerEntity player, Identifier traitId) {
