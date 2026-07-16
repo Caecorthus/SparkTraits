@@ -84,8 +84,9 @@ blocks of the victim, regardless of faction, up to 10 players. Neither the
 victim nor the killer counts.
 
 **Bloodthirsty stack / 嗜血层数**:
-Each confirmed owner kill reduces the knife cooldown by 5 percent per counted
-stack. Counted stacks remain capped at `floor(round player count / 3)`.
+Each confirmed owner kill reduces cooldowns for items in
+`sparktraits:bloodthirsty_weapons` by 5 percent per counted stack. Counted
+stacks remain capped at `floor(round player count / 3)`.
 
 **Plunderer share / 掠夺者份额**:
 On a confirmed owner kill, Plunderer transfers `floor(victim balance / 3)` to
@@ -106,6 +107,9 @@ extension and adds one armour layer to the current Psycho Mode armour value.
   their own owner-visible and revealed state.
 - Packet field order, NBT keys, kill/reset/finalize ordering, and optional bridge
   fallbacks are compatibility contracts.
+- `sparktraits:bloodthirsty_weapons` and `sparktraits:thrust_weapons` are
+  additive item-tag seams. Contributors append their weapons and must not
+  replace the base tags.
 - `SparkTraitsApi.isFakeDeathBody(Entity)` is the supported exact-body query for
   downstream integrations; internal pending maps and trackers are not API.
 - `SparkTraitsApi.isInstinctHidden(viewer, target)` is the common-side,
