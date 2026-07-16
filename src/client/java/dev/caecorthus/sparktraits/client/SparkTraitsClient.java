@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.client;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.client.audio.DepressionRageLoopController;
 import dev.caecorthus.sparktraits.client.hud.DepressionHud;
 import dev.caecorthus.sparktraits.client.net.version.SparkTraitsClientVersionHandshake;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
@@ -28,6 +29,7 @@ public class SparkTraitsClient implements ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SparkTraitsServerConnection.reset());
         registerFinalMomentHighlight();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            DepressionRageLoopController.tick(client);
             if (SparkTraitsServerConnection.isConfirmedServer()) {
                 DepressionHud.tick();
             }

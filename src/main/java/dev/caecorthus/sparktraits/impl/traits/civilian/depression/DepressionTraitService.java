@@ -73,7 +73,6 @@ public final class DepressionTraitService {
     public static final double MAX_SUICIDE_TRIGGER_CHANCE = 30.0;
     public static final int RANDOM_CAP_STEP_PLAYERS = 8;
     public static final int JESTER_MOMENT_PSYCHO_ARMOUR = 2;
-    public static final int RAGE_LOOP_INTERVAL_TICKS = 213;
     public static final int CHASE_LOOP_INTERVAL_TICKS = 1121;
     public static final int DEPRESSION_PSYCHO_SPEED_DURATION_TICKS = Integer.MAX_VALUE;
     public static final int DEPRESSION_PSYCHO_SPEED_AMPLIFIER = 1;
@@ -367,14 +366,6 @@ public final class DepressionTraitService {
             return 0;
         }
         return Math.max(0, Math.min(currentArmour, maxArmour));
-    }
-
-    public static boolean shouldPlayRageLoop(int ticksUntilNextLoop) {
-        return ticksUntilNextLoop <= 0;
-    }
-
-    public static int nextRageLoopTicks(int ticksUntilNextLoop) {
-        return ticksUntilNextLoop <= 0 ? RAGE_LOOP_INTERVAL_TICKS : ticksUntilNextLoop - 1;
     }
 
     public static boolean shouldPlayChaseLoop(int ticksUntilNextLoop) {
@@ -702,7 +693,6 @@ public final class DepressionTraitService {
                 state.attackerUuid(),
                 inventory,
                 Math.max(0, state.initialArmour()),
-                RAGE_LOOP_INTERVAL_TICKS,
                 CHASE_LOOP_INTERVAL_TICKS,
                 prePsychoSpeed
         );
@@ -710,7 +700,6 @@ public final class DepressionTraitService {
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(true, state.attackerUuid());
         ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
         playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE);
-        playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP);
         activePlayers.put(player.getUuid(), maintainPsycho(
                 player,
                 attacker,
@@ -741,7 +730,7 @@ public final class DepressionTraitService {
         if (attacker != null) {
             attacker.sendMessage(ATTACKER_ACTIONBAR, true);
         }
-        ActiveState updatedState = tickPsychoAudio(player, attacker, state);
+        ActiveState updatedState = tickChaseAudio(player, attacker, state);
         return updatedState;
     }
 
@@ -753,7 +742,6 @@ public final class DepressionTraitService {
         ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
         clearActivePsychoState(player, state);
         try {
-            stopRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP_ID, SparkTraitsSounds.DEPRESSION_RAGE_LOOP);
             stopPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE_ID);
             playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);
             PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
@@ -891,19 +879,11 @@ public final class DepressionTraitService {
         }
     }
 
-    private static ActiveState tickPsychoAudio(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state) {
-        // English: Rage loop is positional, while blind-rage chase stays owned by the two chase participants.
-        // 中文：rage_loop 是位置范围音效；blind-rage chase 仍只属于追逐双方。
-        if (shouldPlayRageLoop(state.rageLoopTicks())) {
-            playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_LOOP);
-        }
+    private static ActiveState tickChaseAudio(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state) {
         if (shouldPlayChaseLoop(state.chaseLoopTicks())) {
             playPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE);
         }
-        return state.withLoopTicks(
-                nextRageLoopTicks(state.rageLoopTicks()),
-                nextChaseLoopTicks(state.chaseLoopTicks())
-        );
+        return state.withChaseLoopTicks(nextChaseLoopTicks(state.chaseLoopTicks()));
     }
 
     private static void playRangeSound(ServerPlayerEntity source, SoundEvent sound) {
@@ -917,16 +897,6 @@ public final class DepressionTraitService {
                 DEPRESSION_RANGE_SOUND_VOLUME,
                 DEPRESSION_SOUND_PITCH
         );
-    }
-
-    private static void stopRangeSound(ServerPlayerEntity source, Identifier soundId, SoundEvent sound) {
-        double range = sound.getDistanceToTravel(DEPRESSION_RANGE_SOUND_VOLUME);
-        double rangeSquared = range * range;
-        StopSoundS2CPacket packet = new StopSoundS2CPacket(soundId, DEPRESSION_AUDIO_CATEGORY);
-        for (ServerPlayerEntity player : source.getServerWorld().getPlayers(player ->
-                player.squaredDistanceTo(source) <= rangeSquared)) {
-            player.networkHandler.sendPacket(packet);
-        }
     }
 
     private static void stopPairMusicSound(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, Identifier soundId) {
@@ -993,12 +963,11 @@ public final class DepressionTraitService {
             UUID attackerUuid,
             InventorySnapshot inventory,
             int maxArmour,
-            int rageLoopTicks,
             int chaseLoopTicks,
             @Nullable StatusEffectInstance prePsychoSpeed
     ) {
-        ActiveState withLoopTicks(int rageTicks, int chaseTicks) {
-            return new ActiveState(playerUuid, attackerUuid, inventory, maxArmour, rageTicks, chaseTicks, prePsychoSpeed);
+        ActiveState withChaseLoopTicks(int chaseTicks) {
+            return new ActiveState(playerUuid, attackerUuid, inventory, maxArmour, chaseTicks, prePsychoSpeed);
         }
     }
 
