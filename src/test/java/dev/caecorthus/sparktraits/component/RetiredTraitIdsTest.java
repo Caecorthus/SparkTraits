@@ -25,16 +25,20 @@ class RetiredTraitIdsTest {
         Identifier otherTrait = Identifier.of("sparktraits", "depression");
         Identifier samePathOtherNamespace = Identifier.of("other", "arrogant_asf");
         Identifier similarSparkTraitsId = Identifier.of("sparktraits", "arrogant_asf_legacy");
+        Identifier otherWraith = Identifier.of("other", "wraith");
+        Identifier legacyWraith = Identifier.of("sparktraits", "wraith_legacy");
 
         assertEquals(ARROGANT_ASF, retiredId.get(null));
         assertEquals(
-                List.of(otherTrait, samePathOtherNamespace, similarSparkTraitsId),
+                List.of(otherTrait, samePathOtherNamespace, similarSparkTraitsId, otherWraith, legacyWraith),
                 filter.invoke(null, List.of(
                         otherTrait,
                         ARROGANT_ASF,
                         WRAITH,
                         samePathOtherNamespace,
-                        similarSparkTraitsId
+                        similarSparkTraitsId,
+                        otherWraith,
+                        legacyWraith
                 ))
         );
     }

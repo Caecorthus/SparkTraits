@@ -24,6 +24,8 @@ import net.minecraft.world.World;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * Stable, null-safe queries for optional downstream integrations.
@@ -54,11 +56,12 @@ public final class SparkTraitsApi {
         if (player == null) {
             return snapshot;
         }
-        TraitPlayerComponent.KEY.maybeGet(player).ifPresent(component -> {
-            snapshot.put("ActiveTraits", identifiers(component.getActiveTraitIds()));
-            snapshot.put("RevealedTraits", identifiers(component.getRevealedTraitIds()));
-        });
-        return snapshot;
+        return TraitPlayerComponent.KEY.maybeGet(player)
+                .map(component -> captureWraithTraitSnapshot(
+                        component.getActiveTraitIds(),
+                        component.getRevealedTraitIds()
+                ))
+                .orElse(snapshot);
     }
 
     /**
@@ -69,13 +72,14 @@ public final class SparkTraitsApi {
         if (player == null || snapshot == null) {
             return;
         }
-        TraitPlayerComponent.KEY.maybeGet(player).ifPresent(component -> {
-            LinkedHashSet<Identifier> active = readIdentifiers(snapshot, "ActiveTraits");
-            active.add(CautiousTrait.ID);
-            LinkedHashSet<Identifier> revealed = readIdentifiers(snapshot, "RevealedTraits");
-            revealed.add(CautiousTrait.ID);
-            component.restoreActiveTraitsForRuntime(active, revealed, TraitAssignmentReason.INTERNAL);
-        });
+        TraitPlayerComponent.KEY.maybeGet(player).ifPresent(component -> restoreWraithTraitSnapshot(
+                snapshot,
+                (active, revealed) -> component.restoreActiveTraitsForRuntime(
+                        active,
+                        revealed,
+                        TraitAssignmentReason.INTERNAL
+                )
+        ));
     }
 
     /**
@@ -86,8 +90,9 @@ public final class SparkTraitsApi {
         if (player == null) {
             return;
         }
-        TraitPlayerComponent.KEY.maybeGet(player).ifPresent(component -> component.clearActiveTraits(
-                gameEnd ? TraitRemovalReason.GAME_END : TraitRemovalReason.DEATH
+        TraitPlayerComponent.KEY.maybeGet(player).ifPresent(component -> clearWraithTraits(
+                gameEnd,
+                component::clearActiveTraits
         ));
     }
 
@@ -176,6 +181,34 @@ public final class SparkTraitsApi {
             values.add(NbtString.of(identifier.toString()));
         }
         return values;
+    }
+
+    private static NbtCompound captureWraithTraitSnapshot(
+            Collection<Identifier> active,
+            Collection<Identifier> revealed
+    ) {
+        NbtCompound snapshot = new NbtCompound();
+        snapshot.put("ActiveTraits", identifiers(active));
+        snapshot.put("RevealedTraits", identifiers(revealed));
+        return snapshot;
+    }
+
+    private static void restoreWraithTraitSnapshot(
+            NbtCompound snapshot,
+            BiConsumer<Collection<Identifier>, Collection<Identifier>> restore
+    ) {
+        LinkedHashSet<Identifier> active = readIdentifiers(snapshot, "ActiveTraits");
+        active.add(CautiousTrait.ID);
+        LinkedHashSet<Identifier> revealed = readIdentifiers(snapshot, "RevealedTraits");
+        revealed.add(CautiousTrait.ID);
+        restore.accept(active, revealed);
+    }
+
+    private static void clearWraithTraits(
+            boolean gameEnd,
+            Consumer<TraitRemovalReason> clear
+    ) {
+        clear.accept(gameEnd ? TraitRemovalReason.GAME_END : TraitRemovalReason.DEATH);
     }
 
     private static LinkedHashSet<Identifier> readIdentifiers(NbtCompound snapshot, String key) {
