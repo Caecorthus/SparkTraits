@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,19 +20,34 @@ class WraithClientCompatibilitySourceTest {
         String roundText = read("mixin/RoundTextRendererMixin.java");
         String combined = pig + depression + roundText;
 
-        assertTrue(pig.indexOf("SparkTraitsApi.isWraithActive(viewer)")
-                < pig.indexOf("PigTraitService.isPig(player)"));
-        assertTrue(pig.contains("viewer.isSpectator()"));
-        assertTrue(pig.contains("SparkTraitsApi.isWraithActive(player)"));
+        assertAppearsBefore(
+                pig,
+                "SparkTraitsApi.isWraithActive(viewer)",
+                "PigTraitService.isPig(player)"
+        );
+        assertTrue(Pattern.compile(
+                "boolean\\s+spectatorReveal\\s*=\\s*viewer\\s*!=\\s*null"
+                        + "\\s*&&\\s*viewer\\.isSpectator\\(\\)"
+                        + "\\s*&&\\s*SparkTraitsApi\\.isWraithActive\\(player\\)\\s*;"
+        ).matcher(pig).find());
 
-        assertTrue(depression.indexOf("SparkTraitsApi.isWraithActive(player)")
-                < depression.indexOf("DepressionTraitService.depressionScreenEffectStrength"));
+        assertAppearsBefore(
+                depression,
+                "SparkTraitsApi.isWraithActive(player)",
+                "DepressionTraitService.depressionScreenEffectStrength"
+        );
 
         assertTrue(roundText.contains("Identifier.of(\"sparkwitch\", \"wraith\")"));
-        assertTrue(roundText.indexOf("if (transitionalWraith)")
-                < roundText.indexOf("EffectiveTraitService.hasConscience(player)"));
-        assertTrue(roundText.indexOf("if (transitionalWraith)")
-                < roundText.indexOf("EffectiveTraitService.hasImpostor(player)"));
+        assertAppearsBefore(
+                roundText,
+                "if (transitionalWraith)",
+                "EffectiveTraitService.hasConscience(player)"
+        );
+        assertAppearsBefore(
+                roundText,
+                "if (transitionalWraith)",
+                "EffectiveTraitService.hasImpostor(player)"
+        );
 
         assertFalse(combined.contains("dev.caecorthus.sparkwitch"));
         assertFalse(combined.contains("impl.traits.global.wraith"));
@@ -40,5 +56,13 @@ class WraithClientCompatibilitySourceTest {
 
     private static String read(String relativePath) throws IOException {
         return Files.readString(CLIENT.resolve(relativePath));
+    }
+
+    private static void assertAppearsBefore(String source, String earlier, String later) {
+        int earlierIndex = source.indexOf(earlier);
+        int laterIndex = source.indexOf(later);
+        assertTrue(earlierIndex >= 0, () -> "Missing source token: " + earlier);
+        assertTrue(laterIndex >= 0, () -> "Missing source token: " + later);
+        assertTrue(earlierIndex < laterIndex, () -> earlier + " must precede " + later);
     }
 }
