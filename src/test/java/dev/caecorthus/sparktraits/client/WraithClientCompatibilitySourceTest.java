@@ -25,6 +25,7 @@ class WraithClientCompatibilitySourceTest {
                 "SparkTraitsApi.isWraithActive(viewer)",
                 "PigTraitService.isPig(player)"
         );
+        assertAppearsBefore(pig, "&& !wraithViewer", "PigTraitService.isPig(player)");
         assertTrue(Pattern.compile(
                 "boolean\\s+spectatorReveal\\s*=\\s*viewer\\s*!=\\s*null"
                         + "\\s*&&\\s*viewer\\.isSpectator\\(\\)"
