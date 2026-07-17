@@ -1,20 +1,28 @@
 package dev.caecorthus.sparktraits.api;
 
+import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.GoingDarkRules;
+import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtString;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.UUID;
 
 /**
@@ -35,6 +43,60 @@ public final class SparkTraitsApi {
                 && TraitPlayerComponent.KEY.maybeGet(player)
                         .map(component -> component.hasActiveTrait(traitId))
                         .orElse(false);
+    }
+
+    /**
+     * Captures Wraith-preserved trait state as an opaque, ordered NBT payload for SparkWitch.
+     * 将冤魂保留的天赋状态保存为供 SparkWitch 使用的不透明有序 NBT 载荷。
+     */
+    public static NbtCompound captureWraithTraitSnapshot(PlayerEntity player) {
+        NbtCompound snapshot = new NbtCompound();
+        if (player == null) {
+            return snapshot;
+        }
+        TraitPlayerComponent.KEY.maybeGet(player).ifPresent(component -> {
+            snapshot.put("ActiveTraits", identifiers(component.getActiveTraitIds()));
+            snapshot.put("RevealedTraits", identifiers(component.getRevealedTraitIds()));
+        });
+        return snapshot;
+    }
+
+    /**
+     * Restores the opaque Wraith trait snapshot and appends owner-visible Cautious beyond normal slots.
+     * 恢复不透明冤魂天赋快照，并在普通槽位上限之外追加本人可见的小心翼翼。
+     */
+    public static void restoreWraithTraitSnapshot(PlayerEntity player, NbtCompound snapshot) {
+        if (player == null || snapshot == null) {
+            return;
+        }
+        TraitPlayerComponent.KEY.maybeGet(player).ifPresent(component -> {
+            LinkedHashSet<Identifier> active = readIdentifiers(snapshot, "ActiveTraits");
+            active.add(CautiousTrait.ID);
+            LinkedHashSet<Identifier> revealed = readIdentifiers(snapshot, "RevealedTraits");
+            revealed.add(CautiousTrait.ID);
+            component.restoreActiveTraitsForRuntime(active, revealed, TraitAssignmentReason.INTERNAL);
+        });
+    }
+
+    /**
+     * Clears Wraith-preserved traits with the lifecycle reason that downstream role ownership selects.
+     * 使用下游身份所有者选择的生命周期原因清除冤魂保留天赋。
+     */
+    public static void clearWraithTraits(PlayerEntity player, boolean gameEnd) {
+        if (player == null) {
+            return;
+        }
+        TraitPlayerComponent.KEY.maybeGet(player).ifPresent(component -> component.clearActiveTraits(
+                gameEnd ? TraitRemovalReason.GAME_END : TraitRemovalReason.DEATH
+        ));
+    }
+
+    /**
+     * Delegates Wraith activity to its SparkWitch owner without creating a mandatory dependency.
+     * 在不引入强制依赖的前提下，将冤魂活动状态委托给其 SparkWitch 所有者。
+     */
+    public static boolean isWraithActive(PlayerEntity player) {
+        return SparkWitchWraithBridge.isWraithActive(player);
     }
 
     /**
@@ -106,5 +168,30 @@ public final class SparkTraitsApi {
                 spiritProjecting,
                 goingDarkSuppressed
         );
+    }
+
+    private static NbtList identifiers(Collection<Identifier> identifiers) {
+        NbtList values = new NbtList();
+        for (Identifier identifier : identifiers) {
+            values.add(NbtString.of(identifier.toString()));
+        }
+        return values;
+    }
+
+    private static LinkedHashSet<Identifier> readIdentifiers(NbtCompound snapshot, String key) {
+        LinkedHashSet<Identifier> identifiers = new LinkedHashSet<>();
+        NbtList values = snapshot.getList(key, NbtElement.STRING_TYPE);
+        for (int index = 0; index < values.size(); index++) {
+            Identifier identifier = Identifier.tryParse(values.getString(index));
+            if (identifier != null && !isRetiredTrait(identifier)) {
+                identifiers.add(identifier);
+            }
+        }
+        return identifiers;
+    }
+
+    private static boolean isRetiredTrait(Identifier identifier) {
+        return Identifier.of("sparktraits", "arrogant_asf").equals(identifier)
+                || Identifier.of("sparktraits", "wraith").equals(identifier);
     }
 }

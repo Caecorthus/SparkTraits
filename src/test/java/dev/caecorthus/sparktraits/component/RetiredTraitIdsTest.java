@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class RetiredTraitIdsTest {
     private static final Identifier ARROGANT_ASF = Identifier.of("sparktraits", "arrogant_asf");
+    private static final Identifier WRAITH = Identifier.of("sparktraits", "wraith");
 
     @Test
     void exactLegacyArrogantAsfIdIsFilteredWithoutTouchingOtherIds() throws Exception {
@@ -31,9 +32,19 @@ class RetiredTraitIdsTest {
                 filter.invoke(null, List.of(
                         otherTrait,
                         ARROGANT_ASF,
+                        WRAITH,
                         samePathOtherNamespace,
                         similarSparkTraitsId
                 ))
         );
+    }
+
+    @Test
+    void exactLegacyWraithIdIsRetired() throws Exception {
+        Class<?> migrations = Class.forName("dev.caecorthus.sparktraits.component.RetiredTraitIds");
+        Field retiredId = migrations.getDeclaredField("WRAITH");
+        retiredId.setAccessible(true);
+
+        assertEquals(WRAITH, retiredId.get(null));
     }
 }

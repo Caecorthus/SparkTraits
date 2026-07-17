@@ -10,12 +10,13 @@ import java.util.List;
  *  在组件状态入口过滤精确匹配的旧天赋 id。 */
 final class RetiredTraitIds {
     static final Identifier ARROGANT_ASF = SparkTraits.id("arrogant_asf");
+    static final Identifier WRAITH = Identifier.of("sparktraits", "wraith");
 
     private RetiredTraitIds() {
     }
 
     static boolean isRetired(Identifier id) {
-        return ARROGANT_ASF.equals(id);
+        return ARROGANT_ASF.equals(id) || WRAITH.equals(id);
     }
 
     static List<Identifier> filter(Collection<Identifier> ids) {

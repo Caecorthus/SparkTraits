@@ -332,6 +332,26 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
      * 用已验证的局中运行时套装替换天赋，不套用普通三槽上限。
      */
     public void replaceActiveTraitsForRuntime(Collection<Identifier> traitIds, TraitAssignmentReason reason) {
+        replaceActiveTraitsForRuntime(traitIds, null, reason);
+    }
+
+    /**
+     * Restores a death-time runtime loadout with its exact owner-revealed subset.
+     * 按死亡快照恢复运行时天赋及其精确的本人已揭示子集。
+     */
+    public void restoreActiveTraitsForRuntime(
+            Collection<Identifier> traitIds,
+            Collection<Identifier> revealedTraitIds,
+            TraitAssignmentReason reason
+    ) {
+        replaceActiveTraitsForRuntime(traitIds, revealedTraitIds, reason);
+    }
+
+    private void replaceActiveTraitsForRuntime(
+            Collection<Identifier> traitIds,
+            Collection<Identifier> exactRevealedTraitIds,
+            TraitAssignmentReason reason
+    ) {
         LinkedHashSet<Identifier> normalizedTraits = new LinkedHashSet<>();
         for (Identifier traitId : traitIds) {
             if (!RetiredTraitIds.isRetired(traitId)) {
@@ -359,15 +379,23 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         activeTraits.clear();
         activeTraits.addAll(plan.target());
         revealedTraits.clear();
-        revealedTraits.addAll(plan.retainedRevealed());
-        for (Identifier traitId : plan.missing()) {
-            Trait trait = TraitRegistry.get(traitId);
-            if (trait == null || !trait.hiddenFromOwnerAtStart()) {
-                revealedTraits.add(traitId);
+        if (exactRevealedTraitIds == null) {
+            revealedTraits.addAll(plan.retainedRevealed());
+            for (Identifier traitId : plan.missing()) {
+                Trait trait = TraitRegistry.get(traitId);
+                if (trait == null || !trait.hiddenFromOwnerAtStart()) {
+                    revealedTraits.add(traitId);
+                }
             }
-        }
-        if (activeTraits.contains(LastStandTrait.ID)) {
-            revealedTraits.add(LastStandTrait.ID);
+            if (activeTraits.contains(LastStandTrait.ID)) {
+                revealedTraits.add(LastStandTrait.ID);
+            }
+        } else {
+            for (Identifier traitId : exactRevealedTraitIds) {
+                if (activeTraits.contains(traitId)) {
+                    revealedTraits.add(traitId);
+                }
+            }
         }
 
         if (!activeTraits.contains(PoliceTraits.GOING_DARK)) {
