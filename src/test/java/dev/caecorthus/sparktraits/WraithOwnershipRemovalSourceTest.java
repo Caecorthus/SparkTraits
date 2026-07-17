@@ -20,6 +20,7 @@ class WraithOwnershipRemovalSourceTest {
             Path.of("src/main/java/dev/caecorthus/sparktraits/api/SparkTraitsApi.java"),
             Path.of("src/main/java/dev/caecorthus/sparktraits/compat/SparkWitchWraithBridge.java"),
             Path.of("src/main/java/dev/caecorthus/sparktraits/component/RetiredTraitIds.java"),
+            Path.of("src/main/java/dev/caecorthus/sparktraits/impl/lifecycle/TraitGameHooks.java"),
             Path.of("src/client/java/dev/caecorthus/sparktraits/client/mixin/PigPlayerRendererMixin.java"),
             Path.of("src/client/java/dev/caecorthus/sparktraits/client/mixin/RoundTextRendererMixin.java"),
             Path.of("src/client/java/dev/caecorthus/sparktraits/client/render/DepressionScreenEffects.java")
