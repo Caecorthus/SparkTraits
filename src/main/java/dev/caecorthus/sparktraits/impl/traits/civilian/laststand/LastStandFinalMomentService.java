@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.impl.traits.civilian.laststand;
 
 import dev.caecorthus.sparktraits.SparkTraits;
+import dev.caecorthus.sparktraits.api.TraitAssignmentReason;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.replay.SparkTraitsReplayEvents;
@@ -23,6 +24,7 @@ import dev.doctor4t.wathe.index.WatheItems;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
@@ -33,6 +35,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
+import org.agmas.noellesroles.professor.IronManPlayerComponent;
 import org.jetbrains.annotations.Nullable;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
@@ -347,6 +350,27 @@ public final class LastStandFinalMomentService {
                 && isLooseEndRole(role);
     }
 
+    static boolean isFinalMomentLooseEnd(
+            boolean finalMomentActive,
+            boolean markedFinalMomentLooseEnd,
+            @Nullable Role role
+    ) {
+        return finalMomentActive && markedFinalMomentLooseEnd && isLooseEndRole(role);
+    }
+
+    public static boolean isFinalMomentLooseEnd(@Nullable PlayerEntity player) {
+        if (player == null || player.getWorld() == null) {
+            return false;
+        }
+        TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(player.getWorld());
+        Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
+        return isFinalMomentLooseEnd(
+                traitWorld.isFinalMomentActive(),
+                traitWorld.isFinalMomentLooseEnd(player.getUuid()),
+                role
+        );
+    }
+
     private static BlackoutEffect.BlackoutResult beforeBlackoutEffect(ServerPlayerEntity player, int durationTicks) {
         if (!(player.getWorld() instanceof ServerWorld world)) {
             return null;
@@ -428,14 +452,23 @@ public final class LastStandFinalMomentService {
         RoleAssigned.EVENT.invoker().assignRole(player, WatheRoles.LOOSE_END);
         SparkTraitsReplayEvents.recordLooseEndConversion(player);
 
+        TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(player);
+        playerTraits.replaceActiveTraitsForRuntime(
+                FinalMomentOutlawLoadout.targetTraits(),
+                TraitAssignmentReason.INTERNAL
+        );
+        TraitWorldComponent.KEY.get(world).snapshotRoundTraits(player.getUuid(), playerTraits.getActiveTraitIds());
+
         player.getInventory().clear();
         giveFinalItem(player, WatheItems.KNIFE);
         giveFinalItem(player, WatheItems.DERRINGER);
         giveFinalItem(player, WatheItems.CROWBAR);
+        giveFinalItem(player, WatheItems.REVOLVER);
         clearFinalMomentInitialCooldown(player, WatheItems.KNIFE);
         clearFinalMomentInitialCooldown(player, WatheItems.DERRINGER);
         clearFinalMomentInitialCooldown(player, WatheItems.CROWBAR);
         player.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, FINAL_MOMENT_TICKS + 20, SPEED_AMPLIFIER, false, false, true));
+        IronManPlayerComponent.KEY.get(player).applyBuff();
     }
 
     private static void clearFinalMomentInitialCooldown(ServerPlayerEntity player, Item item) {

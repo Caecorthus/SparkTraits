@@ -23,6 +23,7 @@ public final class DepressionScreenEffects {
     private static final Identifier GRAYSCALE_SHADER = SparkTraits.id("shaders/post/depression_insanity.json");
     private static final float DESATURATE_FACTOR = 0.69f;
     private static final float SPREAD_FACTOR = 1.43f;
+    private static final ScreenEffect NO_EFFECT = new ScreenEffect(0.0f, 0.0f);
     private static PostEffectProcessor processor;
     private static int processorWidth = -1;
     private static int processorHeight = -1;
@@ -35,8 +36,8 @@ public final class DepressionScreenEffects {
             closeProcessor();
             return;
         }
-        float strength = grayscaleStrength(player);
-        if (strength <= 0.001f) {
+        ScreenEffect effect = screenEffect(player);
+        if (!effect.isVisible()) {
             closeProcessor();
             return;
         }
@@ -47,23 +48,24 @@ public final class DepressionScreenEffects {
             return;
         }
 
-        activeProcessor.setUniforms("DesaturateFactor", strength * DESATURATE_FACTOR);
-        activeProcessor.setUniforms("SpreadFactor", strength * SPREAD_FACTOR);
+        activeProcessor.setUniforms("DesaturateFactor", effect.desaturateFactor());
+        activeProcessor.setUniforms("SpreadFactor", effect.spreadFactor());
         activeProcessor.render(delta);
         client.getFramebuffer().beginWrite(false);
     }
 
-    private static float grayscaleStrength(ClientPlayerEntity player) {
-        if (player.isCreative() || player.isSpectator()) {
-            return 0.0f;
-        }
+    private static ScreenEffect screenEffect(ClientPlayerEntity player) {
         TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
+        if (player.isCreative() || player.isSpectator()) {
+            return NO_EFFECT;
+        }
         float mood = PlayerMoodComponent.KEY.get(player).getMood();
-        return DepressionTraitService.depressionScreenEffectStrength(
+        float strength = DepressionTraitService.depressionScreenEffectStrength(
                 traits.hasActiveTrait(CivilianTraits.DEPRESSION),
                 traits.isDepressionPsychoActive(),
                 mood
         );
+        return new ScreenEffect(strength * DESATURATE_FACTOR, strength * SPREAD_FACTOR);
     }
 
     private static PostEffectProcessor ensureProcessor(MinecraftClient client) {
@@ -102,5 +104,11 @@ public final class DepressionScreenEffects {
         }
         processorWidth = -1;
         processorHeight = -1;
+    }
+
+    private record ScreenEffect(float desaturateFactor, float spreadFactor) {
+        private boolean isVisible() {
+            return desaturateFactor > 0.001f || spreadFactor > 0.001f;
+        }
     }
 }

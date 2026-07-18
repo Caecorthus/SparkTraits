@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.impl.selection;
 
 import dev.caecorthus.sparktraits.api.Trait;
+import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.caecorthus.sparktraits.api.TraitSelectionContext;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
@@ -24,6 +25,7 @@ import java.util.random.RandomGenerator;
 public final class TraitSelector {
     public static final int SLOT_COUNT = 3;
     public static final float DEFAULT_SLOT_CHANCE = TraitSlotRollChance.DEFAULT;
+    private static final double FACTION_SCOPED_ROLL_MULTIPLIER = 1.5D;
     @Deprecated(forRemoval = false)
     public static final float SLOT_CHANCE = DEFAULT_SLOT_CHANCE;
 
@@ -88,6 +90,17 @@ public final class TraitSelector {
         return random.nextFloat() < TraitSlotRollChance.normalize(slotChance);
     }
 
+    /**
+     * Changes random-choice weight only; the public base weight remains unchanged.
+     * 仅调整随机候选权重，不改变公开基础权重。
+     */
+    static double randomSelectionWeight(Trait trait) {
+        double baseWeight = trait.rollWeight();
+        return trait.audience() == TraitAudience.UNIVERSAL
+                ? baseWeight
+                : baseWeight * FACTION_SCOPED_ROLL_MULTIPLIER;
+    }
+
     private static List<Trait> collectCandidates(
             ServerWorld world,
             GameWorldComponent gameComponent,
@@ -133,12 +146,12 @@ public final class TraitSelector {
     static Trait pickWeighted(List<Trait> candidates, RandomGenerator random) {
         double totalWeight = 0.0D;
         for (Trait candidate : candidates) {
-            totalWeight += candidate.rollWeight();
+            totalWeight += randomSelectionWeight(candidate);
         }
 
         double roll = random.nextDouble() * totalWeight;
         for (Trait candidate : candidates) {
-            roll -= candidate.rollWeight();
+            roll -= randomSelectionWeight(candidate);
             if (roll < 0.0D) {
                 return candidate;
             }

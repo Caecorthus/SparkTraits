@@ -58,6 +58,12 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     }
 
     public void setTraitEnabled(Identifier traitId, boolean enabled) {
+        if (RetiredTraitIds.isRetired(traitId)) {
+            if (disabledTraits.remove(traitId)) {
+                sync();
+            }
+            return;
+        }
         if (enabled) {
             disabledTraits.remove(traitId);
         } else {
@@ -87,6 +93,9 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     }
 
     public void markUniqueTraitUsed(Identifier traitId) {
+        if (RetiredTraitIds.isRetired(traitId)) {
+            return;
+        }
         usedUniqueTraits.add(traitId);
         sync();
     }
@@ -133,7 +142,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     }
 
     public void snapshotRoundTraits(UUID playerUuid, Collection<Identifier> traitIds) {
-        roundTraitSnapshots.put(playerUuid, List.copyOf(traitIds));
+        roundTraitSnapshots.put(playerUuid, RetiredTraitIds.filter(traitIds));
     }
 
     public List<Identifier> getRoundTraitSnapshot(UUID playerUuid) {
@@ -141,7 +150,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     }
 
     public void snapshotDeathTraits(UUID playerUuid, Collection<Identifier> traitIds) {
-        deathTraitSnapshots.put(playerUuid, List.copyOf(traitIds));
+        deathTraitSnapshots.put(playerUuid, RetiredTraitIds.filter(traitIds));
         sync();
     }
 
@@ -224,7 +233,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     private static void fromNbt(NbtList list, Set<Identifier> ids) {
         for (int i = 0; i < list.size(); i++) {
             Identifier id = Identifier.tryParse(list.getString(i));
-            if (id != null) {
+            if (id != null && !RetiredTraitIds.isRetired(id)) {
                 ids.add(id);
             }
         }
@@ -242,7 +251,7 @@ public class TraitWorldComponent implements AutoSyncedComponent {
         int size = buf.readVarInt();
         for (int i = 0; i < size; i++) {
             Identifier id = Identifier.tryParse(buf.readString());
-            if (id != null) {
+            if (id != null && !RetiredTraitIds.isRetired(id)) {
                 ids.add(id);
             }
         }

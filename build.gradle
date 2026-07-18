@@ -10,6 +10,9 @@ base {
     archivesName = project.archives_base_name
 }
 
+def noellesRolesJarName = "noellesroles-${project.noellesroles_version}.jar"
+def sparkFactionApiJarName = "sparkfactionapi-${project.sparkfactionapi_version}.jar"
+
 loom {
     splitEnvironmentSourceSets()
 
@@ -55,7 +58,8 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     modApi files("wathe-${project.wathe_version}.jar")
-    modImplementation files("noellesroles-1.7.6-h1.5.6-spark.jar")
+    modImplementation files(noellesRolesJarName)
+    modImplementation files(sparkFactionApiJarName)
     modLocalRuntime "maven.modrinth:carpet:1.4.147"
     modCompileOnly "maven.modrinth:simple-voice-chat:fabric-1.21.1-2.5.36"
     modLocalRuntime "maven.modrinth:simple-voice-chat:fabric-1.21.1-2.5.36"
@@ -80,6 +84,8 @@ processResources {
     inputs.property "minecraft_version", project.minecraft_version
     inputs.property "loader_version", project.loader_version
     inputs.property "wathe_version", project.wathe_version
+    inputs.property "noellesroles_version", project.noellesroles_version
+    inputs.property "sparkfactionapi_version", project.sparkfactionapi_version
     inputs.property "cca_version", project.cca_version
     inputs.property "ratatouille_version", project.ratatouille_version
 
@@ -90,6 +96,8 @@ processResources {
                 "minecraft_version": project.minecraft_version,
                 "loader_version": project.loader_version,
                 "wathe_version": project.wathe_version,
+                "noellesroles_version": project.noellesroles_version,
+                "sparkfactionapi_version": project.sparkfactionapi_version,
                 "cca_version": project.cca_version,
                 "ratatouille_version": project.ratatouille_version
     }
@@ -137,8 +145,29 @@ tasks.register("verifyModJarVersion") {
                 throw new GradleException("Missing voicechat entrypoint ${voicechatEntrypoint} in ${jarFile.name}")
             }
 
+            def clientMixinEntry = zipFile.getEntry("sparktraits.client.mixins.json")
+            if (clientMixinEntry == null) {
+                throw new GradleException("Missing sparktraits.client.mixins.json in ${jarFile.name}")
+            }
+            def clientMixinConfig = new groovy.json.JsonSlurper().parse(zipFile.getInputStream(clientMixinEntry))
             [
+                    "CautiousClientWorldSoundMixin",
+                    "CautiousPresenceFootstepsVolumeMixin"
+            ].each { requiredMixin ->
+                if (!(clientMixinConfig.client ?: []).contains(requiredMixin)) {
+                    throw new GradleException("Missing client mixin ${requiredMixin} in ${jarFile.name}")
+                }
+            }
+
+            [
+                    "dev/caecorthus/sparktraits/api/SparkTraitsApi.class",
                     "dev/caecorthus/sparktraits/client/SparkTraitsClient.class",
+                    "dev/caecorthus/sparktraits/client/audio/CautiousSoundDebug.class",
+                    "dev/caecorthus/sparktraits/client/audio/DepressionRageLoopController.class",
+                    "dev/caecorthus/sparktraits/client/audio/DepressionRageLoopSoundInstance.class",
+                    "dev/caecorthus/sparktraits/client/mixin/CautiousClientWorldSoundMixin.class",
+                    "dev/caecorthus/sparktraits/client/mixin/CautiousPresenceFootstepsVolumeMixin.class",
+                    "dev/caecorthus/sparktraits/impl/traits/global/CautiousSoundRules.class",
                     "dev/caecorthus/sparktraits/net/version/SparkTraitsServerConnection.class",
                     "dev/caecorthus/sparktraits/net/version/SparkTraitsPackets.class",
                     "dev/caecorthus/sparktraits/net/version/SparkTraitsServerConfirmS2CPacket.class",
@@ -171,8 +200,68 @@ tasks.test {
     useJUnitPlatform()
 }
 
+def architectureFiles = [
+        "AGENTS.md",
+        "CONTEXT.md",
+        "DOWNSTREAM_MIGRATION_NOTES.md"
+]
+def publicFacade = "src/main/java/dev/caecorthus/sparktraits/api/SparkTraitsApi.java"
+def publicFacadeContractTest = "src/test/java/dev/caecorthus/sparktraits/api/SparkTraitsApiContractTest.java"
+def syncVisibilityContractTest = "src/test/java/dev/caecorthus/sparktraits/component/TraitSyncVisibilityTest.java"
+
+tasks.register("verifyArchitecture") {
+    group = "verification"
+    description = "Verifies architecture governance, public facade, and local dependency metadata."
+    inputs.files(architectureFiles.collect { file(it) })
+    inputs.file(publicFacade)
+    inputs.file(publicFacadeContractTest)
+    inputs.file(syncVisibilityContractTest)
+    inputs.file(noellesRolesJarName)
+    inputs.file(sparkFactionApiJarName)
+    inputs.file("src/main/resources/fabric.mod.json")
+    inputs.file("gradle.properties")
+
+    doLast {
+        def requiredPaths = architectureFiles + publicFacade + publicFacadeContractTest + syncVisibilityContractTest
+        def missingPaths = requiredPaths.findAll { !file(it).isFile() }
+        if (!missingPaths.isEmpty()) {
+            throw new GradleException("Missing architecture files: ${missingPaths.join(', ')}")
+        }
+
+        def expectedNoellesRolesVersion = project.noellesroles_version.toString()
+        def expectedJar = file(noellesRolesJarName)
+        if (!expectedJar.isFile()) {
+            throw new GradleException("Missing aligned NoellesRoles jar: ${expectedJar.name}")
+        }
+
+        def noellesRolesJar = new java.util.zip.ZipFile(expectedJar)
+        try {
+            def metadataEntry = noellesRolesJar.getEntry("fabric.mod.json")
+            if (metadataEntry == null) {
+                throw new GradleException("Missing fabric.mod.json in ${expectedJar.name}")
+            }
+            def jarMetadata = new groovy.json.JsonSlurper().parse(noellesRolesJar.getInputStream(metadataEntry))
+            if (jarMetadata.version?.toString() != expectedNoellesRolesVersion) {
+                throw new GradleException(
+                        "NoellesRoles jar version mismatch: expected ${expectedNoellesRolesVersion}, found ${jarMetadata.version}"
+                )
+            }
+        } finally {
+            noellesRolesJar.close()
+        }
+
+        def metadata = new groovy.json.JsonSlurper().parse(file("src/main/resources/fabric.mod.json"))
+        def expectedVersionTemplate = '${noellesroles_version}'
+        if (metadata.depends?.noellesroles != expectedVersionTemplate) {
+            throw new GradleException(
+                    "NoellesRoles metadata mismatch: expected ${expectedVersionTemplate}, found ${metadata.depends?.noellesroles}"
+            )
+        }
+    }
+}
+
 tasks.named("check") {
-    dependsOn tasks.named("test")
+    dependsOn tasks.named("verifyArchitecture")
     dependsOn tasks.matching { it.name == "validateAccessWidener" }
 }
 

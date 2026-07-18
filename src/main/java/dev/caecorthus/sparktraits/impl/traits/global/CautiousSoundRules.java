@@ -7,12 +7,16 @@ import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.Identifier;
 
+import java.util.regex.Pattern;
+
 /**
  * Owns Cautious sound-suppression rules shared by vanilla and client audio adapters.
  * 统一管理小心翼翼的静音规则，供原版路径与客户端音频适配器复用。
  */
 public final class CautiousSoundRules {
-    private static final String STEP_SOUND_PATH_MARKER = "step";
+    private static final Pattern MOVEMENT_SOUND_TOKEN = Pattern.compile(
+            "(^|[^a-z0-9])(?:step|walk|run|wander|sprint|footsteps?)[0-9]*($|[^a-z0-9])"
+    );
 
     private CautiousSoundRules() {
     }
@@ -54,8 +58,8 @@ public final class CautiousSoundRules {
     }
 
     /**
-     * Client fallback for sound-system rewrites that replay player step sounds after vanilla hooks.
-     * 客户端兜底：处理物理音效等重放玩家脚步声并绕过原版钩子的路径。
+     * Client fallback for sound-system rewrites that replay player movement sounds after vanilla hooks.
+     * 客户端兜底：处理物理音效等重放玩家移动声并绕过原版钩子的路径。
      */
     public static boolean shouldSuppressClientEntityStepSound(Entity source, SoundEvent sound, SoundCategory category) {
         if (!(source instanceof PlayerEntity player) || sound == null) {
@@ -79,6 +83,6 @@ public final class CautiousSoundRules {
                 && cautiousSoundsSuppressed
                 && category == SoundCategory.PLAYERS
                 && soundId != null
-                && soundId.getPath().contains(STEP_SOUND_PATH_MARKER);
+                && MOVEMENT_SOUND_TOKEN.matcher(soundId.getPath()).find();
     }
 }

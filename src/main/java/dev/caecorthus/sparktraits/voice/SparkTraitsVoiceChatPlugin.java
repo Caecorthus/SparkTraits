@@ -13,7 +13,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 
 /**
  * Simple Voice Chat bridge for Depression psycho silence.
- * 抑郁疯魔期间阻止玩家发声，也阻止玩家接收其他人的语音包。
+ * 抑郁疯魔期间双向静音。
  */
 public class SparkTraitsVoiceChatPlugin implements VoicechatPlugin {
     @Override
@@ -23,7 +23,13 @@ public class SparkTraitsVoiceChatPlugin implements VoicechatPlugin {
 
     @Override
     public void registerEvents(EventRegistration registration) {
-        registration.registerEvent(MicrophonePacketEvent.class, this::blockDepressionSpeaker);
+        // Cancel before Wathe can relay walkie-talkie audio manually.
+        // 必须先于 Wathe 取消事件，避免对讲机绕过抑郁疯魔的静音。
+        registration.registerEvent(
+                MicrophonePacketEvent.class,
+                this::blockDepressionSpeaker,
+                Integer.MAX_VALUE
+        );
         registration.registerEvent(EntitySoundPacketEvent.class, this::blockDepressionListener);
         registration.registerEvent(LocationalSoundPacketEvent.class, this::blockDepressionListener);
         VoicechatPlugin.super.registerEvents(registration);

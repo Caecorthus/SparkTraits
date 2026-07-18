@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.mixin;
 
 import com.mojang.datafixers.util.Either;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBomberFrenzyService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.doctor4t.wathe.util.Scheduler;
@@ -27,6 +28,12 @@ public abstract class PlayerEntityMixin {
     private void sparktraits$blockLastStandPendingDrops(ItemStack stack, boolean throwRandomly, boolean retainOwnership, CallbackInfoReturnable<ItemEntity> cir) {
         if ((Object) this instanceof ServerPlayerEntity player
                 && (LastStandService.isPending(player) || DepressionTraitService.shouldBlockDrops(player))) {
+            cir.setReturnValue(null);
+            return;
+        }
+        if ((Object) this instanceof ServerPlayerEntity player
+                && ConscienceBomberFrenzyService.isMarkedGrenade(stack)) {
+            ConscienceBomberFrenzyService.clearPlayer(player);
             cir.setReturnValue(null);
         }
     }

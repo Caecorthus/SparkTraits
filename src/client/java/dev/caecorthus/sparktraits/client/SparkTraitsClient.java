@@ -2,18 +2,15 @@ package dev.caecorthus.sparktraits.client;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
-import dev.caecorthus.sparktraits.client.audio.ArrogantAsfMusicController;
+import dev.caecorthus.sparktraits.client.audio.DepressionRageLoopController;
 import dev.caecorthus.sparktraits.client.hud.DepressionHud;
 import dev.caecorthus.sparktraits.client.net.version.SparkTraitsClientVersionHandshake;
-import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.resource.SparkTraitsParticles;
-import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.client.particle.PoisonParticle;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -31,13 +28,12 @@ public class SparkTraitsClient implements ClientModInitializer {
         ParticleFactoryRegistry.getInstance().register(SparkTraitsParticles.BLUE_POISON, PoisonParticle.Factory::new);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SparkTraitsServerConnection.reset());
         registerFinalMomentHighlight();
-        registerGoingDarkInstinctSkip();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            DepressionRageLoopController.tick(client);
             if (SparkTraitsServerConnection.isConfirmedServer()) {
                 DepressionHud.tick();
             }
         });
-        ClientTickEvents.END_CLIENT_TICK.register(ArrogantAsfMusicController::tick);
     }
 
     private static void registerFinalMomentHighlight() {
@@ -68,40 +64,6 @@ public class SparkTraitsClient implements ClientModInitializer {
                             traitWorld.isFinalMomentLooseEnd(targetPlayer.getUuid())
                     ),
                     GetInstinctHighlight.HighlightResult.PRIORITY_HIGH + 1
-            );
-        });
-    }
-
-    private static void registerGoingDarkInstinctSkip() {
-        GetInstinctHighlight.EVENT.register(target -> {
-            if (!SparkTraitsServerConnection.isConfirmedServer()) {
-                return null;
-            }
-            PlayerEntity viewer = MinecraftClient.getInstance().player;
-            if (viewer == null || !(target instanceof PlayerEntity targetPlayer)) {
-                return null;
-            }
-            if (!WatheClient.isInstinctEnabled() || WatheClient.canSeeSpectatorInformation()) {
-                return null;
-            }
-            GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
-            if (!EffectiveTraitService.isEffectiveKiller(viewer, game)) {
-                return null;
-            }
-            if (!VigilanteVeteranTraitService.shouldSkipGoingDarkDefaultInstinct(
-                    TraitPlayerComponent.KEY.get(targetPlayer).isGoingDarkInstinctHidden(),
-                    true,
-                    false
-            )) {
-                return null;
-            }
-
-            // Low priority blocks Wathe's default fallback while allowing role-specific highlights to win.
-            // 低优先级只阻止 Wathe 默认兜底透视，允许角色专属高亮覆盖它。
-            return new GetInstinctHighlight.HighlightResult(
-                    -1,
-                    false,
-                    GetInstinctHighlight.HighlightResult.PRIORITY_LOW
             );
         });
     }

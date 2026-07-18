@@ -1,7 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
-import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerialKillerService;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
@@ -11,7 +10,6 @@ import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.ScoreboardRoleSelectorComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.game.gamemode.MurderGameMode;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
@@ -70,17 +68,6 @@ public abstract class MurderGameModeMixin {
             GameWorldComponent gameComponent
     ) {
         throw new AssertionError();
-    }
-
-    @Redirect(
-            method = "tickServerGameLoop",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;canUseKillerFeatures(Lnet/minecraft/entity/player/PlayerEntity;)Z"
-            )
-    )
-    private boolean sparktraits$passiveMoneyOnlyForRealKillers(GameWorldComponent gameComponent, PlayerEntity player) {
-        return ConscienceSerialKillerService.shouldReceiveKillerPassiveMoney(gameComponent, player);
     }
 
     @Inject(method = "tickServerGameLoop", at = @At("RETURN"))

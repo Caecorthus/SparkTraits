@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
+import dev.caecorthus.sparktraits.client.instinct.GoingDarkInstinctClientHooks;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
@@ -8,7 +9,6 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTrai
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
-import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -97,6 +97,11 @@ public abstract class WatheClientMixin {
             if (highlight != -1) {
                 cir.setReturnValue(highlight);
             }
+            return;
+        }
+
+        if (playerTarget != null && GoingDarkInstinctClientHooks.shouldSuppress(viewer, playerTarget, game)) {
+            cir.setReturnValue(-1);
             return;
         }
 
@@ -207,13 +212,6 @@ public abstract class WatheClientMixin {
                         viewer.canSee(playerTarget)
                 )) {
             cir.setReturnValue(-1);
-            return;
-        }
-        if (VigilanteVeteranTraitService.shouldSkipGoingDarkDefaultInstinct(
-                targetTraits.isGoingDarkInstinctHidden(),
-                true,
-                false
-        )) {
             return;
         }
         Integer morphlingColor = sparktraits$conscienceMorphlingDisguiseColor(playerTarget, game, morphling);

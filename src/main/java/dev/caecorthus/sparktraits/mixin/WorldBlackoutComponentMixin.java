@@ -1,6 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.GoingDarkSyncService;
 import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import net.minecraft.server.world.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,11 +21,11 @@ public abstract class WorldBlackoutComponentMixin {
 
     @Inject(method = "applyBlackoutEffects", at = @At("TAIL"))
     private void sparktraits$syncGoingDarkDuringBlackout(ServerWorld serverWorld, CallbackInfo ci) {
-        VigilanteVeteranTraitService.syncGoingDarkInstinct(serverWorld, isBlackoutActive());
+        GoingDarkSyncService.sync(serverWorld, isBlackoutActive());
     }
 
     @Inject(method = "removeBlackoutEffects", at = @At("TAIL"))
     private void sparktraits$clearGoingDarkAfterBlackout(ServerWorld serverWorld, CallbackInfo ci) {
-        VigilanteVeteranTraitService.syncGoingDarkInstinct(serverWorld, false);
+        GoingDarkSyncService.sync(serverWorld, false);
     }
 }

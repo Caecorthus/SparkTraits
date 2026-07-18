@@ -42,7 +42,7 @@ public final class KillerTraits {
                 .predicate(context -> KillerTraitService.canSelectThrust(
                         context.role(),
                         context.selectedTraitIds(),
-                        KillerTraitService.hasThrustShopEntry(context.player())
+                        KillerTraitService.hasThrustWeaponAccess(context.player())
                 ))
                 .build());
         TraitRegistry.register(base(SECOND_STRIKE, 0xC94B32).build());

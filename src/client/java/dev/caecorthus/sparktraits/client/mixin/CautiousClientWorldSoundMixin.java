@@ -1,9 +1,12 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
+import dev.caecorthus.sparktraits.client.audio.CautiousSoundDebug;
 import dev.caecorthus.sparktraits.impl.traits.global.CautiousSoundRules;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,8 +33,60 @@ public abstract class CautiousClientWorldSoundMixin {
             float pitch,
             CallbackInfo ci
     ) {
-        if (SparkTraitsServerConnection.isConfirmedServer()
-                && CautiousSoundRules.shouldSuppressClientEntityStepSound(source, sound, category)) {
+        boolean confirmedServer = SparkTraitsServerConnection.isConfirmedServer();
+        if (!confirmedServer && !CautiousSoundDebug.isEnabled()) {
+            return;
+        }
+        boolean cautiousRule = CautiousSoundRules.shouldSuppressClientEntityStepSound(source, sound, category);
+        boolean cancelled = confirmedServer && cautiousRule;
+        CautiousSoundDebug.trace(
+                "ClientWorld.playSoundFromEntity/5",
+                source,
+                confirmedServer,
+                cautiousRule,
+                cancelled ? "cancelled" : "preserved",
+                sound == null ? null : sound.getId(),
+                category,
+                volume
+        );
+        if (cancelled) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = "playSoundFromEntity(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/entity/Entity;Lnet/minecraft/registry/entry/RegistryEntry;Lnet/minecraft/sound/SoundCategory;FFJ)V",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void sparktraits$skipCautiousClientEntityMovementSound(
+            PlayerEntity player,
+            Entity source,
+            RegistryEntry<SoundEvent> sound,
+            SoundCategory category,
+            float volume,
+            float pitch,
+            long seed,
+            CallbackInfo ci
+    ) {
+        SoundEvent soundEvent = sound.value();
+        boolean confirmedServer = SparkTraitsServerConnection.isConfirmedServer();
+        if (!confirmedServer && !CautiousSoundDebug.isEnabled()) {
+            return;
+        }
+        boolean cautiousRule = CautiousSoundRules.shouldSuppressClientEntityStepSound(source, soundEvent, category);
+        boolean cancelled = confirmedServer && cautiousRule;
+        CautiousSoundDebug.trace(
+                "ClientWorld.playSoundFromEntity/7",
+                source,
+                confirmedServer,
+                cautiousRule,
+                cancelled ? "cancelled" : "preserved",
+                soundEvent.getId(),
+                category,
+                volume
+        );
+        if (cancelled) {
             ci.cancel();
         }
     }

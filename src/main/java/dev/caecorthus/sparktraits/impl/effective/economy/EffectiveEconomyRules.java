@@ -64,20 +64,4 @@ public final class EffectiveEconomyRules {
         return canUseKillerFeatures && !hasConscience;
     }
 
-    /** Gates Wathe's passive killer income while preserving the Conscience Serial Killer exception.
-     *  控制 Wathe 杀手随时间加钱：善良普通杀手不拿，善良连环杀手仅在保护目标存活时拿。 */
-    public static boolean shouldReceiveKillerPassiveMoney(
-            boolean canUseKillerFeatures,
-            boolean hasConscience,
-            boolean conscienceSerialKiller,
-            boolean protectedTargetAlive
-    ) {
-        if (!canUseKillerFeatures) {
-            return false;
-        }
-        if (!hasConscience) {
-            return true;
-        }
-        return conscienceSerialKiller && protectedTargetAlive;
-    }
 }

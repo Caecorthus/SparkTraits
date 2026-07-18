@@ -1,8 +1,8 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.impl.traits.killer.KnifeKnockbackService;
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerWeaponTags;
 import dev.doctor4t.wathe.game.GameFunctions;
-import dev.doctor4t.wathe.index.WatheItems;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
@@ -15,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
- * Keeps Wathe's documented no-cooldown knife shove working through vanilla hurt cooldown.
- * 让 Wathe 文档中的“刀左键无冷却击退”穿过原版受伤无敌帧继续生效。
+ * Keeps tagged Thrust-weapon shove working through vanilla hurt cooldown.
+ * 让已标记的突刺武器左键击退穿过原版受伤无敌帧继续生效。
  */
 @Mixin(PlayerEntity.class)
 public abstract class KnifeCooldownKnockbackMixin {
@@ -48,7 +48,7 @@ public abstract class KnifeCooldownKnockbackMixin {
         LivingEntityDamageCooldownAccessor cooldown = (LivingEntityDamageCooldownAccessor) target;
         return KnifeKnockbackService.shouldApplyCooldownBypassKnockback(
                 damageSucceeded,
-                attacker.getMainHandStack().isOf(WatheItems.KNIFE),
+                KillerWeaponTags.isThrustWeapon(attacker.getMainHandStack()),
                 GameFunctions.isPlayerPlayingAndAlive(attacker) && GameFunctions.isPlayerAliveAndSurvival(attacker),
                 GameFunctions.isPlayerPlayingAndAlive(target),
                 GameFunctions.isPlayerAliveAndSurvival(target),

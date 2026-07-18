@@ -15,6 +15,8 @@ import dev.caecorthus.sparktraits.impl.compatibility.noellesroles.SilencedKiller
 import dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi.SparkFactionApiEffectiveFactionBridge;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBombService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBomberFrenzyService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceEconomyService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerialKillerService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
@@ -41,10 +43,12 @@ public final class TraitGameHooks {
         ImpostorRevolverService.register();
         ConscienceSerialKillerService.register();
         ConsciencePoisonerService.register();
+        ConscienceBomberFrenzyService.register();
         SilencedKillerRestrictionService.register();
         DepressionTraitService.register();
         ResetPlayer.EVENT.register(player -> {
             ConscienceBombService.clearTimedBomb(player);
+            ConscienceBomberFrenzyService.clearPlayer(player);
             ConscienceSerialKillerService.clearPlayer(player);
             LastStandService.clearPlayer(player);
             DepressionTraitService.clearPlayer(player);
@@ -65,9 +69,11 @@ public final class TraitGameHooks {
                 syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
                 return;
             }
+            ConscienceEconomyService.rewardAfterConfirmedRealDeath(victim);
             KillerTraitService.handleAfterRealKill(victim, killer, deathReason);
             ImpostorBodyguardService.handleAfterKill(victim);
             ConscienceSerialKillerService.handleAfterKill(victim, killer, deathReason);
+            ConscienceBomberFrenzyService.clearPlayer(victim);
             playerTraits.clearActiveTraits(TraitRemovalReason.DEATH);
             ConscienceSerialKillerService.clearPlayer(victim);
             DepressionTraitService.clearPlayer(victim);
@@ -79,6 +85,7 @@ public final class TraitGameHooks {
                 return;
             }
             ConscienceBombService.clearAll();
+            ConscienceBomberFrenzyService.clearAll(serverWorld);
             ConscienceSerialKillerService.clearAll();
             LastStandService.clearRoundState(serverWorld);
             DepressionTraitService.clearRoundState(serverWorld);
