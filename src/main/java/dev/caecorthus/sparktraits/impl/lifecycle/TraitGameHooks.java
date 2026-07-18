@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.impl.lifecycle;
 
+import dev.caecorthus.sparktraits.api.SparkTraitsApi;
 import dev.caecorthus.sparktraits.api.TraitRemovalReason;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
@@ -47,12 +48,15 @@ public final class TraitGameHooks {
         SilencedKillerRestrictionService.register();
         DepressionTraitService.register();
         ResetPlayer.EVENT.register(player -> {
+            boolean wraithActive = SparkTraitsApi.isWraithActive(player);
             ConscienceBombService.clearTimedBomb(player);
             ConscienceBomberFrenzyService.clearPlayer(player);
             ConscienceSerialKillerService.clearPlayer(player);
             LastStandService.clearPlayer(player);
             DepressionTraitService.clearPlayer(player);
-            TraitPlayerComponent.KEY.get(player).clearActiveTraits(TraitRemovalReason.RESET);
+            if (shouldClearTraitsOnReset(wraithActive)) {
+                TraitPlayerComponent.KEY.get(player).clearActiveTraits(TraitRemovalReason.RESET);
+            }
         });
 
         KillPlayer.BEFORE.register(LastStandService::beforeKill);
@@ -91,6 +95,14 @@ public final class TraitGameHooks {
             DepressionTraitService.clearRoundState(serverWorld);
             clearActiveTraits(serverWorld, gameComponent);
         });
+    }
+
+    /**
+     * Active Wraith trait cleanup is deferred to SparkWitch so listener order cannot downgrade GAME_END to RESET.
+     * 激活冤魂的天赋清理由 SparkWitch 接管，避免监听顺序把 GAME_END 降级为 RESET。
+     */
+    static boolean shouldClearTraitsOnReset(boolean wraithActive) {
+        return !wraithActive;
     }
 
     private static void clearActiveTraits(ServerWorld world, GameWorldComponent gameComponent) {
