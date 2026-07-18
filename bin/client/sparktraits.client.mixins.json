@@ -28,22 +28,7 @@
     "TrimmedBedBluePoisonParticleMixin",
     "TraitInventoryScreenMixin",
     "TraitRoleNameRendererMixin",
-    "WatheClientMixin",
-    "WraithCapeFeatureRendererMixin",
-    "WraithChatRestrictionMixin",
-    "WraithCorpseModelMixin",
-    "WraithCorpseSkinMixin",
-    "WraithElytraFeatureRendererMixin",
-    "WraithEntityInvisibilityMixin",
-    "WraithHeldItemFeatureRendererMixin",
-    "WraithHiddenBodiesMixin",
-    "WraithMinecraftClientMixin",
-    "WraithNameMixin",
-    "WraithPlayerModelMixin",
-    "WraithPlayerSkinMixin",
-    "WraithPlayerSkinTexturesMixin",
-    "WraithRendererDispatchMixin",
-    "WraithWatheHighlightMixin"
+    "WatheClientMixin"
   ],
   "injectors": {
     "defaultRequire": 1

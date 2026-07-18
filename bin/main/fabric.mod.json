@@ -26,9 +26,7 @@
   "custom": {
     "cardinal-components": [
       "sparktraits:traits",
-      "sparktraits:world",
-      "sparktraits:wraith_player",
-      "sparktraits:wraith_round"
+      "sparktraits:world"
     ]
   },
   "mixins": [

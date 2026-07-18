@@ -11,6 +11,7 @@
     "BloodthirstyCooldownMixin",
     "CautiousEntitySoundMixin",
     "CautiousLivingEntitySoundMixin",
+    "CautiousPlayerConsumptionSoundMixin",
     "CautiousPlayerMoveEffectMixin",
     "ConscienceBomberGrenadeEntityMixin",
     "ConscienceBomberGrenadeItemMixin",
@@ -47,7 +48,6 @@
     "PigPlayerDimensionsMixin",
     "PigPlayerSoundMixin",
     "PlayerShopComponentMixin",
-    "PlayerMoodComponentAccessor",
     "PlayerMoodComponentMixin",
     "PlayerPoisonComponentMixin",
     "PlayerEntityMixin",
@@ -61,11 +61,7 @@
     "TrimmedBedBlockEntityMixin",
     "TrimmedBedBlockMixin",
     "VentHatchBlockMixin",
-    "WorldBlackoutComponentMixin",
-    "WraithDamageMixin",
-    "WraithDoorPassingMixin",
-    "WraithOwnedEffectMixin",
-    "WraithStatusEffectMixin"
+    "WorldBlackoutComponentMixin"
   ],
   "injectors": {
     "defaultRequire": 1
