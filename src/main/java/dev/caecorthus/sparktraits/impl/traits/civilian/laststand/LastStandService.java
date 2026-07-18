@@ -386,6 +386,15 @@ public final class LastStandService {
         return isPending(player.getUuid());
     }
 
+    /**
+     * Covers both listener orderings during the current death and the resulting pending transition.
+     * 同时覆盖当前死亡事件的两种监听顺序，以及随后形成的待决转换。
+     */
+    public static boolean isDeathIntercepted(PlayerEntity player) {
+        UUID uuid = player.getUuid();
+        return approvedLastStandDeaths.contains(uuid) || pendingPlayers.containsKey(uuid);
+    }
+
     public static boolean isPending(UUID uuid) {
         return pendingPlayers.containsKey(uuid);
     }

@@ -47,6 +47,7 @@
     "PigPlayerDimensionsMixin",
     "PigPlayerSoundMixin",
     "PlayerShopComponentMixin",
+    "PlayerMoodComponentAccessor",
     "PlayerMoodComponentMixin",
     "PlayerPoisonComponentMixin",
     "PlayerEntityMixin",
@@ -60,7 +61,11 @@
     "TrimmedBedBlockEntityMixin",
     "TrimmedBedBlockMixin",
     "VentHatchBlockMixin",
-    "WorldBlackoutComponentMixin"
+    "WorldBlackoutComponentMixin",
+    "WraithDamageMixin",
+    "WraithDoorPassingMixin",
+    "WraithOwnedEffectMixin",
+    "WraithStatusEffectMixin"
   ],
   "injectors": {
     "defaultRequire": 1

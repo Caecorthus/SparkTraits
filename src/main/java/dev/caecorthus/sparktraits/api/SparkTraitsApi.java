@@ -11,10 +11,13 @@ import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -35,6 +38,69 @@ public final class SparkTraitsApi {
                 && TraitPlayerComponent.KEY.maybeGet(player)
                         .map(component -> component.hasActiveTrait(traitId))
                         .orElse(false);
+    }
+
+    /**
+     * Returns an immutable snapshot of the player's active trait ids.
+     * 返回玩家当前生效天赋 id 的不可变快照。
+     */
+    public static Collection<Identifier> getActiveTraitIds(PlayerEntity player) {
+        return player == null
+                ? List.of()
+                : TraitPlayerComponent.KEY.maybeGet(player)
+                        .map(TraitPlayerComponent::getActiveTraitIds)
+                        .orElseGet(List::of);
+    }
+
+    /**
+     * Returns an immutable snapshot of the trait ids revealed to their owner.
+     * 返回已向持有者揭示的天赋 id 不可变快照。
+     */
+    public static Collection<Identifier> getRevealedTraitIds(PlayerEntity player) {
+        return player == null
+                ? List.of()
+                : TraitPlayerComponent.KEY.maybeGet(player)
+                        .<Collection<Identifier>>map(TraitPlayerComponent::getRevealedTraitIds)
+                        .orElseGet(List::of);
+    }
+
+    /**
+     * Restores an exact runtime trait snapshot without exposing component internals downstream.
+     * 恢复精确的运行时天赋快照，避免下游直接依赖组件内部实现。
+     */
+    public static void restoreActiveTraitsForRuntime(
+            ServerPlayerEntity player,
+            Collection<Identifier> activeTraitIds,
+            Collection<Identifier> revealedTraitIds
+    ) {
+        if (player == null || activeTraitIds == null || revealedTraitIds == null) {
+            return;
+        }
+        TraitPlayerComponent.KEY.maybeGet(player).ifPresent(component -> component.restoreActiveTraitsForRuntime(
+                List.copyOf(activeTraitIds),
+                List.copyOf(revealedTraitIds),
+                TraitAssignmentReason.INTERNAL
+        ));
+    }
+
+    /**
+     * Returns whether Last Stand currently owns a pending death transition for the player.
+     * 返回背水一战当前是否持有该玩家的待决死亡转换。
+     */
+    public static boolean isLastStandPending(PlayerEntity player) {
+        return player != null
+                && (LastStandService.isPending(player)
+                || TraitPlayerComponent.KEY.maybeGet(player)
+                        .map(TraitPlayerComponent::isLastStandPending)
+                        .orElse(false));
+    }
+
+    /**
+     * Returns whether Last Stand approved the current death or already owns its pending transition.
+     * 返回背水一战是否已批准当前死亡拦截，或已经持有其待决转换。
+     */
+    public static boolean isLastStandDeathIntercepted(PlayerEntity player) {
+        return player != null && LastStandService.isDeathIntercepted(player);
     }
 
     /**

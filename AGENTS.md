@@ -5,9 +5,6 @@
 Before changing code, read `CONTEXT.md`. The scope and compatibility rules in
 this file are binding.
 
-Use the workflow skill at
-`/Users/kricy/.codex/skills/using-superpowers/SKILL.md` for this repository.
-
 When a requested change changes a public API, component id, trait id,
 packet/NBT schema, lifecycle order, or dependency contract, describe the exact
 scope, invariants, downstream impact, and verification plan, then wait for the

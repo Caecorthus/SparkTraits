@@ -11,12 +11,22 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
 /**
  * Hidden civilian trait that can turn one qualifying death into a delayed last stand.
  * 隐藏平民阵营天赋：在满足条件的一次死亡后，延迟触发一次背水一战。
  */
 public final class LastStandTrait implements Trait {
     public static final Identifier ID = SparkTraits.id("last_stand");
+    private static final Set<Identifier> ADDITIONAL_THREAT_ROLE_IDS = Set.of(
+            Identifier.of("sparkwitch", "grand_witch"),
+            Identifier.of("sparkwitch", "accomplice")
+    );
 
     @Override
     public Identifier id() {
@@ -46,7 +56,13 @@ public final class LastStandTrait implements Trait {
     @Override
     public boolean canApply(TraitSelectionContext context) {
         return Trait.super.canApply(context)
-                && canSelectLastStand(context.role(), context.gameComponent().getAllKillerTeamPlayers().size());
+                && canSelectLastStand(
+                        context.role(),
+                        countLastStandThreatPlayers(
+                                context.gameComponent().getAllKillerTeamPlayers(),
+                                context.gameComponent().getRoles()
+                        )
+                );
     }
 
     static boolean canSelectLastStand(Role role, int killerTeamPlayerCount) {
@@ -54,6 +70,21 @@ public final class LastStandTrait implements Trait {
                 && role.getFaction() == Faction.CIVILIAN
                 && !role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
                 && killerTeamPlayerCount >= 2;
+    }
+
+    static int countLastStandThreatPlayers(
+            Collection<UUID> nativeKillerPlayers,
+            Map<UUID, Role> rolesByPlayer
+    ) {
+        // Preserve Wathe's native killer bucket and extend only Last Stand's local threshold.
+        // 保留 Wathe 的原生杀手桶，只扩展背水一战自己的选取门槛。
+        Set<UUID> threatPlayers = new HashSet<>(nativeKillerPlayers);
+        rolesByPlayer.forEach((uuid, role) -> {
+            if (ADDITIONAL_THREAT_ROLE_IDS.contains(role.identifier())) {
+                threatPlayers.add(uuid);
+            }
+        });
+        return threatPlayers.size();
     }
 
     @Override

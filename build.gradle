@@ -11,6 +11,7 @@ base {
 }
 
 def noellesRolesJarName = "noellesroles-${project.noellesroles_version}.jar"
+def sparkFactionApiJarName = "sparkfactionapi-${project.sparkfactionapi_version}.jar"
 
 loom {
     splitEnvironmentSourceSets()
@@ -58,6 +59,7 @@ dependencies {
 
     modApi files("wathe-${project.wathe_version}.jar")
     modImplementation files(noellesRolesJarName)
+    modImplementation files(sparkFactionApiJarName)
     modLocalRuntime "maven.modrinth:carpet:1.4.147"
     modCompileOnly "maven.modrinth:simple-voice-chat:fabric-1.21.1-2.5.36"
     modLocalRuntime "maven.modrinth:simple-voice-chat:fabric-1.21.1-2.5.36"
@@ -83,6 +85,7 @@ processResources {
     inputs.property "loader_version", project.loader_version
     inputs.property "wathe_version", project.wathe_version
     inputs.property "noellesroles_version", project.noellesroles_version
+    inputs.property "sparkfactionapi_version", project.sparkfactionapi_version
     inputs.property "cca_version", project.cca_version
     inputs.property "ratatouille_version", project.ratatouille_version
 
@@ -94,6 +97,7 @@ processResources {
                 "loader_version": project.loader_version,
                 "wathe_version": project.wathe_version,
                 "noellesroles_version": project.noellesroles_version,
+                "sparkfactionapi_version": project.sparkfactionapi_version,
                 "cca_version": project.cca_version,
                 "ratatouille_version": project.ratatouille_version
     }
@@ -213,6 +217,7 @@ tasks.register("verifyArchitecture") {
     inputs.file(publicFacadeContractTest)
     inputs.file(syncVisibilityContractTest)
     inputs.file(noellesRolesJarName)
+    inputs.file(sparkFactionApiJarName)
     inputs.file("src/main/resources/fabric.mod.json")
     inputs.file("gradle.properties")
 

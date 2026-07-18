@@ -3,23 +3,18 @@ package dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparkfactionapi.api.SparkFactionApi;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.Collection;
 
 /**
- * Optional bridge from SparkTraits alignment flips into SparkFactionAPI effective factions.
- * 将 SparkTraits 的阵营翻转语义可选桥接到 SparkFactionAPI 的有效阵营解析链。
+ * Bridges SparkTraits alignment flips into the required SparkFactionAPI contract.
+ * 将 SparkTraits 的阵营翻转语义桥接到必需的 SparkFactionAPI 合约。
  */
 public final class SparkFactionApiEffectiveFactionBridge {
-    private static final String MOD_ID = "sparkfactionapi";
-    private static final String API_CLASS = "dev.caecorthus.sparkfactionapi.api.SparkFactionApi";
-    private static final String RESOLVER_CLASS = "dev.caecorthus.sparkfactionapi.api.EffectiveFactionResolver";
     private static final Identifier CIVILIAN_FACTION = Identifier.of("wathe", "civilian");
     private static final Identifier KILLER_FACTION = Identifier.of("wathe", "killer");
     private static boolean registered;
@@ -32,22 +27,15 @@ public final class SparkFactionApiEffectiveFactionBridge {
             return;
         }
         registered = true;
-        if (!FabricLoader.getInstance().isModLoaded(MOD_ID)) {
-            return;
-        }
-        try {
-            Class<?> apiClass = Class.forName(API_CLASS);
-            Class<?> resolverClass = Class.forName(RESOLVER_CLASS);
-            Object resolver = Proxy.newProxyInstance(
-                    resolverClass.getClassLoader(),
-                    new Class<?>[] {resolverClass},
-                    SparkFactionApiEffectiveFactionBridge::invokeResolver
-            );
-            apiClass.getMethod("registerEffectiveFactionResolver", resolverClass).invoke(null, resolver);
-        } catch (ReflectiveOperationException | LinkageError | ClassCastException ignored) {
-            // SparkFactionAPI is optional; failed bridge setup must leave SparkTraits behavior unchanged.
-            // SparkFactionAPI 是可选兼容；桥接失败时必须保持 SparkTraits 原行为不变。
-        }
+        SparkFactionApi.registerEffectiveFactionResolver(SparkFactionApiEffectiveFactionBridge::resolveEffectiveFaction);
+    }
+
+    private static Identifier resolveEffectiveFaction(
+            PlayerEntity player,
+            GameWorldComponent gameComponent,
+            Identifier currentFaction
+    ) {
+        return resolveEffectiveFaction(effectiveTraitIds(player, gameComponent), currentFaction);
     }
 
     static Identifier resolveEffectiveFaction(Collection<Identifier> traits, Identifier currentFaction) {
@@ -61,25 +49,6 @@ public final class SparkFactionApiEffectiveFactionBridge {
             return KILLER_FACTION.equals(currentFaction) ? CIVILIAN_FACTION : null;
         }
         return null;
-    }
-
-    private static Object invokeResolver(Object proxy, Method method, Object[] args) {
-        if (method.getDeclaringClass() == Object.class) {
-            return objectMethod(proxy, method, args);
-        }
-        if (!"resolve".equals(method.getName()) || args == null || args.length != 3) {
-            return null;
-        }
-        try {
-            if (!(args[0] instanceof PlayerEntity player)
-                    || !(args[1] instanceof GameWorldComponent gameComponent)
-                    || !(args[2] instanceof Identifier currentFaction)) {
-                return null;
-            }
-            return resolveEffectiveFaction(effectiveTraitIds(player, gameComponent), currentFaction);
-        } catch (RuntimeException | LinkageError ignored) {
-            return null;
-        }
     }
 
     /**
@@ -96,12 +65,4 @@ public final class SparkFactionApiEffectiveFactionBridge {
         return deathTraits.isEmpty() ? traits : deathTraits;
     }
 
-    private static Object objectMethod(Object proxy, Method method, Object[] args) {
-        return switch (method.getName()) {
-            case "toString" -> "SparkTraits SparkFactionAPI effective-faction resolver";
-            case "hashCode" -> System.identityHashCode(proxy);
-            case "equals" -> proxy == (args == null || args.length == 0 ? null : args[0]);
-            default -> null;
-        };
-    }
 }

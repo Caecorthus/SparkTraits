@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "sparktraits",
-  "version": "${version}",
+  "version": "0.1.9.9",
   "name": "SparkTraits",
   "description": "Passive trait mechanics for Spark Wathe.",
   "authors": [
@@ -26,7 +26,9 @@
   "custom": {
     "cardinal-components": [
       "sparktraits:traits",
-      "sparktraits:world"
+      "sparktraits:world",
+      "sparktraits:wraith_player",
+      "sparktraits:wraith_round"
     ]
   },
   "mixins": [
@@ -37,15 +39,16 @@
     }
   ],
   "depends": {
-    "fabricloader": ">=${loader_version}",
+    "fabricloader": ">=0.17.2",
     "fabric-api": "*",
-    "minecraft": "${minecraft_version}",
+    "minecraft": "1.21.1",
     "java": ">=21",
-    "wathe": "${wathe_version}",
-    "noellesroles": "${noellesroles_version}",
-    "ratatouille": ">=${ratatouille_version}",
-    "cardinal-components-base": ">=${cca_version}",
-    "cardinal-components-entity": ">=${cca_version}",
-    "cardinal-components-world": ">=${cca_version}"
+    "wathe": "1.5.7-spark-1.21.1",
+    "noellesroles": "1.7.7-h1.5.7-spark",
+    "sparkfactionapi": ">=0.1.5.9",
+    "ratatouille": ">=1.4.3-1.21.1",
+    "cardinal-components-base": ">=6.1.1",
+    "cardinal-components-entity": ">=6.1.1",
+    "cardinal-components-world": ">=6.1.1"
   }
 }

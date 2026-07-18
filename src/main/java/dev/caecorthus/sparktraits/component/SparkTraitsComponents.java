@@ -21,4 +21,3 @@ public class SparkTraitsComponents implements EntityComponentInitializer, WorldC
         registry.register(TraitWorldComponent.KEY, TraitWorldComponent::new);
     }
 }
-

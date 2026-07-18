@@ -28,7 +28,8 @@ import java.util.UUID;
 public abstract class GameFunctionsMixin {
     @Inject(
             method = "killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Z)V",
-            at = @At("HEAD")
+            at = @At("HEAD"),
+            cancellable = true
     )
     private static void sparktraits$beginSecondStrikeAttempt(
             ServerPlayerEntity victim,

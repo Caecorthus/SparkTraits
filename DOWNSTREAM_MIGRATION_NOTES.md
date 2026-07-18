@@ -10,6 +10,11 @@ SparkTraitsApi.hasActiveTrait(player, traitId);
 SparkTraitsApi.hasLastStandTriggeredThisRound(serverWorld, playerUuid);
 SparkTraitsApi.isFinalMomentActive(world);
 SparkTraitsApi.isInstinctHidden(viewer, target);
+SparkTraitsApi.getActiveTraitIds(player);
+SparkTraitsApi.getRevealedTraitIds(player);
+SparkTraitsApi.restoreActiveTraitsForRuntime(player, activeIds, revealedIds);
+SparkTraitsApi.isLastStandPending(player);
+SparkTraitsApi.isLastStandDeathIntercepted(player);
 ```
 
 These methods are static and null-safe. Optional integrations may continue to
@@ -29,6 +34,12 @@ Known replacements:
   reading SparkTraits components, Going Dark rules, or spirit-projection state.
   The query is safe to load on a dedicated server and preserves Wathe's Final
   Moment override across Going Dark, Last Stand, and spirit projection.
+- Runtime state integrations should use the immutable active/revealed snapshot
+  queries and the exact restore operation rather than the trait component.
+- Pending-death integrations should call `isLastStandPending` rather than
+  reflecting `LastStandService` or reading the synced component flag directly.
+- Synchronous death listeners should call `isLastStandDeathIntercepted` when
+  they must handle both the approved-current-death and pending listener orders.
 
 No existing trait id, component id, API trait definition, or lifecycle event
 was renamed by this migration.
@@ -50,13 +61,10 @@ used for rendering and instinct behavior remain available.
 ## NoellesRoles Version Contract
 
 The tested local artifact is
-`noellesroles-1.7.6-h1.5.6-spark.jar`. SparkTraits metadata now requires
-exactly `noellesroles 1.7.6-h1.5.6-spark`; the Gradle dependency filename and
+`noellesroles-1.7.7-h1.5.7-spark.jar`. SparkTraits metadata requires exactly
+`noellesroles 1.7.7-h1.5.7-spark`; the Gradle dependency filename and
 metadata version share `noellesroles_version` from `gradle.properties`. An
-ordinary `1.7.6` build is not treated as compatible with this Spark fork.
+ordinary `1.7.7` build is not treated as compatible with this Spark fork.
 
-## Existing Optional Bridges
-
-The SparkFactionAPI effective-faction bridge remains optional and fail-neutral.
 The Simple Voice Chat entrypoint remains optional and does not create a loader
 dependency. Audience-first internal package ownership remains unchanged.

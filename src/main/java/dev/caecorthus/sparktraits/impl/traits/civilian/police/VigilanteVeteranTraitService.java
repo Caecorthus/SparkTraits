@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import dev.caecorthus.sparktraits.SparkTraits;
@@ -57,6 +58,7 @@ public final class VigilanteVeteranTraitService {
     public static final float NIKO_REVOLVER_RECOIL_MULTIPLIER = 0.1f;
     public static final float FAST_RELOAD_MULTIPLIER = 0.7f;
     public static final float WELL_TRAINED_DRAIN_MULTIPLIER = 0.7f;
+    private static final int NIKO_REPEAT_SHOT_PUNISHMENT_DELAY_TICKS = 4;
     private static final int NIKO_NIGHT_VISION_AMPLIFIER = 0;
     private static final int NIKO_NIGHT_VISION_TOLERANCE_TICKS = 5;
     private static final Map<UUID, NikoNightVisionState> NIKO_NIGHT_VISION = new HashMap<>();
@@ -433,21 +435,35 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static void scheduleNikoRevolverBurstRepeats(ServerPlayerEntity shooter) {
-        if (!shouldStartNikoRevolverBurst(shooter)) {
+        if (!shouldStartNikoRevolverBurst(shooter)
+                || !(shooter.getWorld() instanceof ServerWorld scheduledWorld)) {
             return;
         }
+        GameWorldComponent scheduledGame = GameWorldComponent.KEY.get(scheduledWorld);
         // Do not replay Wathe's full gun packet handler: it owns inventory, punishment, and cooldown side effects.
         // 不重复执行 Wathe 的完整枪械包处理；那里负责扣枪、惩罚和冷却，重复调用会扩大副作用。
         for (int shot = 1; shot < NIKO_BURST_SHOTS; shot++) {
+            int repeatDelay = NIKO_BURST_INTERVAL_TICKS * shot;
+            AtomicReference<Runnable> pendingPunishment = new AtomicReference<>();
             Scheduler.schedule(
-                    () -> repeatNikoBurstShot(shooter),
-                    NIKO_BURST_INTERVAL_TICKS * shot
+                    () -> repeatNikoBurstShot(shooter, scheduledWorld, scheduledGame, pendingPunishment),
+                    repeatDelay
+            );
+            Scheduler.schedule(
+                    () -> runNikoBurstContinuation(shooter, scheduledWorld, scheduledGame, pendingPunishment),
+                    repeatDelay + NIKO_REPEAT_SHOT_PUNISHMENT_DELAY_TICKS
             );
         }
     }
 
-    private static void repeatNikoBurstShot(ServerPlayerEntity shooter) {
-        if (!canContinueNikoBurst(shooter)) {
+    private static void repeatNikoBurstShot(
+            ServerPlayerEntity shooter,
+            ServerWorld scheduledWorld,
+            GameWorldComponent scheduledGame,
+            AtomicReference<Runnable> pendingPunishment
+    ) {
+        if (!isCurrentNikoBurstContext(shooter, scheduledWorld, scheduledGame)
+                || !canContinueNikoBurst(shooter)) {
             return;
         }
         playNikoBurstFeedback(shooter);
@@ -455,12 +471,16 @@ public final class VigilanteVeteranTraitService {
         if (target == null) {
             return;
         }
-        resolveNikoBurstShot(shooter, target);
+        resolveNikoBurstShot(shooter, target, pendingPunishment);
     }
 
     /** Mirrors only Wathe's per-hit punishment for synthetic Niko shots, not its packet side effects.
      *  仅为 Niko 合成补发复用 Wathe 的单发命中惩罚，不重复执行完整枪械包副作用。 */
-    private static void resolveNikoBurstShot(ServerPlayerEntity shooter, ServerPlayerEntity target) {
+    private static void resolveNikoBurstShot(
+            ServerPlayerEntity shooter,
+            ServerPlayerEntity target,
+            AtomicReference<Runnable> pendingPunishment
+    ) {
         GameWorldComponent game = GameWorldComponent.KEY.get(shooter.getWorld());
         ShouldPunishGunShooter.PunishResult eventResult = ShouldPunishGunShooter.EVENT.invoker()
                 .shouldPunish(shooter, target);
@@ -475,48 +495,71 @@ public final class VigilanteVeteranTraitService {
         );
 
         if (punishment == NikoRepeatShotPunishment.CUSTOM) {
-            Scheduler.schedule(eventResult::executeCustomPunishment, 4);
+            pendingPunishment.set(eventResult::executeCustomPunishment);
         } else if (punishment.attemptsBackfire()) {
             if (game.isInnocent(shooter) && shooter.getRandom().nextFloat() <= game.getBackfireChance()) {
                 GameFunctions.killPlayer(shooter, true, shooter, GameConstants.DeathReasons.GUN_BACKFIRE);
                 return;
             }
-            scheduleNikoRepeatShotPunishment(shooter, game, punishment);
+            pendingPunishment.set(() -> executeNikoRepeatShotPunishment(shooter, game, punishment));
         }
 
         killPlayerWithHeavyArtillery(target, true, shooter, GameConstants.DeathReasons.GUN);
     }
 
-    private static void scheduleNikoRepeatShotPunishment(
+    private static void runNikoBurstContinuation(
+            ServerPlayerEntity shooter,
+            ServerWorld scheduledWorld,
+            GameWorldComponent scheduledGame,
+            AtomicReference<Runnable> pendingPunishment
+    ) {
+        Runnable punishment = pendingPunishment.getAndSet(null);
+        if (punishment != null && isCurrentNikoBurstContext(shooter, scheduledWorld, scheduledGame)) {
+            punishment.run();
+        }
+    }
+
+    private static boolean isCurrentNikoBurstContext(
+            ServerPlayerEntity shooter,
+            ServerWorld scheduledWorld,
+            GameWorldComponent scheduledGame
+    ) {
+        return scheduledWorld.getServer().getPlayerManager().getPlayer(shooter.getUuid()) == shooter
+                && shooter.getWorld() == scheduledWorld
+                && GameWorldComponent.KEY.get(scheduledWorld) == scheduledGame
+                && scheduledGame.isRunning()
+                && !shooter.isSpectator()
+                && GameFunctions.isPlayerPlayingAndAlive(shooter);
+    }
+
+    private static void executeNikoRepeatShotPunishment(
             ServerPlayerEntity shooter,
             GameWorldComponent game,
             NikoRepeatShotPunishment punishment
     ) {
-        Scheduler.schedule(() -> {
-            if (!shooter.getInventory().contains(stack -> stack.isIn(WatheItemTags.GUNS))) {
-                return;
-            }
-            shooter.getInventory().remove(
-                    stack -> stack.isOf(WatheItems.REVOLVER),
-                    1,
-                    shooter.getInventory()
-            );
-            if (game.canUseKillerFeatures(shooter)) {
-                return;
-            }
+        if (!shooter.getInventory().contains(stack -> stack.isIn(WatheItemTags.GUNS))) {
+            return;
+        }
+        shooter.getInventory().remove(
+                stack -> stack.isOf(WatheItems.REVOLVER),
+                1,
+                shooter.getInventory()
+        );
+        if (game.canUseKillerFeatures(shooter)) {
+            return;
+        }
 
-            ItemEntity droppedGun = shooter.dropItem(WatheItems.REVOLVER.getDefaultStack(), false, false);
-            if (droppedGun != null) {
-                droppedGun.setPickupDelay(10);
-                droppedGun.setThrower(shooter);
-            }
-            ServerPlayNetworking.send(shooter, new GunDropPayload());
-            PlayerMoodComponent.KEY.get(shooter).setMood(0);
-            game.addToPreventGunPickup(shooter);
-            if (game.isInnocent(shooter) && punishment == NikoRepeatShotPunishment.KILL_SHOOTER) {
-                GameFunctions.killPlayer(shooter, true, null, GameConstants.DeathReasons.SHOT_INNOCENT);
-            }
-        }, 4);
+        ItemEntity droppedGun = shooter.dropItem(WatheItems.REVOLVER.getDefaultStack(), false, false);
+        if (droppedGun != null) {
+            droppedGun.setPickupDelay(10);
+            droppedGun.setThrower(shooter);
+        }
+        ServerPlayNetworking.send(shooter, new GunDropPayload());
+        PlayerMoodComponent.KEY.get(shooter).setMood(0);
+        game.addToPreventGunPickup(shooter);
+        if (game.isInnocent(shooter) && punishment == NikoRepeatShotPunishment.KILL_SHOOTER) {
+            GameFunctions.killPlayer(shooter, true, null, GameConstants.DeathReasons.SHOT_INNOCENT);
+        }
     }
 
     private static boolean canContinueNikoBurst(ServerPlayerEntity shooter) {

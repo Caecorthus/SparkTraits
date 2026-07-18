@@ -24,10 +24,26 @@
     "MoodRendererMixin",
     "PigPlayerRendererMixin",
     "RoundTextRendererMixin",
+    "SpiritSleuthLivingEntityRendererMixin",
     "TrimmedBedBluePoisonParticleMixin",
     "TraitInventoryScreenMixin",
     "TraitRoleNameRendererMixin",
-    "WatheClientMixin"
+    "WatheClientMixin",
+    "WraithCapeFeatureRendererMixin",
+    "WraithChatRestrictionMixin",
+    "WraithCorpseModelMixin",
+    "WraithCorpseSkinMixin",
+    "WraithElytraFeatureRendererMixin",
+    "WraithEntityInvisibilityMixin",
+    "WraithHeldItemFeatureRendererMixin",
+    "WraithHiddenBodiesMixin",
+    "WraithMinecraftClientMixin",
+    "WraithNameMixin",
+    "WraithPlayerModelMixin",
+    "WraithPlayerSkinMixin",
+    "WraithPlayerSkinTexturesMixin",
+    "WraithRendererDispatchMixin",
+    "WraithWatheHighlightMixin"
   ],
   "injectors": {
     "defaultRequire": 1

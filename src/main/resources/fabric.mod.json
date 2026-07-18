@@ -43,6 +43,7 @@
     "java": ">=21",
     "wathe": "${wathe_version}",
     "noellesroles": "${noellesroles_version}",
+    "sparkfactionapi": ">=${sparkfactionapi_version}",
     "ratatouille": ">=${ratatouille_version}",
     "cardinal-components-base": ">=${cca_version}",
     "cardinal-components-entity": ">=${cca_version}",

@@ -42,7 +42,10 @@ public final class GoingDarkRules {
             Role viewerRole,
             Collection<Identifier> viewerTraits
     ) {
-        if (!targetHidden || !viewerPlayingAndAlive || viewerCanSeeSpectatorInformation || finalMomentActive) {
+        if (!targetHidden
+                || !viewerPlayingAndAlive
+                || viewerCanSeeSpectatorInformation
+                || finalMomentActive) {
             return false;
         }
         Collection<Identifier> traits = safeTraits(viewerTraits);

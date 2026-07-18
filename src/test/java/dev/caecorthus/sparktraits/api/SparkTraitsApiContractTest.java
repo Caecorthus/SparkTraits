@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.api;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,6 +26,20 @@ class SparkTraitsApiContractTest {
         assertPublicStaticBooleanMethod("isFinalMomentActive", World.class);
         assertPublicStaticBooleanMethod("isFakeDeathBody", Entity.class);
         assertPublicStaticBooleanMethod("isInstinctHidden", PlayerEntity.class, PlayerEntity.class);
+        assertPublicStaticBooleanMethod("isLastStandPending", PlayerEntity.class);
+        assertPublicStaticBooleanMethod("isLastStandDeathIntercepted", PlayerEntity.class);
+
+        assertPublicStaticCollectionMethod("getActiveTraitIds", PlayerEntity.class);
+        assertPublicStaticCollectionMethod("getRevealedTraitIds", PlayerEntity.class);
+        Method restore = SparkTraitsApi.class.getDeclaredMethod(
+                "restoreActiveTraitsForRuntime",
+                ServerPlayerEntity.class,
+                Collection.class,
+                Collection.class
+        );
+        assertEquals(void.class, restore.getReturnType());
+        assertTrue(Modifier.isPublic(restore.getModifiers()));
+        assertTrue(Modifier.isStatic(restore.getModifiers()));
     }
 
     @Test
@@ -33,6 +49,20 @@ class SparkTraitsApiContractTest {
         assertFalse(SparkTraitsApi.isFinalMomentActive(null));
         assertFalse(SparkTraitsApi.isFakeDeathBody(null));
         assertFalse(SparkTraitsApi.isInstinctHidden(null, null));
+        assertFalse(SparkTraitsApi.isLastStandPending(null));
+        assertFalse(SparkTraitsApi.isLastStandDeathIntercepted(null));
+        assertTrue(SparkTraitsApi.getActiveTraitIds(null).isEmpty());
+        assertTrue(SparkTraitsApi.getRevealedTraitIds(null).isEmpty());
+        SparkTraitsApi.restoreActiveTraitsForRuntime(null, null, null);
+    }
+
+    private static void assertPublicStaticCollectionMethod(String name, Class<?>... parameterTypes) {
+        Method method = findMethod(name, parameterTypes);
+
+        assertNotNull(method);
+        assertEquals(Collection.class, method.getReturnType());
+        assertTrue(Modifier.isPublic(method.getModifiers()));
+        assertTrue(Modifier.isStatic(method.getModifiers()));
     }
 
     private static void assertPublicStaticBooleanMethod(String name, Class<?>... parameterTypes) {

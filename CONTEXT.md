@@ -105,8 +105,8 @@ extension and adds one armour layer to the current Psycho Mode armour value.
   player's active, pending, or revealed trait identifiers.
 - Spectator/creative clients may inspect active trait state; owners may inspect
   their own owner-visible and revealed state.
-- Packet field order, NBT keys, kill/reset/finalize ordering, and optional bridge
-  fallbacks are compatibility contracts.
+- Packet field order, NBT keys, kill/reset/finalize ordering, and required
+  dependency contracts are compatibility contracts.
 - `sparktraits:bloodthirsty_weapons` and `sparktraits:thrust_weapons` are
   additive item-tag seams. Contributors append their weapons and must not
   replace the base tags.
@@ -117,6 +117,14 @@ extension and adds one armour layer to the current Psycho Mode armour value.
   Moment highlight overrides every suppression exposed by this query;
   downstream mods must not inspect synced trait flags or NoellesRoles
   projection state directly.
+- `SparkTraitsApi.getActiveTraitIds(player)` and
+  `SparkTraitsApi.getRevealedTraitIds(player)` return immutable snapshots.
+  `restoreActiveTraitsForRuntime(player, activeIds, revealedIds)` is the
+  supported exact runtime restore seam, and `isLastStandPending(player)` is the
+  supported pending-state query.
+  `isLastStandDeathIntercepted(player)` covers both an approved current death
+  and the resulting pending state so synchronous death listeners are independent
+  of registration order. These generic APIs do not encode downstream role policy.
 - Replay records only match-defining runtime transitions: successful Last Stand,
   Final Moment start, and actual conversion to `wathe:loose_end`. Startup
   effective-alignment flips and compensation assignments are excluded.
@@ -127,7 +135,8 @@ extension and adds one armour layer to the current Psycho Mode armour value.
 
 ## Integrations
 
-Wathe and NoellesRoles are hard gameplay dependencies. SparkFactionAPI is an
-optional effective-faction bridge. Simple Voice Chat is an optional plugin used
-for Depression psycho voice suppression. SparkWitch and SparkStrength are known
-downstream consumers and should query the public facade rather than internals.
+Wathe, NoellesRoles, and SparkFactionAPI are hard gameplay dependencies.
+SparkFactionAPI owns the deny-wins player-affect contract and effective-faction
+resolver chain. Simple Voice Chat remains optional and is used for Depression
+psycho voice suppression. SparkWitch and SparkStrength are known downstream
+consumers and must use public APIs rather than internals.

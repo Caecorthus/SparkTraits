@@ -108,6 +108,24 @@ class CautiousSoundRulesTest {
         assertEquals(1, countOccurrences(presenceFootstepsSource, "CautiousSoundDebug.trace("));
     }
 
+    @Test
+    void playerConsumptionMixinSuppressesOnlyTheCompletionBurpSound() throws IOException {
+        String source = readSource(
+                "src/main/java/dev/caecorthus/sparktraits/mixin/CautiousPlayerConsumptionSoundMixin.java"
+        );
+        String mixinConfig = readSource("src/main/resources/sparktraits.mixins.json");
+
+        assertTrue(source.contains("@Mixin(PlayerEntity.class)"));
+        assertTrue(source.contains("method = \"eatFood\""));
+        assertTrue(source.contains(
+                "Lnet/minecraft/world/World;playSound(Lnet/minecraft/entity/player/PlayerEntity;"
+                        + "DDDLnet/minecraft/sound/SoundEvent;Lnet/minecraft/sound/SoundCategory;FF)V"
+        ));
+        assertTrue(source.contains("sound == SoundEvents.ENTITY_PLAYER_BURP"));
+        assertTrue(source.contains("GlobalTraitService.shouldSuppressCautiousSounds(player)"));
+        assertTrue(mixinConfig.contains("\"CautiousPlayerConsumptionSoundMixin\""));
+    }
+
     private static boolean shouldSuppress(String path) {
         return CautiousSoundRules.shouldSuppressClientEntityStepSound(
                 true,

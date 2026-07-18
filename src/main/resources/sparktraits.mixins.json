@@ -11,6 +11,7 @@
     "BloodthirstyCooldownMixin",
     "CautiousEntitySoundMixin",
     "CautiousLivingEntitySoundMixin",
+    "CautiousPlayerConsumptionSoundMixin",
     "CautiousPlayerMoveEffectMixin",
     "ConscienceBomberGrenadeEntityMixin",
     "ConscienceBomberGrenadeItemMixin",
