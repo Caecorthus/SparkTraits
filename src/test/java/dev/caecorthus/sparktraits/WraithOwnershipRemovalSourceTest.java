@@ -19,6 +19,7 @@ class WraithOwnershipRemovalSourceTest {
     private static final List<Path> ALLOWED_WRAITH_REFERENCES = List.of(
             Path.of("src/main/java/dev/caecorthus/sparktraits/api/SparkTraitsApi.java"),
             Path.of("src/main/java/dev/caecorthus/sparktraits/compat/SparkWitchWraithBridge.java"),
+            Path.of("src/main/java/dev/caecorthus/sparktraits/impl/effective/EffectiveTraitService.java"),
             Path.of("src/main/java/dev/caecorthus/sparktraits/component/RetiredTraitIds.java"),
             Path.of("src/main/java/dev/caecorthus/sparktraits/impl/lifecycle/TraitGameHooks.java"),
             Path.of("src/client/java/dev/caecorthus/sparktraits/client/mixin/PigPlayerRendererMixin.java"),

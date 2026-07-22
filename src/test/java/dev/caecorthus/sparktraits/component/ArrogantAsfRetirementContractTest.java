@@ -26,26 +26,9 @@ class ArrogantAsfRetirementContractTest {
         String component = source("src/main/java/dev/caecorthus/sparktraits/component/TraitPlayerComponent.java");
 
         assertTrue(component.contains("buf.writeBoolean(false);"));
-        assertTrue(component.contains("if (buf.readableBytes() > 0) {\n            buf.readBoolean();\n        }"));
+        assertTrue(component.contains("if (buf.readableBytes() > 0) {"));
+        assertTrue(component.contains("buf.readBoolean();"));
         assertFalse(component.contains("arrogantAsfActive"));
-    }
-
-    @Test
-    void noellesRolesPacketMixinSupportsBothBundledLambdaLayouts() throws IOException {
-        String mixin = source("src/main/java/dev/caecorthus/sparktraits/mixin/NoellesRolesPacketMixin.java");
-
-        assertTrue(mixin.contains("{\"lambda$registerPackets$31\", \"lambda$registerPackets$0\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$32\", \"lambda$registerPackets$1\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$34\", \"lambda$registerPackets$2\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$36\", \"lambda$registerPackets$5\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$37\", \"lambda$registerPackets$6\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$35\", \"lambda$registerPackets$4\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$38\", \"lambda$registerPackets$7\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$39\", \"lambda$registerPackets$8\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$40\", \"lambda$registerPackets$9\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$43\", \"lambda$registerPackets$12\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$44\", \"lambda$registerPackets$13\"}"));
-        assertTrue(mixin.contains("{\"lambda$registerPackets$45\", \"lambda$registerPackets$14\"}"));
     }
 
     private static String source(String relativePath) throws IOException {

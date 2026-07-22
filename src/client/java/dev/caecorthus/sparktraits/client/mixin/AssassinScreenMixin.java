@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@Mixin(value = AssassinScreen.class, remap = false)
+@Mixin(AssassinScreen.class)
 public abstract class AssassinScreenMixin extends Screen {
     @Unique
     private static final int SPARKTRAITS_ROLE_COLUMNS = 3;
@@ -56,7 +56,7 @@ public abstract class AssassinScreenMixin extends Screen {
         super(title);
     }
 
-    @Inject(method = {"init", "method_25426"}, at = @At("TAIL"), remap = false)
+    @Inject(method = "init", at = @At("TAIL"))
     private void sparktraits$paginateRoleGuessPanel(CallbackInfo ci) {
         if (!SparkTraitsServerConnection.isConfirmedServer()) {
             return;

@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl.effective;
 
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.impl.effective.alignment.EffectiveAlignment;
 import dev.caecorthus.sparktraits.impl.effective.death.EffectiveDeathConsequenceRules;
 import dev.caecorthus.sparktraits.impl.effective.economy.EffectiveEconomyRules;
@@ -800,7 +801,7 @@ public final class EffectiveTraitService {
 
     public static Role.MoodType effectiveMoodType(PlayerEntity player, Role role) {
         if (hasConscience(player)) {
-            return Role.MoodType.REAL;
+            return effectiveConscienceMoodType(SparkWitchWraithBridge.isWraithActive(player));
         }
         if (hasImpostor(player)) {
             return Role.MoodType.FAKE;
@@ -808,9 +809,18 @@ public final class EffectiveTraitService {
         return role == null ? Role.MoodType.NONE : role.getMoodType();
     }
 
+    /** Active Wraith state suppresses Conscience's mood HUD without removing the trait. */
+    public static Role.MoodType effectiveConscienceMoodType(boolean activeWraith) {
+        return activeWraith ? Role.MoodType.NONE : Role.MoodType.REAL;
+    }
+
     public static Role.MoodType effectiveMoodType(Role role, Collection<Identifier> traits) {
+        return effectiveMoodType(role, traits, false);
+    }
+
+    static Role.MoodType effectiveMoodType(Role role, Collection<Identifier> traits, boolean activeWraith) {
         if (hasConscience(traits)) {
-            return Role.MoodType.REAL;
+            return effectiveConscienceMoodType(activeWraith);
         }
         if (hasImpostor(traits)) {
             return Role.MoodType.FAKE;
