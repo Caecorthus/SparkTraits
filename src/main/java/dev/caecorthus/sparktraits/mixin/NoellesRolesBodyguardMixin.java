@@ -13,9 +13,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(value = Noellesroles.class, remap = false)
 public abstract class NoellesRolesBodyguardMixin {
     @Redirect(
-            // NoellesRoles 1.7.6 renumbered this KillPlayer listener from $9 to $5.
-            // NoellesRoles 1.7.6 将这个 KillPlayer 监听器从 $9 重新编号为 $5。
-            method = {"lambda$registerEvents$9", "lambda$registerEvents$5"},
+            method = "lambda$registerEvents$5",
             at = @At(
                     value = "INVOKE",
                     target = "Ldev/doctor4t/wathe/game/GameFunctions;isPlayerPlayingAndAlive(Lnet/minecraft/entity/player/PlayerEntity;)Z",

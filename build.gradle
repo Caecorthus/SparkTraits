@@ -10,6 +10,7 @@ base {
     archivesName = project.archives_base_name
 }
 
+def watheJarName = "wathe-${project.wathe_version}.jar"
 def noellesRolesJarName = "noellesroles-${project.noellesroles_version}.jar"
 def sparkFactionApiJarName = "sparkfactionapi-${project.sparkfactionapi_version}.jar"
 
@@ -57,7 +58,7 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    modApi files("wathe-${project.wathe_version}.jar")
+    modApi files(watheJarName)
     modImplementation files(noellesRolesJarName)
     modImplementation files(sparkFactionApiJarName)
     modLocalRuntime "maven.modrinth:carpet:1.4.147"
@@ -105,6 +106,101 @@ processResources {
 
 def remappedModJar = tasks.named("remapJar")
 
+def readClassNode = { java.util.zip.ZipFile archive, String entryName ->
+    def entry = archive.getEntry(entryName)
+    if (entry == null) {
+        throw new GradleException("Missing class ${entryName} in ${archive.name}")
+    }
+    def node = new org.objectweb.asm.tree.ClassNode()
+    archive.getInputStream(entry).withCloseable { input ->
+        new org.objectweb.asm.ClassReader(input).accept(
+                node,
+                org.objectweb.asm.ClassReader.SKIP_DEBUG | org.objectweb.asm.ClassReader.SKIP_FRAMES
+        )
+    }
+    node
+}
+
+def annotationValue = { annotation, String key ->
+    def values = annotation?.values ?: []
+    for (int index = 0; index < values.size(); index += 2) {
+        if (values[index] == key) {
+            return values[index + 1]
+        }
+    }
+    null
+}
+
+def verifyAssassinScreenSelector = tasks.register("verifyAssassinScreenSelector") {
+    dependsOn remappedModJar
+    inputs.file(remappedModJar.flatMap { it.archiveFile })
+    inputs.file(noellesRolesJarName)
+    inputs.file("src/client/resources/sparktraits.client.mixins.json")
+
+    doLast {
+        def jarFile = remappedModJar.get().archiveFile.get().asFile
+        def noellesRolesFile = file(noellesRolesJarName)
+        def modZip = new java.util.zip.ZipFile(jarFile)
+        def noellesRolesZip = new java.util.zip.ZipFile(noellesRolesFile)
+        try {
+            def configEntry = modZip.getEntry("sparktraits.client.mixins.json")
+            if (configEntry == null) {
+                throw new GradleException("Missing sparktraits.client.mixins.json in ${jarFile.name}")
+            }
+            def config = new groovy.json.JsonSlurper().parse(modZip.getInputStream(configEntry))
+            if (config.required != true || config.injectors?.defaultRequire?.toString() != "1") {
+                throw new GradleException("SparkTraits client mixins must remain required with defaultRequire 1")
+            }
+            if (!(config.client ?: []).contains("AssassinScreenMixin")) {
+                throw new GradleException("Missing AssassinScreenMixin from sparktraits.client.mixins.json")
+            }
+
+            def mixinNode = readClassNode(
+                    modZip,
+                    "dev/caecorthus/sparktraits/client/mixin/AssassinScreenMixin.class"
+            )
+            def handler = mixinNode.methods.find { it.name == "sparktraits\$paginateRoleGuessPanel" }
+            if (handler == null) {
+                throw new GradleException("Missing AssassinScreenMixin pagination handler")
+            }
+            def annotations = []
+            annotations.addAll(handler.visibleAnnotations ?: [])
+            annotations.addAll(handler.invisibleAnnotations ?: [])
+            def injection = annotations.find {
+                it.desc == "Lorg/spongepowered/asm/mixin/injection/Inject;"
+            }
+            if (injection == null) {
+                throw new GradleException("Missing @Inject on AssassinScreenMixin pagination handler")
+            }
+            def selectorValue = annotationValue(injection, "method")
+            def selectors = selectorValue instanceof Collection
+                    ? selectorValue.collect { it.toString() }
+                    : [selectorValue?.toString()].findAll { it != null }
+            if (selectors != ["method_25426()V"]) {
+                throw new GradleException(
+                        "Packaged AssassinScreen selector drift: expected method_25426()V, found ${selectors}"
+                )
+            }
+            if (annotationValue(injection, "require")?.toString() == "0") {
+                throw new GradleException("AssassinScreen pagination injection cannot use require=0")
+            }
+
+            def providerNode = readClassNode(
+                    noellesRolesZip,
+                    "org/agmas/noellesroles/client/screen/AssassinScreen.class"
+            )
+            if (providerNode.methods.find { it.name == "method_25426" && it.desc == "()V" } == null) {
+                throw new GradleException(
+                        "NoellesRoles ${project.noellesroles_version} is missing AssassinScreen.method_25426()V"
+                )
+            }
+        } finally {
+            noellesRolesZip.close()
+            modZip.close()
+        }
+    }
+}
+
 tasks.register("verifyModJarVersion") {
     dependsOn remappedModJar
     inputs.file(remappedModJar.flatMap { it.archiveFile })
@@ -131,6 +227,17 @@ tasks.register("verifyModJarVersion") {
             def metadataVersion = metadata.version?.toString()
             if (metadataVersion != jarVersion) {
                 throw new GradleException("Jar version mismatch: ${jarFile.name} says ${jarVersion}, but fabric.mod.json says ${metadataVersion}")
+            }
+            if (metadata.depends?.wathe?.toString() != project.wathe_version.toString()) {
+                throw new GradleException(
+                        "Remapped jar Wathe dependency mismatch: expected ${project.wathe_version}, found ${metadata.depends?.wathe}"
+                )
+            }
+            if (metadata.depends?.noellesroles?.toString() != project.noellesroles_version.toString()) {
+                throw new GradleException(
+                        "Remapped jar NoellesRoles dependency mismatch: expected ${project.noellesroles_version}, " +
+                                "found ${metadata.depends?.noellesroles}"
+                )
             }
 
             def clientEntrypoint = "dev.caecorthus.sparktraits.client.SparkTraitsClient"
@@ -188,6 +295,7 @@ tasks.register("verifyModJarVersion") {
 
 tasks.named("build") {
     dependsOn tasks.named("verifyModJarVersion")
+    dependsOn verifyAssassinScreenSelector
 }
 
 def targetJavaVersion = 21
@@ -200,11 +308,6 @@ tasks.test {
     useJUnitPlatform()
 }
 
-def architectureFiles = [
-        "AGENTS.md",
-        "CONTEXT.md",
-        "DOWNSTREAM_MIGRATION_NOTES.md"
-]
 def publicFacade = "src/main/java/dev/caecorthus/sparktraits/api/SparkTraitsApi.java"
 def publicFacadeContractTest = "src/test/java/dev/caecorthus/sparktraits/api/SparkTraitsApiContractTest.java"
 def syncVisibilityContractTest = "src/test/java/dev/caecorthus/sparktraits/component/TraitSyncVisibilityTest.java"
@@ -212,50 +315,114 @@ def syncVisibilityContractTest = "src/test/java/dev/caecorthus/sparktraits/compo
 tasks.register("verifyArchitecture") {
     group = "verification"
     description = "Verifies architecture governance, public facade, and local dependency metadata."
-    inputs.files(architectureFiles.collect { file(it) })
     inputs.file(publicFacade)
     inputs.file(publicFacadeContractTest)
     inputs.file(syncVisibilityContractTest)
+    inputs.file(watheJarName)
     inputs.file(noellesRolesJarName)
     inputs.file(sparkFactionApiJarName)
     inputs.file("src/main/resources/fabric.mod.json")
+    inputs.file("bin/main/fabric.mod.json")
     inputs.file("gradle.properties")
 
     doLast {
-        def requiredPaths = architectureFiles + publicFacade + publicFacadeContractTest + syncVisibilityContractTest
+        def requiredPaths = [publicFacade, publicFacadeContractTest, syncVisibilityContractTest]
         def missingPaths = requiredPaths.findAll { !file(it).isFile() }
         if (!missingPaths.isEmpty()) {
-            throw new GradleException("Missing architecture files: ${missingPaths.join(', ')}")
+            throw new GradleException("Missing architecture contract files: ${missingPaths.join(', ')}")
         }
 
-        def expectedNoellesRolesVersion = project.noellesroles_version.toString()
-        def expectedJar = file(noellesRolesJarName)
-        if (!expectedJar.isFile()) {
-            throw new GradleException("Missing aligned NoellesRoles jar: ${expectedJar.name}")
-        }
-
-        def noellesRolesJar = new java.util.zip.ZipFile(expectedJar)
-        try {
-            def metadataEntry = noellesRolesJar.getEntry("fabric.mod.json")
-            if (metadataEntry == null) {
-                throw new GradleException("Missing fabric.mod.json in ${expectedJar.name}")
+        def verifyDependencyJar = { String jarName, String expectedId, String expectedVersion, String expectedSha256 ->
+            def dependencyJarFile = file(jarName)
+            if (!dependencyJarFile.isFile()) {
+                throw new GradleException("Missing aligned dependency jar: ${dependencyJarFile.name}")
             }
-            def jarMetadata = new groovy.json.JsonSlurper().parse(noellesRolesJar.getInputStream(metadataEntry))
-            if (jarMetadata.version?.toString() != expectedNoellesRolesVersion) {
+
+            def actualSha256 = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(dependencyJarFile.bytes)
+                    .encodeHex()
+                    .toString()
+            if (actualSha256 != expectedSha256) {
                 throw new GradleException(
-                        "NoellesRoles jar version mismatch: expected ${expectedNoellesRolesVersion}, found ${jarMetadata.version}"
+                        "Dependency checksum mismatch for ${jarName}: expected ${expectedSha256}, found ${actualSha256}"
                 )
             }
-        } finally {
-            noellesRolesJar.close()
+
+            def dependencyJar = new java.util.zip.ZipFile(dependencyJarFile)
+            try {
+                def metadataEntry = dependencyJar.getEntry("fabric.mod.json")
+                if (metadataEntry == null) {
+                    throw new GradleException("Missing fabric.mod.json in ${jarName}")
+                }
+                def jarMetadata = new groovy.json.JsonSlurper().parse(dependencyJar.getInputStream(metadataEntry))
+                if (jarMetadata.id?.toString() != expectedId || jarMetadata.version?.toString() != expectedVersion) {
+                    throw new GradleException(
+                            "Dependency metadata mismatch for ${jarName}: expected ${expectedId} ${expectedVersion}, " +
+                                    "found ${jarMetadata.id} ${jarMetadata.version}"
+                    )
+                }
+                return jarMetadata
+            } finally {
+                dependencyJar.close()
+            }
+        }
+
+        verifyDependencyJar(
+                watheJarName,
+                "wathe",
+                project.wathe_version.toString(),
+                project.wathe_sha256.toString()
+        )
+        def noellesRolesMetadata = verifyDependencyJar(
+                noellesRolesJarName,
+                "noellesroles",
+                project.noellesroles_version.toString(),
+                project.noellesroles_sha256.toString()
+        )
+        if (noellesRolesMetadata.depends?.wathe?.toString() != project.wathe_version.toString()) {
+            throw new GradleException(
+                    "NoellesRoles embedded Wathe dependency mismatch: expected ${project.wathe_version}, " +
+                            "found ${noellesRolesMetadata.depends?.wathe}"
+            )
         }
 
         def metadata = new groovy.json.JsonSlurper().parse(file("src/main/resources/fabric.mod.json"))
-        def expectedVersionTemplate = '${noellesroles_version}'
-        if (metadata.depends?.noellesroles != expectedVersionTemplate) {
+        def expectedWatheVersionTemplate = '${wathe_version}'
+        if (metadata.depends?.wathe != expectedWatheVersionTemplate) {
             throw new GradleException(
-                    "NoellesRoles metadata mismatch: expected ${expectedVersionTemplate}, found ${metadata.depends?.noellesroles}"
+                    "Wathe metadata mismatch: expected ${expectedWatheVersionTemplate}, found ${metadata.depends?.wathe}"
             )
+        }
+        def expectedNoellesRolesVersionTemplate = '${noellesroles_version}'
+        if (metadata.depends?.noellesroles != expectedNoellesRolesVersionTemplate) {
+            throw new GradleException(
+                    "NoellesRoles metadata mismatch: expected ${expectedNoellesRolesVersionTemplate}, " +
+                            "found ${metadata.depends?.noellesroles}"
+            )
+        }
+
+        def trackedMetadataFile = file("bin/main/fabric.mod.json")
+        if (!trackedMetadataFile.isFile()) {
+            throw new GradleException("Missing tracked IDE metadata snapshot: ${trackedMetadataFile}")
+        }
+        def trackedMetadata = new groovy.json.JsonSlurper().parse(trackedMetadataFile)
+        if (trackedMetadata.id?.toString() != "sparktraits" ||
+                trackedMetadata.version?.toString() != project.mod_version.toString()) {
+            throw new GradleException(
+                    "Tracked IDE metadata must identify sparktraits ${project.mod_version}; " +
+                            "found ${trackedMetadata.id} ${trackedMetadata.version}"
+            )
+        }
+        [
+                wathe        : project.wathe_version.toString(),
+                noellesroles : project.noellesroles_version.toString()
+        ].each { modId, expectedVersion ->
+            if (trackedMetadata.depends?.get(modId)?.toString() != expectedVersion) {
+                throw new GradleException(
+                        "Tracked IDE metadata dependency ${modId} must be ${expectedVersion}; " +
+                                "found ${trackedMetadata.depends?.get(modId)}"
+                )
+            }
         }
     }
 }
@@ -263,6 +430,7 @@ tasks.register("verifyArchitecture") {
 tasks.named("check") {
     dependsOn tasks.named("verifyArchitecture")
     dependsOn tasks.matching { it.name == "validateAccessWidener" }
+    dependsOn verifyAssassinScreenSelector
 }
 
 

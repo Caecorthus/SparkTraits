@@ -4,10 +4,11 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 /**
- * Fail-closed optional bridge to SparkWitch's Wraith owner API.
- * 到 SparkWitch 冤魂所有者 API 的失败关闭可选桥接。
+ * Loader-safe optional bridge to SparkWitch's Wraith owner API; unavailable queries preserve normal behavior.
+ * 到 SparkWitch 冤魂所有者 API 的加载器安全可选桥接；查询不可用时保留正常行为。
  */
 public final class SparkWitchWraithBridge {
     private static final String MOD_ID = "sparkwitch";
@@ -22,36 +23,45 @@ public final class SparkWitchWraithBridge {
         if (player == null) {
             return false;
         }
-        Method method = resolveMethod();
+        resolveMethods();
+        return invokeBoolean(isWraithActive, player);
+    }
+
+    private static boolean invokeBoolean(Method method, PlayerEntity player) {
         if (method == null) {
             return false;
         }
         try {
             Object result = method.invoke(null, player);
-            return result instanceof Boolean active && active;
+            return result instanceof Boolean value && value;
         } catch (ReflectiveOperationException | LinkageError | ClassCastException ignored) {
             return false;
         }
     }
 
-    private static synchronized Method resolveMethod() {
+    private static synchronized void resolveMethods() {
         if (initialized) {
-            return isWraithActive;
+            return;
         }
         initialized = true;
         if (!FabricLoader.getInstance().isModLoaded(MOD_ID)) {
-            return null;
+            return;
         }
         try {
             Class<?> api = Class.forName(API_CLASS);
-            Method method = api.getMethod("isWraithActive", PlayerEntity.class);
-            if (method.getReturnType() == boolean.class || method.getReturnType() == Boolean.class) {
-                isWraithActive = method;
-            }
+            isWraithActive = booleanQuery(api, "isWraithActive");
         } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
-            // SparkWitch is optional; absent or incompatible APIs must never make Wraith appear active.
-            // SparkWitch 是可选依赖；缺失或不兼容的 API 不得让冤魂被判定为活动。
+            // SparkWitch is optional; absent or incompatible APIs must leave normal mood behavior intact.
+            // SparkWitch 是可选依赖；缺失或不兼容的 API 必须保留正常理智条行为。
         }
-        return isWraithActive;
+    }
+
+    private static Method booleanQuery(Class<?> api, String name) throws NoSuchMethodException {
+        Method method = api.getMethod(name, PlayerEntity.class);
+        if (!Modifier.isStatic(method.getModifiers())
+                || (method.getReturnType() != boolean.class && method.getReturnType() != Boolean.class)) {
+            throw new NoSuchMethodException(name + " must be public static and return boolean");
+        }
+        return method;
     }
 }

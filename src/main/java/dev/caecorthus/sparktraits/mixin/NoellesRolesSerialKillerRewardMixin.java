@@ -15,9 +15,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(value = Noellesroles.class, remap = false)
 public abstract class NoellesRolesSerialKillerRewardMixin {
     @Redirect(
-            // NoellesRoles 1.7.6 moved the target-death listener from $20 to $16.
-            // NoellesRoles 1.7.6 将目标死亡监听器从 $20 移到了 $16。
-            method = {"lambda$registerEvents$20", "lambda$registerEvents$16"},
+            method = "lambda$registerEvents$16",
             at = @At(
                     value = "INVOKE",
                     target = "Ldev/doctor4t/wathe/cca/PlayerShopComponent;addToBalance(I)V",
