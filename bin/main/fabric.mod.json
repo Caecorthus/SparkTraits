@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "sparktraits",
-  "version": "0.1.9.11",
+  "version": "0.1.9.12",
   "name": "SparkTraits",
   "description": "Passive trait mechanics for Spark Wathe.",
   "authors": [
