@@ -129,7 +129,7 @@ public final class DepressionTraitService {
         if (startingPlayerCount < MIN_RANDOM_PLAYERS) {
             return 0;
         }
-        return Math.max(0, (startingPlayerCount - MIN_RANDOM_PLAYERS) / RANDOM_CAP_STEP_PLAYERS);
+        return 1 + (startingPlayerCount - MIN_RANDOM_PLAYERS) / RANDOM_CAP_STEP_PLAYERS;
     }
 
     public static float depressionAdjustedMood(float currentMood, float proposedMood, Collection<Identifier> traits) {

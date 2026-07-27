@@ -929,11 +929,19 @@ public final class EffectiveTraitService {
         }
     }
 
+    static boolean preservesResolvedWinStatus(GameFunctions.WinStatus currentStatus) {
+        return currentStatus == GameFunctions.WinStatus.TIME
+                || currentStatus == GameFunctions.WinStatus.NEUTRAL;
+    }
+
     private static CheckWinCondition.WinResult checkWin(
             ServerWorld world,
             GameWorldComponent gameComponent,
             GameFunctions.WinStatus currentStatus
     ) {
+        if (preservesResolvedWinStatus(currentStatus)) {
+            return null;
+        }
         List<ServerPlayerEntity> players = world.getPlayers();
         List<Role> livingRoles = new ArrayList<>();
         boolean realKillerAlive = false;
