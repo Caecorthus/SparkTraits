@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LastStandWitchLifecycleTest {
@@ -39,7 +41,7 @@ class LastStandWitchLifecycleTest {
 
     @Test
     void finalMomentStillDoesNotOverrideTimeOrResolvedNeutralWins() {
-        List<LastStandFinalMomentService.PlayerState> players = revivedPlayers("grand_witch");
+        List<LastStandFinalMomentService.PlayerState> players = activeFinalMomentPlayers("grand_witch");
 
         assertFalse(LastStandFinalMomentService.canTriggerInactiveFinalMoment(
                 true,
@@ -51,6 +53,88 @@ class LastStandWitchLifecycleTest {
                 true,
                 false,
                 GameFunctions.WinStatus.NEUTRAL,
+                players
+        ));
+    }
+
+    @Test
+    void activeFinalMomentPreservesResolvedTimeAndNeutralWins() {
+        List<LastStandFinalMomentService.PlayerState> players = activeFinalMomentPlayers("grand_witch");
+
+        assertNull(LastStandFinalMomentService.activeFinalMomentWinResult(
+                true,
+                GameFunctions.WinStatus.TIME,
+                players
+        ));
+        assertFalse(LastStandFinalMomentService.shouldCancelRoundEndFinalization(
+                true,
+                GameFunctions.WinStatus.TIME,
+                players
+        ));
+        assertNull(LastStandFinalMomentService.activeFinalMomentWinResult(
+                true,
+                GameFunctions.WinStatus.NEUTRAL,
+                players
+        ));
+        assertFalse(LastStandFinalMomentService.shouldCancelRoundEndFinalization(
+                true,
+                GameFunctions.WinStatus.NEUTRAL,
+                players
+        ));
+    }
+
+    @Test
+    void activeFinalMomentListenerPreservesResolvedTimeForSoleLooseEnd() {
+        List<LastStandFinalMomentService.PlayerState> players = List.of(
+                state(HOLDER, WatheRoles.LOOSE_END, true, true)
+        );
+
+        assertNull(LastStandFinalMomentService.activeFinalMomentWinResult(
+                true,
+                GameFunctions.WinStatus.TIME,
+                players
+        ));
+        assertFalse(LastStandFinalMomentService.shouldCancelRoundEndFinalization(
+                true,
+                GameFunctions.WinStatus.TIME,
+                players
+        ));
+    }
+
+    @Test
+    void activeFinalMomentStillBlocksOrdinaryTeamWinsWithLivingLooseEnd() {
+        List<LastStandFinalMomentService.PlayerState> players = activeFinalMomentPlayers("grand_witch");
+
+        for (GameFunctions.WinStatus status : List.of(
+                GameFunctions.WinStatus.KILLERS,
+                GameFunctions.WinStatus.PASSENGERS
+        )) {
+            assertEquals(
+                    GameFunctions.WinStatus.NONE,
+                    LastStandFinalMomentService.activeFinalMomentWinResult(true, status, players).status()
+            );
+            assertTrue(LastStandFinalMomentService.shouldCancelRoundEndFinalization(true, status, players));
+        }
+    }
+
+    @Test
+    void soleFinalMomentLooseEndKeepsPassengerSurvivorContract() {
+        List<LastStandFinalMomentService.PlayerState> players = List.of(
+                state(HOLDER, WatheRoles.LOOSE_END, true, true),
+                state(ATTACKER, sparkWitchRole("grand_witch"), false, false)
+        );
+
+        assertEquals(
+                GameFunctions.WinStatus.PASSENGERS,
+                LastStandFinalMomentService.activeFinalMomentWinResult(
+                        true,
+                        GameFunctions.WinStatus.KILLERS,
+                        players
+                ).status()
+        );
+        assertFalse(LastStandFinalMomentService.shouldCancelRoundEndFinalization(
+                true,
+                GameFunctions.WinStatus.KILLERS,
                 players
         ));
     }
@@ -102,6 +186,13 @@ class LastStandWitchLifecycleTest {
                     revivedPlayers(path)
             ));
         }
+    }
+
+    private static List<LastStandFinalMomentService.PlayerState> activeFinalMomentPlayers(String path) {
+        return List.of(
+                state(HOLDER, WatheRoles.LOOSE_END, true, true),
+                state(ATTACKER, sparkWitchRole(path), true, false)
+        );
     }
 
     private static List<LastStandFinalMomentService.PlayerState> revivedPlayers(String path) {

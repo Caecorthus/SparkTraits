@@ -171,7 +171,9 @@ public final class LastStandFinalMomentService {
             GameFunctions.WinStatus currentStatus,
             Collection<PlayerState> players
     ) {
-        if (!finalMomentActive) {
+        if (!finalMomentActive
+                || currentStatus == GameFunctions.WinStatus.TIME
+                || currentStatus == GameFunctions.WinStatus.NEUTRAL) {
             return null;
         }
         GameFunctions.WinStatus survivorWinStatus = finalMomentSurvivorWinStatus(true, players);

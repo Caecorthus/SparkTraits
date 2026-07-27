@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.random.RandomGenerator;
 
 /**
@@ -52,6 +53,30 @@ public final class TraitSelector {
             int startingPlayerCount,
             Collection<Identifier> reservedUniqueTraits
     ) {
+        return selectRandomTraits(
+                world,
+                gameComponent,
+                traitWorld,
+                player,
+                random,
+                startingPlayerCount,
+                reservedUniqueTraits,
+                List.of()
+        );
+    }
+
+    /** Redraws through the standard slot pipeline while excluding narrowly forbidden traits.
+     *  通过标准槽位流程重抽，同时排除当前流程明确禁止的天赋。 */
+    public static List<Identifier> selectRandomTraits(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            TraitWorldComponent traitWorld,
+            ServerPlayerEntity player,
+            RandomGenerator random,
+            int startingPlayerCount,
+            Collection<Identifier> reservedUniqueTraits,
+            Collection<Identifier> excludedTraits
+    ) {
         LinkedHashSet<Identifier> selected = new LinkedHashSet<>();
         Role role = gameComponent.getRole(player);
         if (!TraitRoleEligibility.canReceiveTraits(role)) {
@@ -59,9 +84,10 @@ public final class TraitSelector {
         }
         float slotChance = traitWorld.getTraitSlotRollChance();
         Collection<Identifier> uniqueTraitReservations = reservedUniqueTraits == null ? List.of() : reservedUniqueTraits;
+        Collection<Identifier> excludedTraitIds = excludedTraits == null ? List.of() : excludedTraits;
 
         for (int slot = 0; slot < SLOT_COUNT; slot++) {
-            if (selected.size() >= TraitPlayerComponent.MAX_TRAITS || !shouldRollSlot(slotChance, random)) {
+            if (!canSelectAnotherTrait(selected.size()) || !shouldRollSlot(slotChance, random)) {
                 continue;
             }
 
@@ -73,7 +99,8 @@ public final class TraitSelector {
                     role,
                     selected,
                     startingPlayerCount,
-                    uniqueTraitReservations
+                    uniqueTraitReservations,
+                    excludedTraitIds
             );
             if (candidates.isEmpty()) {
                 continue;
@@ -84,6 +111,10 @@ public final class TraitSelector {
         }
 
         return List.copyOf(selected);
+    }
+
+    static boolean canSelectAnotherTrait(int selectedCount) {
+        return selectedCount < TraitPlayerComponent.MAX_TRAITS;
     }
 
     static boolean shouldRollSlot(float slotChance, RandomGenerator random) {
@@ -109,22 +140,54 @@ public final class TraitSelector {
             Role role,
             LinkedHashSet<Identifier> selected,
             int startingPlayerCount,
-            Collection<Identifier> reservedUniqueTraits
+            Collection<Identifier> reservedUniqueTraits,
+            Collection<Identifier> excludedTraits
+    ) {
+        TraitSelectionContext context = new TraitSelectionContext(
+                world,
+                gameComponent,
+                player,
+                role,
+                selected,
+                startingPlayerCount,
+                true
+        );
+        return collectEligibleCandidates(
+                TraitRegistry.values(),
+                context,
+                selected,
+                reservedUniqueTraits,
+                excludedTraits,
+                traitWorld::isTraitEnabled,
+                traitWorld::isUniqueTraitUsed
+        );
+    }
+
+    static List<Trait> collectEligibleCandidates(
+            Collection<Trait> traits,
+            TraitSelectionContext context,
+            Collection<Identifier> selectedTraits,
+            Collection<Identifier> reservedUniqueTraits,
+            Collection<Identifier> excludedTraits,
+            Predicate<Identifier> enabled,
+            Predicate<Identifier> uniqueAlreadyUsed
     ) {
         List<Trait> candidates = new ArrayList<>();
-        TraitSelectionContext context = new TraitSelectionContext(world, gameComponent, player, role, selected, startingPlayerCount, true);
-        for (Trait trait : TraitRegistry.values()) {
-            if (trait.rollWeight() <= 0.0D) {
+        Collection<Identifier> selected = selectedTraits == null ? List.of() : selectedTraits;
+        Collection<Identifier> reservations = reservedUniqueTraits == null ? List.of() : reservedUniqueTraits;
+        Collection<Identifier> exclusions = excludedTraits == null ? List.of() : excludedTraits;
+        for (Trait trait : traits) {
+            if (trait == null || trait.rollWeight() <= 0.0D) {
                 continue;
             }
-            if (!traitWorld.isTraitEnabled(trait.id())) {
+            if (!enabled.test(trait.id()) || exclusions.contains(trait.id())) {
                 continue;
             }
             if (selected.contains(trait.id())) {
                 continue;
             }
             if (trait.uniquePerGame()
-                    && (traitWorld.isUniqueTraitUsed(trait.id()) || reservedUniqueTraits.contains(trait.id()))) {
+                    && (uniqueAlreadyUsed.test(trait.id()) || reservations.contains(trait.id()))) {
                 continue;
             }
             if (!TraitRules.isCompatibleWithAll(trait, selected)) {
@@ -135,7 +198,13 @@ public final class TraitSelector {
             }
             LinkedHashSet<Identifier> tentative = new LinkedHashSet<>(selected);
             tentative.add(trait.id());
-            if (!TraitRules.canApplyAll(world, gameComponent, player, role, tentative)) {
+            if (!TraitRules.canApplyAll(
+                    context.world(),
+                    context.gameComponent(),
+                    context.player(),
+                    context.role(),
+                    tentative
+            )) {
                 continue;
             }
             candidates.add(trait);
