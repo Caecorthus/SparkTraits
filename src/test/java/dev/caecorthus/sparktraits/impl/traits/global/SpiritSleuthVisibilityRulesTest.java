@@ -8,31 +8,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SpiritSleuthVisibilityRulesTest {
     @Test
-    void revealsSpectatorPlayerHeadsWithoutDependingOnDeathBookkeeping() {
+    void revealsOnlyConfirmedDeadSpectatorPlayerHeads() {
         assertTrue(SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
-                true, false, true, true, false, false
+                true, false, true, true, true, false, false
         ));
         assertFalse(SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
-                false, false, true, true, false, false
+                false, false, true, true, true, false, false
         ));
         assertFalse(SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
-                true, true, true, true, false, false
+                true, true, true, true, true, false, false
         ));
         assertFalse(SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
-                true, false, false, true, false, false
+                true, false, false, true, true, false, false
         ));
         assertFalse(SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
-                true, false, true, false, false, false
+                true, false, true, false, true, false, false
+        ));
+        assertFalse(SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
+                true, false, true, true, false, false, false
         ));
     }
 
     @Test
     void keepsTemporaryFakeDeathsHidden() {
         assertFalse(SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
-                true, false, true, true, true, false
+                true, false, true, true, true, true, false
         ));
         assertFalse(SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
-                true, false, true, true, false, true
+                true, false, true, true, true, false, true
         ));
     }
 
@@ -74,13 +77,13 @@ class SpiritSleuthVisibilityRulesTest {
     @Test
     void revealsSpectatorPlayerHeadOnlyToTheLivingTraitHolder() {
         boolean spiritSleuthReveal = SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
-                true, false, true, true, false, false
+                true, false, true, true, true, false, false
         );
         boolean ordinaryViewerReveal = SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
-                false, false, true, true, false, false
+                false, false, true, true, true, false, false
         );
         boolean nonParticipantReveal = SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
-                true, false, true, false, false, false
+                true, false, true, false, true, false, false
         );
 
         assertFalse(SpiritSleuthVisibilityRules.resolveInvisibleToViewer(true, spiritSleuthReveal));

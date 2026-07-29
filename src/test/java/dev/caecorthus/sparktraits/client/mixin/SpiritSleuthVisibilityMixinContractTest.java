@@ -47,23 +47,25 @@ class SpiritSleuthVisibilityMixinContractTest {
                 "return resolveSpectatorPlayerHeadVisibility( invisibleToViewer, "
                         + "GlobalTraitService.hasTrait(viewer, SpiritSleuthTrait.ID), "
                         + "viewer == null || viewer.isSpectator(), targetPlayer.isSpectator(), "
-                        + "targetIsGameParticipant, targetTraits.isLastStandPending(), "
+                        + "targetIsGameParticipant, targetIsDeadParticipant, "
+                        + "targetTraits.isLastStandPending(), "
                         + "targetTraits.isTemporaryFakeDeathPending() );"
         ));
         assertTrue(source.contains("GameWorldComponent.KEY.get(targetPlayer.getWorld())"));
         assertTrue(source.contains("game.isRunning()"));
         assertTrue(source.contains("game.hasAnyRole(targetPlayer)"));
+        assertTrue(source.contains("game.isPlayerDead(targetPlayer.getUuid())"));
         assertTrue(source.contains("TraitPlayerComponent.KEY.get(targetPlayer)"));
         assertTrue(source.contains("isLastStandPending()"));
         assertTrue(source.contains("isTemporaryFakeDeathPending()"));
         assertTrue(source.contains("SpiritSleuthVisibilityRules.resolveInvisibleToViewer("));
-        assertFalse(source.contains("game.isPlayerDead("));
     }
 
     @Test
     void keepsStaticHelperPrivateForMixinApplication() throws NoSuchMethodException {
         Method helper = SpiritSleuthLivingEntityRendererMixin.class.getDeclaredMethod(
                 "resolveSpectatorPlayerHeadVisibility",
+                boolean.class,
                 boolean.class,
                 boolean.class,
                 boolean.class,

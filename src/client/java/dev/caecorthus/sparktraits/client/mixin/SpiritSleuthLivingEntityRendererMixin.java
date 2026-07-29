@@ -43,6 +43,8 @@ public abstract class SpiritSleuthLivingEntityRendererMixin {
         // 观察者自身也可能只是临时进入旁观模式；此时继续遵守 Wathe 与 NoellesRoles 的隔离规则。
         GameWorldComponent game = GameWorldComponent.KEY.get(targetPlayer.getWorld());
         boolean targetIsGameParticipant = game.isRunning() && game.hasAnyRole(targetPlayer);
+        boolean targetIsDeadParticipant = targetIsGameParticipant
+                && game.isPlayerDead(targetPlayer.getUuid());
         TraitPlayerComponent targetTraits = TraitPlayerComponent.KEY.get(targetPlayer);
         return resolveSpectatorPlayerHeadVisibility(
                 invisibleToViewer,
@@ -50,6 +52,7 @@ public abstract class SpiritSleuthLivingEntityRendererMixin {
                 viewer == null || viewer.isSpectator(),
                 targetPlayer.isSpectator(),
                 targetIsGameParticipant,
+                targetIsDeadParticipant,
                 targetTraits.isLastStandPending(),
                 targetTraits.isTemporaryFakeDeathPending()
         );
@@ -61,6 +64,7 @@ public abstract class SpiritSleuthLivingEntityRendererMixin {
             boolean viewerIsSpectator,
             boolean targetIsSpectator,
             boolean targetIsGameParticipant,
+            boolean targetIsDeadParticipant,
             boolean targetIsLastStandPending,
             boolean targetIsTemporaryFakeDeathPending
     ) {
@@ -69,6 +73,7 @@ public abstract class SpiritSleuthLivingEntityRendererMixin {
                 viewerIsSpectator,
                 targetIsSpectator,
                 targetIsGameParticipant,
+                targetIsDeadParticipant,
                 targetIsLastStandPending,
                 targetIsTemporaryFakeDeathPending
         );

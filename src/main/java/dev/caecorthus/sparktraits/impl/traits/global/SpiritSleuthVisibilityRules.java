@@ -20,6 +20,7 @@ public final class SpiritSleuthVisibilityRules {
             boolean viewerIsSpectator,
             boolean targetIsSpectator,
             boolean targetIsGameParticipant,
+            boolean targetIsDeadParticipant,
             boolean targetIsLastStandPending,
             boolean targetIsTemporaryFakeDeathPending
     ) {
@@ -27,6 +28,7 @@ public final class SpiritSleuthVisibilityRules {
                 && !viewerIsSpectator
                 && targetIsSpectator
                 && targetIsGameParticipant
+                && targetIsDeadParticipant
                 && !targetIsLastStandPending
                 && !targetIsTemporaryFakeDeathPending;
     }

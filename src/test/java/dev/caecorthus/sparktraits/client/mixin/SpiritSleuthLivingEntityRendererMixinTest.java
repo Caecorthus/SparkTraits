@@ -9,42 +9,48 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SpiritSleuthLivingEntityRendererMixinTest {
     @Test
-    void revealsOrdinarySpectatorParticipantToLivingTraitHolder() {
+    void revealsConfirmedDeadSpectatorParticipantToLivingTraitHolder() {
         assertFalse(resolveSpectatorPlayerHeadVisibility(
-                true, true, false, true, true, false, false
+                true, true, false, true, true, true, false, false
         ));
     }
 
     @Test
-    void preservesInvisibilityForTemporaryDeathsAndIneligibleViewers() {
+    void preservesInvisibilityForLivingAndTemporaryDeathsAndIneligibleViewers() {
         assertTrue(resolveSpectatorPlayerHeadVisibility(
-                true, true, false, true, true, true, false
+                true, true, false, true, true, false, false, false
         ));
         assertTrue(resolveSpectatorPlayerHeadVisibility(
-                true, true, false, true, true, false, true
+                true, true, false, true, true, true, true, false
         ));
         assertTrue(resolveSpectatorPlayerHeadVisibility(
-                true, false, false, true, true, false, false
+                true, true, false, true, true, true, false, true
         ));
         assertTrue(resolveSpectatorPlayerHeadVisibility(
-                true, true, true, true, true, false, false
+                true, false, false, true, true, true, false, false
+        ));
+        assertTrue(resolveSpectatorPlayerHeadVisibility(
+                true, true, true, true, true, true, false, false
         ));
     }
 
     @Test
-    void requiresBothSpectatorStateAndGameParticipation() {
+    void requiresSpectatorStateGameParticipationAndConfirmedDeath() {
         assertTrue(resolveSpectatorPlayerHeadVisibility(
-                true, true, false, false, true, false, false
+                true, true, false, false, true, true, false, false
         ));
         assertTrue(resolveSpectatorPlayerHeadVisibility(
-                true, true, false, true, false, false, false
+                true, true, false, true, false, true, false, false
+        ));
+        assertTrue(resolveSpectatorPlayerHeadVisibility(
+                true, true, false, true, true, false, false, false
         ));
     }
 
     @Test
     void neverMakesAnOriginallyVisiblePlayerInvisible() {
         assertFalse(resolveSpectatorPlayerHeadVisibility(
-                false, false, false, false, false, false, false
+                false, false, false, false, false, false, false, false
         ));
     }
 
@@ -54,12 +60,14 @@ class SpiritSleuthLivingEntityRendererMixinTest {
             boolean viewerIsSpectator,
             boolean targetIsSpectator,
             boolean targetIsGameParticipant,
+            boolean targetIsDeadParticipant,
             boolean targetIsLastStandPending,
             boolean targetIsTemporaryFakeDeathPending
     ) {
         try {
             Method helper = SpiritSleuthLivingEntityRendererMixin.class.getDeclaredMethod(
                     "resolveSpectatorPlayerHeadVisibility",
+                    boolean.class,
                     boolean.class,
                     boolean.class,
                     boolean.class,
@@ -76,6 +84,7 @@ class SpiritSleuthLivingEntityRendererMixinTest {
                     viewerIsSpectator,
                     targetIsSpectator,
                     targetIsGameParticipant,
+                    targetIsDeadParticipant,
                     targetIsLastStandPending,
                     targetIsTemporaryFakeDeathPending
             );
