@@ -64,13 +64,17 @@ public final class TraitGameHooks {
 
         KillPlayer.AFTER.register((victim, killer, deathReason) -> {
             TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(victim);
+            GameWorldComponent gameComponent = GameWorldComponent.KEY.get(victim.getWorld());
             TraitWorldComponent.KEY.get(victim.getWorld()).snapshotDeathTraits(victim.getUuid(), playerTraits.getActiveTraitIds());
             boolean lastStandStarted = LastStandService.tryStartAfterKill(victim, killer, deathReason);
             PigTraitService.playDeathSound(victim);
             EffectiveTraitService.handleAfterKill(victim, killer, deathReason);
             DepressionTraitService.handleAfterKill(victim, killer, deathReason);
+            // Sync Wathe's dead-player set before exposing spectator-only trait state to newly dead clients.
+            // 在向新死亡客户端开放旁观者天赋状态前，先同步 Wathe 的死亡玩家集合。
+            gameComponent.sync();
             if (lastStandStarted) {
-                syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
+                syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), gameComponent);
                 return;
             }
             ConscienceEconomyService.rewardAfterConfirmedRealDeath(victim);
@@ -81,7 +85,7 @@ public final class TraitGameHooks {
             playerTraits.clearActiveTraits(TraitRemovalReason.DEATH);
             ConscienceSerialKillerService.clearPlayer(victim);
             DepressionTraitService.clearPlayer(victim);
-            syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
+            syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), gameComponent);
         });
 
         dev.doctor4t.wathe.api.event.GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {

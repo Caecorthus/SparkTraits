@@ -6,7 +6,6 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.global.SpiritSleuthTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.SpiritSleuthVisibilityRules;
-import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.entity.LivingEntity;
@@ -33,9 +32,7 @@ public abstract class SpiritSleuthLivingEntityRendererMixin {
             Operation<Boolean> original
     ) {
         boolean invisibleToViewer = original.call(target, viewer);
-        if (!invisibleToViewer
-                || !SparkTraitsServerConnection.isConfirmedServer()
-                || !(target instanceof PlayerEntity targetPlayer)) {
+        if (!invisibleToViewer || !(target instanceof PlayerEntity targetPlayer)) {
             return invisibleToViewer;
         }
 
@@ -48,7 +45,7 @@ public abstract class SpiritSleuthLivingEntityRendererMixin {
         // 观察者自身也可能只是临时进入旁观模式；此时继续遵守 Wathe 与 NoellesRoles 的隔离规则。
         boolean reveal = SpiritSleuthVisibilityRules.shouldRevealSpectatorHead(
                 GlobalTraitService.hasTrait(viewer, SpiritSleuthTrait.ID),
-                viewer == null || viewer.isSpectator(),
+                viewer == null || viewer.isSpectator() || viewer.isCreative(),
                 targetPlayer.isSpectator(),
                 targetIsDeadParticipant,
                 TraitPlayerComponent.KEY.get(targetPlayer).isLastStandPending()

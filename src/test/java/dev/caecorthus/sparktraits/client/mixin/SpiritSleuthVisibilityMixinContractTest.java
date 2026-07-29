@@ -32,8 +32,9 @@ class SpiritSleuthVisibilityMixinContractTest {
                         + "isInvisibleTo(Lnet/minecraft/entity/player/PlayerEntity;)Z\""
         ));
         assertEquals(1, countOccurrences(source, "original.call("));
-        assertTrue(source.contains("SparkTraitsServerConnection.isConfirmedServer()"));
+        assertFalse(source.contains("SparkTraitsServerConnection.isConfirmedServer()"));
         assertTrue(source.contains("GlobalTraitService.hasTrait("));
+        assertTrue(source.contains("viewer == null || viewer.isSpectator() || viewer.isCreative()"));
         assertTrue(source.contains("SpiritSleuthTrait.ID"));
         assertTrue(source.contains("GameWorldComponent.KEY.get("));
         assertTrue(source.contains("game.isRunning()"));
