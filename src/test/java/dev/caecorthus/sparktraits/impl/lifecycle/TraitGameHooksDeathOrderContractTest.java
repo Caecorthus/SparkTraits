@@ -60,6 +60,18 @@ class TraitGameHooksDeathOrderContractTest {
     }
 
     @Test
+    void confirmedDeathSynchronizesWatheStateBeforeSpectatorTraitVisibility() throws IOException {
+        String afterKill = block(readSource(), "KillPlayer.AFTER.register((victim, killer, deathReason) ->");
+        int gameComponent = afterKill.indexOf("GameWorldComponent gameComponent = GameWorldComponent.KEY.get(victim.getWorld());");
+        int worldSync = afterKill.indexOf("gameComponent.sync();");
+        int spectatorTraitSync = afterKill.indexOf("syncPlayerTraitsToNewSpectators(");
+
+        assertTrue(gameComponent >= 0);
+        assertTrue(worldSync > gameComponent);
+        assertTrue(spectatorTraitSync > worldSync);
+    }
+
+    @Test
     void roundFinalizeClearsTimedBombsBeforePlayerTraits() throws IOException {
         String finalize = block(readSource(), "GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) ->");
         int timedBombCleanup = finalize.indexOf("ConscienceBombService.clearAll();");
