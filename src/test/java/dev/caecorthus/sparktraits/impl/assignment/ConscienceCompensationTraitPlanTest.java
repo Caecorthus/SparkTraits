@@ -80,14 +80,14 @@ class ConscienceCompensationTraitPlanTest {
         )).replaceAll("\\s+", " ");
         int assigned = source.indexOf("RoleAssigned.EVENT.invoker().assignRole(extraKiller.player(), compensationRole);");
         int selected = source.indexOf("TraitSelector.selectRandomTraits(", assigned);
-        int installed = source.indexOf("replaceRandomTraitsForConscienceCompensation(", selected);
+        int installed = source.indexOf("extraKiller.replaceRandomTraits(rerolledTraits);", selected);
         String redraw = source.substring(selected, installed);
 
         assertTrue(assigned >= 0);
         assertTrue(selected > assigned);
         assertTrue(installed > selected);
         assertTrue(redraw.contains(
-                "world, gameComponent, traitWorld, extraKiller.player(), random, players.size(), randomUniqueTraitReservations, Set.of(ConscienceTrait.ID)"
+                "world, gameComponent, traitWorld, extraKiller.player(), random, players.size(), extraKiller.lockedTraits(), randomUniqueTraitReservations, CONSCIENCE_COMPENSATION_REROLL_EXCLUSIONS"
         ));
     }
 

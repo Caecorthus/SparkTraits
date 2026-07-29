@@ -490,7 +490,8 @@ public final class DepressionTraitService {
 
     public static void clearRoundState(ServerWorld world) {
         for (UUID uuid : Set.copyOf(pendingPlayers.keySet())) {
-            if (world.getPlayerByUuid(uuid) instanceof ServerPlayerEntity player) {
+            ServerPlayerEntity player = world.getServer().getPlayerManager().getPlayer(uuid);
+            if (player != null) {
                 clearPending(player);
             }
         }
@@ -571,7 +572,6 @@ public final class DepressionTraitService {
         long time = world.getTime();
         for (PendingState state : Set.copyOf(pendingPlayers.values())) {
             if (!(world.getPlayerByUuid(state.playerUuid()) instanceof ServerPlayerEntity player)) {
-                pendingPlayers.remove(state.playerUuid());
                 continue;
             }
             holdPending(player, state);
@@ -631,6 +631,7 @@ public final class DepressionTraitService {
                 initialArmour
         );
         pendingPlayers.put(uuid, state);
+        TraitPlayerComponent.KEY.get(player).setTemporaryFakeDeathPending(true);
         TraitPlayerComponent.KEY.get(attacker).setDepressionCounterTarget(uuid);
         attacker.networkHandler.sendPacket(new net.minecraft.network.packet.s2c.play.TitleS2CPacket(ATTACKER_TITLE));
         playRangeSound(player, SparkTraitsSounds.DEPRESSION_DOCILE_TO_RAGE);
@@ -670,6 +671,7 @@ public final class DepressionTraitService {
 
     private static void startPsycho(ServerPlayerEntity player, PendingState state) {
         pendingPlayers.remove(player.getUuid());
+        TraitPlayerComponent.KEY.get(player).setTemporaryFakeDeathPending(false);
         player.setCameraEntity(player);
         player.changeGameMode(GameMode.ADVENTURE);
         player.setInvulnerable(state.wasInvulnerable());
@@ -811,6 +813,7 @@ public final class DepressionTraitService {
     }
 
     private static void clearPending(ServerPlayerEntity player) {
+        TraitPlayerComponent.KEY.get(player).setTemporaryFakeDeathPending(false);
         PendingState state = pendingPlayers.remove(player.getUuid());
         if (state == null) {
             return;

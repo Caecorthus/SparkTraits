@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.random.RandomGenerator;
 
@@ -60,8 +62,9 @@ public final class TraitSelector {
                 player,
                 random,
                 startingPlayerCount,
+                List.of(),
                 reservedUniqueTraits,
-                List.of()
+                Set.of()
         );
     }
 
@@ -77,40 +80,81 @@ public final class TraitSelector {
             Collection<Identifier> reservedUniqueTraits,
             Collection<Identifier> excludedTraits
     ) {
-        LinkedHashSet<Identifier> selected = new LinkedHashSet<>();
+        return selectRandomTraits(
+                world,
+                gameComponent,
+                traitWorld,
+                player,
+                random,
+                startingPlayerCount,
+                List.of(),
+                reservedUniqueTraits,
+                excludedTraits
+        );
+    }
+
+    public static List<Identifier> selectRandomTraits(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            TraitWorldComponent traitWorld,
+            ServerPlayerEntity player,
+            RandomGenerator random,
+            int startingPlayerCount,
+            Collection<Identifier> retainedTraits,
+            Collection<Identifier> reservedUniqueTraits,
+            Collection<Identifier> excludedTraits
+    ) {
+        LinkedHashSet<Identifier> selected = new LinkedHashSet<>(retainedTraits == null ? List.of() : retainedTraits);
         Role role = gameComponent.getRole(player);
         if (!TraitRoleEligibility.canReceiveTraits(role)) {
             return List.of();
         }
         float slotChance = traitWorld.getTraitSlotRollChance();
         Collection<Identifier> uniqueTraitReservations = reservedUniqueTraits == null ? List.of() : reservedUniqueTraits;
-        Collection<Identifier> excludedTraitIds = excludedTraits == null ? List.of() : excludedTraits;
+        Collection<Identifier> rerollExclusions = excludedTraits == null ? Set.of() : excludedTraits;
 
-        for (int slot = 0; slot < SLOT_COUNT; slot++) {
+        return rollTraits(
+                selected,
+                slotChance,
+                random,
+                currentSelection -> {
+                    List<Trait> candidates = collectCandidates(
+                            world,
+                            gameComponent,
+                            traitWorld,
+                            player,
+                            role,
+                            currentSelection,
+                            startingPlayerCount,
+                            uniqueTraitReservations,
+                            rerollExclusions
+                    );
+                    return candidates.isEmpty() ? null : pickWeighted(candidates, random).id();
+                }
+        );
+    }
+
+    static List<Identifier> rollTraits(
+            LinkedHashSet<Identifier> selected,
+            float slotChance,
+            RandomGenerator random,
+            Function<LinkedHashSet<Identifier>, Identifier> candidatePicker
+    ) {
+        List<Identifier> newlyRolled = new ArrayList<>();
+        for (int slot = selected.size(); slot < SLOT_COUNT; slot++) {
             if (!canSelectAnotherTrait(selected.size()) || !shouldRollSlot(slotChance, random)) {
                 continue;
             }
-
-            List<Trait> candidates = collectCandidates(
-                    world,
-                    gameComponent,
-                    traitWorld,
-                    player,
-                    role,
-                    selected,
-                    startingPlayerCount,
-                    uniqueTraitReservations,
-                    excludedTraitIds
-            );
-            if (candidates.isEmpty()) {
-                continue;
+            Identifier picked = candidatePicker.apply(selected);
+            if (picked != null && selected.add(picked)) {
+                newlyRolled.add(picked);
             }
-
-            Trait picked = pickWeighted(candidates, random);
-            selected.add(picked.id());
         }
+        return List.copyOf(newlyRolled);
+    }
 
-        return List.copyOf(selected);
+    static boolean isExcluded(Identifier traitId, Collection<Identifier> excludedTraits) {
+        return excludedTraits != null && excludedTraits.contains(traitId);
     }
 
     static boolean canSelectAnotherTrait(int selectedCount) {

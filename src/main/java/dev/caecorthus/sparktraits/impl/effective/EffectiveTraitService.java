@@ -241,6 +241,14 @@ public final class EffectiveTraitService {
                 .orElse(false);
     }
 
+    public static boolean shouldDelegateConscienceInstinctToNative(PlayerEntity player) {
+        return shouldDelegateConscienceInstinctToNative(SparkWitchWraithBridge.isWraithActive(player));
+    }
+
+    public static boolean shouldDelegateConscienceInstinctToNative(boolean activeWraith) {
+        return activeWraith;
+    }
+
     public static boolean shouldConscienceInstinctHighlightTarget(
             boolean instinctEnabled,
             boolean targetPlayingAndAlive,

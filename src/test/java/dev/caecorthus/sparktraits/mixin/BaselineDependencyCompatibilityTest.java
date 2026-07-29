@@ -90,6 +90,42 @@ class BaselineDependencyCompatibilityTest {
     }
 
     @Test
+    void wathePoisonPresentationBytecodeMatchesBluePoisonHook() throws IOException {
+        Path jar = ROOT.resolve("wathe-" + WATHE_VERSION + ".jar");
+        ClassNode poison = classNode(jarEntryBytes(
+                jar,
+                "dev/doctor4t/wathe/cca/PlayerPoisonComponent.class"
+        ));
+        MethodNode clientTick = requireMethod(poison, "clientTick", "()V");
+        assertEquals(1, fields(clientTick, "poisonTicks", "I").stream()
+                .filter(field -> field.getOpcode() == Opcodes.PUTFIELD)
+                .count());
+        assertTrue(fields(clientTick, "pulsing", "Z").size() >= 1);
+        assertEquals(1, calls(
+                clientTick,
+                "net/minecraft/class_1657",
+                "method_17356",
+                "(Lnet/minecraft/class_3414;Lnet/minecraft/class_3419;FF)V"
+        ).size());
+
+        ClassNode playerMixin = classNode(jarEntryBytes(
+                jar,
+                "dev/doctor4t/wathe/mixin/client/AbstractClientPlayerEntityMixin.class"
+        ));
+        MethodNode fov = requireMethod(
+                playerMixin,
+                "wathe$fovPulse",
+                "(Lorg/spongepowered/asm/mixin/injection/callback/CallbackInfoReturnable;)V"
+        );
+        assertEquals(1, calls(
+                fov,
+                "dev/doctor4t/wathe/util/PoisonUtils",
+                "getFovMultiplier",
+                "(FLdev/doctor4t/wathe/cca/PlayerPoisonComponent;)F"
+        ).size());
+    }
+
+    @Test
     void syntheticLambdaSelectorsMatchRestoredNoellesRolesHandlersOnly() throws IOException {
         Path jar = ROOT.resolve("noellesroles-" + NOELLES_ROLES_VERSION + ".jar");
         ClassNode noellesRoles = classNode(jarEntryBytes(jar, NOELLES_ROLES_CLASS));
@@ -233,6 +269,18 @@ class BaselineDependencyCompatibilityTest {
             }
         }
         return calls;
+    }
+
+    private static List<FieldInsnNode> fields(MethodNode method, String name, String descriptor) {
+        List<FieldInsnNode> fields = new ArrayList<>();
+        for (AbstractInsnNode instruction : method.instructions) {
+            if (instruction instanceof FieldInsnNode field
+                    && field.name.equals(name)
+                    && field.desc.equals(descriptor)) {
+                fields.add(field);
+            }
+        }
+        return fields;
     }
 
     private static MethodInsnNode previousMethodCall(AbstractInsnNode instruction) {

@@ -61,6 +61,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Client-visible Last Stand pending flag for rendering and collision checks.
     // 用于客户端渲染与碰撞判断的背水一战等待复活标记。
     private boolean lastStandPending;
+    // Public fake-death flag lets clients hide temporarily spectating players without exposing trait text.
+    // 公开假死标记让客户端隐藏临时旁观玩家，但不暴露其天赋文本。
+    private boolean temporaryFakeDeathPending;
     // Public blackout-only flag used by Going Dark's instinct suppression.
     // 仅供隐蔽行动在关灯期间压制指定本能的公开状态标记。
     private boolean goingDarkInstinctHidden;
@@ -71,6 +74,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // 仅用于声音静音的公开标记，让远端小心翼翼玩家静音但不暴露天赋文本。
     private boolean cautiousSoundSuppressed;
     private int consciencePoisonTicks = -1;
+    private int consciencePoisonInitialTicks;
     private UUID consciencePoisoner;
     private Identifier serialKillerMurdererRole;
     private int bloodthirstyKillCount;
@@ -126,6 +130,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         return lastStandPending;
     }
 
+    public boolean isTemporaryFakeDeathPending() {
+        return temporaryFakeDeathPending;
+    }
+
     public boolean isGoingDarkInstinctHidden() {
         return goingDarkInstinctHidden;
     }
@@ -154,8 +162,22 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         return consciencePoisonTicks;
     }
 
+    public int getConsciencePoisonInitialTicks() {
+        return consciencePoisonInitialTicks;
+    }
+
     public boolean hasConsciencePoison() {
         return consciencePoisonTicks > 0;
+    }
+
+    public void tickConsciencePoisonClient() {
+        if (player.getWorld().isClient && consciencePoisonTicks > 0) {
+            consciencePoisonTicks--;
+            if (consciencePoisonTicks <= 0) {
+                consciencePoisonTicks = -1;
+                consciencePoisonInitialTicks = 0;
+            }
+        }
     }
 
     public UUID getConsciencePoisoner() {
@@ -238,6 +260,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         int normalizedTicks = ticks > 0 ? ticks : -1;
         if (this.consciencePoisonTicks != normalizedTicks
                 || (this.consciencePoisoner == null ? poisoner != null : !this.consciencePoisoner.equals(poisoner))) {
+            if (normalizedTicks > 0 && this.consciencePoisonTicks <= 0) {
+                this.consciencePoisonInitialTicks = normalizedTicks;
+            } else if (normalizedTicks <= 0) {
+                this.consciencePoisonInitialTicks = 0;
+            }
             this.consciencePoisonTicks = normalizedTicks;
             this.consciencePoisoner = normalizedTicks > 0 ? poisoner : null;
             sync();
@@ -251,6 +278,13 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     public void setLastStandPending(boolean lastStandPending) {
         if (this.lastStandPending != lastStandPending) {
             this.lastStandPending = lastStandPending;
+            sync();
+        }
+    }
+
+    public void setTemporaryFakeDeathPending(boolean temporaryFakeDeathPending) {
+        if (this.temporaryFakeDeathPending != temporaryFakeDeathPending) {
+            this.temporaryFakeDeathPending = temporaryFakeDeathPending;
             sync();
         }
     }
@@ -422,6 +456,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     public void clearActiveTraits(TraitRemovalReason reason) {
         if (activeTraits.isEmpty() && revealedTraits.isEmpty() && !killerInstinctHidden && !lastStandPending
+                && !temporaryFakeDeathPending
                 && !goingDarkInstinctHidden && !cautiousSoundSuppressed
                 && consciencePoisonTicks <= 0
                 && !conscienceInstinctVisible && !impostorInstinctVisible && serialKillerMurdererRole == null
@@ -449,9 +484,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         conscienceInstinctVisible = false;
         impostorInstinctVisible = false;
         lastStandPending = false;
+        temporaryFakeDeathPending = false;
         goingDarkInstinctHidden = false;
         cautiousSoundSuppressed = false;
         consciencePoisonTicks = -1;
+        consciencePoisonInitialTicks = 0;
         consciencePoisoner = null;
         serialKillerMurdererRole = null;
         bloodthirstyKillCount = 0;
@@ -505,6 +542,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
         UUID poisoner = consciencePoisoner;
         consciencePoisonTicks = -1;
+        consciencePoisonInitialTicks = 0;
         consciencePoisoner = null;
         sync();
 
@@ -562,6 +600,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         // 第 17 个字段是协议墓碑：继续写入 false 以兼容旧客户端。
         buf.writeBoolean(false);
         buf.writeBoolean(spiritProjectionInstinctHidden);
+        buf.writeBoolean(temporaryFakeDeathPending);
+        buf.writeVarInt(owner && consciencePoisonTicks > 0 ? consciencePoisonInitialTicks : 0);
     }
 
     @Override
@@ -595,6 +635,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             buf.readBoolean();
         }
         spiritProjectionInstinctHidden = buf.readableBytes() > 0 && buf.readBoolean();
+        temporaryFakeDeathPending = buf.readableBytes() > 0 && buf.readBoolean();
+        consciencePoisonInitialTicks = buf.readableBytes() > 0 ? buf.readVarInt() : Math.max(0, consciencePoisonTicks);
         if (wasPigActive != isPigActive()) {
             player.calculateDimensions();
         }
@@ -610,6 +652,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         }
         if (consciencePoisonTicks > 0) {
             tag.putInt("ConsciencePoisonTicks", consciencePoisonTicks);
+            tag.putInt("ConsciencePoisonInitialTicks", consciencePoisonInitialTicks);
             if (consciencePoisoner != null) {
                 tag.putUuid("ConsciencePoisoner", consciencePoisoner);
             }
@@ -631,10 +674,12 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         conscienceInstinctVisible = false;
         impostorInstinctVisible = false;
         lastStandPending = false;
+        temporaryFakeDeathPending = false;
         goingDarkInstinctHidden = false;
         spiritProjectionInstinctHidden = false;
         cautiousSoundSuppressed = false;
         consciencePoisonTicks = -1;
+        consciencePoisonInitialTicks = 0;
         consciencePoisoner = null;
         serialKillerMurdererRole = null;
         bloodthirstyKillCount = 0;
@@ -653,6 +698,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         }
         if (tag.contains("ConsciencePoisonTicks")) {
             consciencePoisonTicks = tag.getInt("ConsciencePoisonTicks");
+            consciencePoisonInitialTicks = tag.contains("ConsciencePoisonInitialTicks", NbtElement.NUMBER_TYPE)
+                    ? tag.getInt("ConsciencePoisonInitialTicks")
+                    : Math.max(0, consciencePoisonTicks);
             consciencePoisoner = tag.containsUuid("ConsciencePoisoner") ? tag.getUuid("ConsciencePoisoner") : null;
         }
         if (tag.contains("BloodthirstyKillCount", NbtElement.NUMBER_TYPE)) {
@@ -694,6 +742,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     }
 
     private int visibleConsciencePoisonTicks(ServerPlayerEntity recipient, boolean spectator) {
+        if (recipient == player) {
+            return consciencePoisonTicks;
+        }
         GameWorldComponent gameComponent = GameWorldComponent.KEY.get(recipient.getWorld());
         boolean canSeeBluePoison = ConsciencePoisonerService.shouldShowHiddenBluePoisonParticles(
                 ConsciencePoisonerService.isConsciencePoisoner(recipient, gameComponent),

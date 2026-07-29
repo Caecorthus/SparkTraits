@@ -11,9 +11,11 @@ import net.minecraft.util.Identifier;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -151,6 +153,62 @@ class TraitSelectorTest {
             }
         };
         assertFalse(TraitSelector.shouldRollSlot(0.75F, boundary));
+    }
+
+    @Test
+    void retainedTraitsConsumeSlotsAndAreNotReturnedAsNew() {
+        Identifier locked = Identifier.of("test", "locked");
+        Identifier first = Identifier.of("test", "first");
+        Identifier second = Identifier.of("test", "second");
+        LinkedHashSet<Identifier> selected = new LinkedHashSet<>(List.of(locked));
+        AtomicInteger picks = new AtomicInteger();
+
+        List<Identifier> rolled = TraitSelector.rollTraits(
+                selected,
+                1.0F,
+                new Random(0L),
+                current -> picks.getAndIncrement() == 0 ? first : second
+        );
+
+        assertEquals(List.of(first, second), rolled);
+        assertEquals(new LinkedHashSet<>(List.of(locked, first, second)), selected);
+        assertEquals(2, picks.get());
+    }
+
+    @Test
+    void fullRetainedPlanDoesNotAttemptAnotherRoll() {
+        LinkedHashSet<Identifier> selected = new LinkedHashSet<>(List.of(
+                Identifier.of("test", "one"),
+                Identifier.of("test", "two"),
+                Identifier.of("test", "three")
+        ));
+        AtomicInteger picks = new AtomicInteger();
+
+        List<Identifier> rolled = TraitSelector.rollTraits(
+                selected,
+                1.0F,
+                new Random(0L),
+                current -> {
+                    picks.incrementAndGet();
+                    return Identifier.of("test", "unexpected");
+                }
+        );
+
+        assertEquals(List.of(), rolled);
+        assertEquals(0, picks.get());
+    }
+
+    @Test
+    void rerollExclusionsRejectConscienceAndImpostorIds() {
+        Identifier conscience = Identifier.of("sparktraits", "conscience");
+        Identifier impostor = Identifier.of("sparktraits", "impostor");
+        Identifier allowed = Identifier.of("sparktraits", "bloodthirsty");
+        Set<Identifier> exclusions = Set.of(conscience, impostor);
+
+        assertTrue(TraitSelector.isExcluded(conscience, exclusions));
+        assertTrue(TraitSelector.isExcluded(impostor, exclusions));
+        assertFalse(TraitSelector.isExcluded(allowed, exclusions));
+        assertFalse(TraitSelector.isExcluded(allowed, null));
     }
 
     private static void registerIfAbsent(Trait trait) {

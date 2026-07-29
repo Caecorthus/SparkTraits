@@ -8,6 +8,29 @@ public final class SpiritSleuthVisibilityRules {
     private SpiritSleuthVisibilityRules() {
     }
 
+    public static boolean resolveInvisibleToViewer(
+            boolean invisibleToViewer,
+            boolean reveal
+    ) {
+        return invisibleToViewer && !reveal;
+    }
+
+    public static boolean shouldRevealSpectatorPlayerHead(
+            boolean viewerHasTrait,
+            boolean viewerIsSpectator,
+            boolean targetIsSpectator,
+            boolean targetIsGameParticipant,
+            boolean targetIsLastStandPending,
+            boolean targetIsTemporaryFakeDeathPending
+    ) {
+        return viewerHasTrait
+                && !viewerIsSpectator
+                && targetIsSpectator
+                && targetIsGameParticipant
+                && !targetIsLastStandPending
+                && !targetIsTemporaryFakeDeathPending;
+    }
+
     public static boolean shouldRevealSpectatorHead(
             boolean viewerHasTrait,
             boolean viewerIsSpectator,

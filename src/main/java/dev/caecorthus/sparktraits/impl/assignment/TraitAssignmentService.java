@@ -62,6 +62,8 @@ public final class TraitAssignmentService {
     private static final Identifier NOELLES_IRON_MAN_VIAL_ID = Identifier.of(NOELLESROLES_MOD_ID, "iron_man_vial");
     private static final Identifier NOELLES_REPAIR_TOOL_ID = Identifier.of(NOELLESROLES_MOD_ID, "repair_tool");
     private static final Identifier MINECRAFT_WRITTEN_BOOK_ID = Identifier.ofVanilla("written_book");
+    private static final Set<Identifier> CONSCIENCE_COMPENSATION_REROLL_EXCLUSIONS =
+            Set.of(ConscienceTrait.ID, ImpostorTrait.ID);
 
     private TraitAssignmentService() {
     }
@@ -264,21 +266,20 @@ public final class TraitAssignmentService {
             gameComponent.addRole(extraKiller.player(), compensationRole);
             replaceLatestConscienceCompensationRoleHistoryEntry(roleHistory, extraKiller.player().getUuid(), compensationRole);
             RoleAssigned.EVENT.invoker().assignRole(extraKiller.player(), compensationRole);
-            List<Identifier> replacementTraits = TraitSelector.selectRandomTraits(
+            rebuildUniqueTraitReservations(randomUniqueTraitReservations, plans);
+            List<Identifier> rerolledTraits = TraitSelector.selectRandomTraits(
                     world,
                     gameComponent,
                     traitWorld,
                     extraKiller.player(),
                     random,
                     players.size(),
+                    extraKiller.lockedTraits(),
                     randomUniqueTraitReservations,
-                    Set.of(ConscienceTrait.ID)
+                    CONSCIENCE_COMPENSATION_REROLL_EXCLUSIONS
             );
-            replaceRandomTraitsForConscienceCompensation(
-                    extraKiller,
-                    randomUniqueTraitReservations,
-                    replacementTraits
-            );
+            extraKiller.replaceRandomTraits(rerolledTraits);
+            rebuildUniqueTraitReservations(randomUniqueTraitReservations, plans);
             TraitPlayerComponent.KEY.get(extraKiller.player()).sync();
             gameComponent.sync();
         }
@@ -626,7 +627,7 @@ public final class TraitAssignmentService {
         }
     }
 
-    static void recalibrateUniqueTraitReservations(
+    static void rebuildUniqueTraitReservations(
             Collection<Identifier> reservedUniqueTraits,
             Collection<PlayerPlan> plans
     ) {
@@ -634,6 +635,13 @@ public final class TraitAssignmentService {
         for (PlayerPlan plan : plans) {
             reserveUniqueTraits(reservedUniqueTraits, plan.traits());
         }
+    }
+
+    static void recalibrateUniqueTraitReservations(
+            Collection<Identifier> reservedUniqueTraits,
+            Collection<PlayerPlan> plans
+    ) {
+        rebuildUniqueTraitReservations(reservedUniqueTraits, plans);
     }
 
     static void replaceRandomTraitsForConscienceCompensation(
@@ -700,6 +708,14 @@ public final class TraitAssignmentService {
             return lockedTraits.isEmpty() && randomTraits.isEmpty();
         }
 
+        List<Identifier> lockedTraits() {
+            return List.copyOf(lockedTraits);
+        }
+
+        List<Identifier> randomTraits() {
+            return List.copyOf(randomTraits);
+        }
+
         List<Identifier> traits() {
             LinkedHashSet<Identifier> traits = new LinkedHashSet<>();
             traits.addAll(lockedTraits);
@@ -737,12 +753,15 @@ public final class TraitAssignmentService {
             return trait != null && lockedTraits.size() < TraitPlayerComponent.MAX_TRAITS && isCompatibleWithLockedTraits(trait);
         }
 
-        List<Identifier> randomTraits() {
-            return List.copyOf(randomTraits);
+        void clearRandomTraits() {
+            randomTraits.clear();
         }
 
         void replaceRandomTraits(Collection<Identifier> replacementTraits) {
             randomTraits.clear();
+            if (replacementTraits == null) {
+                return;
+            }
             for (Identifier traitId : replacementTraits) {
                 if (lockedTraits.size() + randomTraits.size() >= TraitPlayerComponent.MAX_TRAITS) {
                     break;
