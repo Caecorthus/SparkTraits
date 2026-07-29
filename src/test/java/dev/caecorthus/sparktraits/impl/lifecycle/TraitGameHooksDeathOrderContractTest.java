@@ -60,6 +60,27 @@ class TraitGameHooksDeathOrderContractTest {
     }
 
     @Test
+    void syncsConfirmedDeathOnlyBeforeRealDeathTraits() throws IOException {
+        String source = readSource();
+        String afterKill = block(source, "KillPlayer.AFTER.register((victim, killer, deathReason) ->");
+        String lastStandBranch = block(afterKill, "if (lastStandStarted)");
+        String syncHelper = block(source, "private static void syncPlayerTraitsToNewSpectators(");
+
+        assertEquals(2, occurrences(afterKill, "syncPlayerTraitsToNewSpectators("));
+        assertFalse(lastStandBranch.contains("gameComponent.sync();"));
+        assertFalse(syncHelper.contains("gameComponent.sync();"));
+
+        int realDeathStart = afterKill.indexOf(lastStandBranch) + lastStandBranch.length();
+        String realDeathPath = afterKill.substring(realDeathStart);
+        int gameSync = realDeathPath.indexOf("gameComponent.sync();");
+        int traitSync = realDeathPath.indexOf("syncPlayerTraitsToNewSpectators(");
+
+        assertEquals(1, occurrences(afterKill, "gameComponent.sync();"));
+        assertTrue(gameSync >= 0, "confirmed real-death state must reach clients immediately");
+        assertTrue(traitSync > gameSync, "confirmed death must arrive before trait-dependent rendering state");
+    }
+
+    @Test
     void roundFinalizeClearsTimedBombsBeforePlayerTraits() throws IOException {
         String finalize = block(readSource(), "GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) ->");
         int timedBombCleanup = finalize.indexOf("ConscienceBombService.clearAll();");

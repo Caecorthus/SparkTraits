@@ -81,7 +81,11 @@ public final class TraitGameHooks {
             playerTraits.clearActiveTraits(TraitRemovalReason.DEATH);
             ConscienceSerialKillerService.clearPlayer(victim);
             DepressionTraitService.clearPlayer(victim);
-            syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
+            GameWorldComponent gameComponent = GameWorldComponent.KEY.get(victim.getWorld());
+            // Publish Wathe's confirmed-death set before clients evaluate Spirit Sleuth visibility.
+            // 在客户端判断灵探可见性前，先同步 Wathe 的已确认死亡集合。
+            gameComponent.sync();
+            syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), gameComponent);
         });
 
         dev.doctor4t.wathe.api.event.GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
