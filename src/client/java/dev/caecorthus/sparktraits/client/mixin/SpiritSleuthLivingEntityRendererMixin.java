@@ -36,20 +36,44 @@ public abstract class SpiritSleuthLivingEntityRendererMixin {
             return invisibleToViewer;
         }
 
-        GameWorldComponent game = GameWorldComponent.KEY.get(targetPlayer.getWorld());
-        boolean targetIsDeadParticipant = game.isRunning()
-                && game.hasAnyRole(targetPlayer)
-                && game.isPlayerDead(targetPlayer.getUuid());
-
         // A spectator viewer can be an alive temporary spectator; preserve Wathe and NoellesRoles isolation.
         // 观察者自身也可能只是临时进入旁观模式；此时继续遵守 Wathe 与 NoellesRoles 的隔离规则。
-        boolean reveal = SpiritSleuthVisibilityRules.shouldRevealSpectatorHead(
+        GameWorldComponent game = GameWorldComponent.KEY.get(targetPlayer.getWorld());
+        boolean targetIsGameParticipant = game.isRunning() && game.hasAnyRole(targetPlayer);
+        boolean targetIsDeadParticipant = targetIsGameParticipant
+                && game.isPlayerDead(targetPlayer.getUuid());
+        TraitPlayerComponent targetTraits = TraitPlayerComponent.KEY.get(targetPlayer);
+        return resolveSpectatorPlayerHeadVisibility(
+                invisibleToViewer,
                 GlobalTraitService.hasTrait(viewer, SpiritSleuthTrait.ID),
                 viewer == null || viewer.isSpectator() || viewer.isCreative(),
                 targetPlayer.isSpectator(),
+                targetIsGameParticipant,
                 targetIsDeadParticipant,
-                TraitPlayerComponent.KEY.get(targetPlayer).isLastStandPending()
+                targetTraits.isLastStandPending(),
+                targetTraits.isTemporaryFakeDeathPending()
         );
-        return reveal ? false : invisibleToViewer;
+    }
+
+    private static boolean resolveSpectatorPlayerHeadVisibility(
+            boolean invisibleToViewer,
+            boolean viewerHasTrait,
+            boolean viewerIsSpectator,
+            boolean targetIsSpectator,
+            boolean targetIsGameParticipant,
+            boolean targetIsDeadParticipant,
+            boolean targetIsLastStandPending,
+            boolean targetIsTemporaryFakeDeathPending
+    ) {
+        boolean reveal = SpiritSleuthVisibilityRules.shouldRevealSpectatorPlayerHead(
+                viewerHasTrait,
+                viewerIsSpectator,
+                targetIsSpectator,
+                targetIsGameParticipant,
+                targetIsDeadParticipant,
+                targetIsLastStandPending,
+                targetIsTemporaryFakeDeathPending
+        );
+        return SpiritSleuthVisibilityRules.resolveInvisibleToViewer(invisibleToViewer, reveal);
     }
 }

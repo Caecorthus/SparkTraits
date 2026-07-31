@@ -64,17 +64,13 @@ public final class TraitGameHooks {
 
         KillPlayer.AFTER.register((victim, killer, deathReason) -> {
             TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(victim);
-            GameWorldComponent gameComponent = GameWorldComponent.KEY.get(victim.getWorld());
             TraitWorldComponent.KEY.get(victim.getWorld()).snapshotDeathTraits(victim.getUuid(), playerTraits.getActiveTraitIds());
             boolean lastStandStarted = LastStandService.tryStartAfterKill(victim, killer, deathReason);
             PigTraitService.playDeathSound(victim);
             EffectiveTraitService.handleAfterKill(victim, killer, deathReason);
             DepressionTraitService.handleAfterKill(victim, killer, deathReason);
-            // Sync Wathe's dead-player set before exposing spectator-only trait state to newly dead clients.
-            // 在向新死亡客户端开放旁观者天赋状态前，先同步 Wathe 的死亡玩家集合。
-            gameComponent.sync();
             if (lastStandStarted) {
-                syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), gameComponent);
+                syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
                 return;
             }
             ConscienceEconomyService.rewardAfterConfirmedRealDeath(victim);
@@ -85,6 +81,10 @@ public final class TraitGameHooks {
             playerTraits.clearActiveTraits(TraitRemovalReason.DEATH);
             ConscienceSerialKillerService.clearPlayer(victim);
             DepressionTraitService.clearPlayer(victim);
+            GameWorldComponent gameComponent = GameWorldComponent.KEY.get(victim.getWorld());
+            // Publish Wathe's confirmed-death set before clients evaluate Spirit Sleuth visibility.
+            // 在客户端判断灵探可见性前，先同步 Wathe 的已确认死亡集合。
+            gameComponent.sync();
             syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), gameComponent);
         });
 

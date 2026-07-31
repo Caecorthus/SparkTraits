@@ -155,6 +155,9 @@ public abstract class WatheClientMixin {
         }
 
         if (EffectiveTraitService.hasConscience(viewer)) {
+            if (EffectiveTraitService.shouldDelegateConscienceInstinctToNative(viewer)) {
+                return;
+            }
             if (playerTarget != null) {
                 // Bomb holders keep Bomber instinct visibility beyond Conscience's normal 10-block range.
                 // 持弹者保留炸弹客本能可视，不受善良普通目标 10 格限制影响。

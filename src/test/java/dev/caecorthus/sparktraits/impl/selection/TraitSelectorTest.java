@@ -2,11 +2,20 @@ package dev.caecorthus.sparktraits.impl.selection;
 
 import dev.caecorthus.sparktraits.api.Trait;
 import dev.caecorthus.sparktraits.api.TraitAudience;
+import dev.caecorthus.sparktraits.api.TraitDefinition;
+import dev.caecorthus.sparktraits.api.TraitRegistry;
+import dev.caecorthus.sparktraits.api.TraitSelectionContext;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
+import dev.doctor4t.wathe.api.WatheRoles;
 import net.minecraft.util.Identifier;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -14,6 +23,101 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TraitSelectorTest {
+    private static final Identifier KILLER = Identifier.of("test", "compensation_killer");
+    private static final Identifier CIVILIAN = Identifier.of("test", "compensation_civilian");
+    private static final Identifier UNIQUE = Identifier.of("test", "compensation_unique");
+    private static final Identifier INCOMPATIBLE = Identifier.of("test", "compensation_incompatible");
+    private static final Identifier DISABLED = Identifier.of("test", "compensation_disabled");
+
+    @BeforeAll
+    static void registerCompensationTraits() {
+        registerIfAbsent(TraitDefinition.builder(KILLER, 0)
+                .audience(TraitAudience.KILLER_ONLY)
+                .build());
+        registerIfAbsent(TraitDefinition.builder(CIVILIAN, 0)
+                .audience(TraitAudience.INNOCENT_ONLY)
+                .build());
+        registerIfAbsent(TraitDefinition.builder(UNIQUE, 0)
+                .audience(TraitAudience.KILLER_ONLY)
+                .uniquePerGame()
+                .build());
+        registerIfAbsent(TraitDefinition.builder(INCOMPATIBLE, 0)
+                .audience(TraitAudience.KILLER_ONLY)
+                .incompatibleWith(KILLER)
+                .build());
+        registerIfAbsent(TraitDefinition.builder(DISABLED, 0)
+                .audience(TraitAudience.KILLER_ONLY)
+                .build());
+        registerIfAbsent(new ConscienceTrait());
+    }
+
+    @Test
+    void compensationCandidatesUseFinalKillerRoleAndExcludeConscience() {
+        TraitSelectionContext context = new TraitSelectionContext(
+                null,
+                null,
+                null,
+                WatheRoles.KILLER,
+                Set.of(),
+                24,
+                true
+        );
+
+        List<Trait> candidates = TraitSelector.collectEligibleCandidates(
+                List.of(
+                        TraitRegistry.get(KILLER),
+                        TraitRegistry.get(CIVILIAN),
+                        TraitRegistry.get(ConscienceTrait.ID)
+                ),
+                context,
+                Set.of(),
+                Set.of(),
+                Set.of(ConscienceTrait.ID),
+                traitId -> true,
+                traitId -> false
+        );
+
+        assertEquals(List.of(KILLER), candidates.stream().map(Trait::id).toList());
+    }
+
+    @Test
+    void compensationCandidatesRespectDisabledUniqueAndIncompatibilityRules() {
+        TraitSelectionContext context = new TraitSelectionContext(
+                null,
+                null,
+                null,
+                WatheRoles.KILLER,
+                Set.of(KILLER),
+                24,
+                true
+        );
+
+        List<Trait> candidates = TraitSelector.collectEligibleCandidates(
+                List.of(
+                        TraitRegistry.get(UNIQUE),
+                        TraitRegistry.get(INCOMPATIBLE),
+                        TraitRegistry.get(CIVILIAN),
+                        TraitRegistry.get(DISABLED)
+                ),
+                context,
+                Set.of(KILLER),
+                Set.of(UNIQUE),
+                Set.of(),
+                traitId -> !DISABLED.equals(traitId),
+                traitId -> false
+        );
+
+        assertTrue(candidates.isEmpty());
+    }
+
+    @Test
+    void selectorStopsAtTheConfiguredMaximumTraitCount() {
+        assertTrue(TraitSelector.canSelectAnotherTrait(0));
+        assertTrue(TraitSelector.canSelectAnotherTrait(2));
+        assertFalse(TraitSelector.canSelectAnotherTrait(3));
+        assertFalse(TraitSelector.canSelectAnotherTrait(4));
+    }
+
     @Test
     void randomSelectionWeightChangesOnlyNonUniversalCandidates() {
         assertEquals(100.0D, TraitSelector.randomSelectionWeight(trait("u", 100.0D, TraitAudience.UNIVERSAL)));
@@ -49,6 +153,68 @@ class TraitSelectorTest {
             }
         };
         assertFalse(TraitSelector.shouldRollSlot(0.75F, boundary));
+    }
+
+    @Test
+    void retainedTraitsConsumeSlotsAndAreNotReturnedAsNew() {
+        Identifier locked = Identifier.of("test", "locked");
+        Identifier first = Identifier.of("test", "first");
+        Identifier second = Identifier.of("test", "second");
+        LinkedHashSet<Identifier> selected = new LinkedHashSet<>(List.of(locked));
+        AtomicInteger picks = new AtomicInteger();
+
+        List<Identifier> rolled = TraitSelector.rollTraits(
+                selected,
+                1.0F,
+                new Random(0L),
+                current -> picks.getAndIncrement() == 0 ? first : second
+        );
+
+        assertEquals(List.of(first, second), rolled);
+        assertEquals(new LinkedHashSet<>(List.of(locked, first, second)), selected);
+        assertEquals(2, picks.get());
+    }
+
+    @Test
+    void fullRetainedPlanDoesNotAttemptAnotherRoll() {
+        LinkedHashSet<Identifier> selected = new LinkedHashSet<>(List.of(
+                Identifier.of("test", "one"),
+                Identifier.of("test", "two"),
+                Identifier.of("test", "three")
+        ));
+        AtomicInteger picks = new AtomicInteger();
+
+        List<Identifier> rolled = TraitSelector.rollTraits(
+                selected,
+                1.0F,
+                new Random(0L),
+                current -> {
+                    picks.incrementAndGet();
+                    return Identifier.of("test", "unexpected");
+                }
+        );
+
+        assertEquals(List.of(), rolled);
+        assertEquals(0, picks.get());
+    }
+
+    @Test
+    void rerollExclusionsRejectConscienceAndImpostorIds() {
+        Identifier conscience = Identifier.of("sparktraits", "conscience");
+        Identifier impostor = Identifier.of("sparktraits", "impostor");
+        Identifier allowed = Identifier.of("sparktraits", "bloodthirsty");
+        Set<Identifier> exclusions = Set.of(conscience, impostor);
+
+        assertTrue(TraitSelector.isExcluded(conscience, exclusions));
+        assertTrue(TraitSelector.isExcluded(impostor, exclusions));
+        assertFalse(TraitSelector.isExcluded(allowed, exclusions));
+        assertFalse(TraitSelector.isExcluded(allowed, null));
+    }
+
+    private static void registerIfAbsent(Trait trait) {
+        if (!TraitRegistry.contains(trait.id())) {
+            TraitRegistry.register(trait);
+        }
     }
 
     private static Trait trait(String path, double weight, TraitAudience audience) {

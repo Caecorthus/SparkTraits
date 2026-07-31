@@ -62,6 +62,8 @@ public final class TraitAssignmentService {
     private static final Identifier NOELLES_IRON_MAN_VIAL_ID = Identifier.of(NOELLESROLES_MOD_ID, "iron_man_vial");
     private static final Identifier NOELLES_REPAIR_TOOL_ID = Identifier.of(NOELLESROLES_MOD_ID, "repair_tool");
     private static final Identifier MINECRAFT_WRITTEN_BOOK_ID = Identifier.ofVanilla("written_book");
+    private static final Set<Identifier> CONSCIENCE_COMPENSATION_REROLL_EXCLUSIONS =
+            Set.of(ConscienceTrait.ID, ImpostorTrait.ID);
 
     private TraitAssignmentService() {
     }
@@ -129,8 +131,19 @@ public final class TraitAssignmentService {
         if (containsTrait(plans, ImpostorTrait.ID) && !containsTrait(plans, ConscienceTrait.ID)) {
             forceConscienceOntoEligibleKiller(gameComponent, traitWorld, plans, random);
         }
+        recalibrateUniqueTraitReservations(randomUniqueTraitReservations, plans);
 
-        addExtraKillersForConscience(world, gameComponent, players, plans, publicKillerCount, protectedLockedRolePlayers, random);
+        addExtraKillersForConscience(
+                world,
+                gameComponent,
+                traitWorld,
+                players,
+                plans,
+                publicKillerCount,
+                protectedLockedRolePlayers,
+                random,
+                randomUniqueTraitReservations
+        );
         forcePigOntoPigGod(gameComponent, traitWorld, plans);
         enforceRandomDepressionCap(plans, players.size());
 
@@ -218,11 +231,13 @@ public final class TraitAssignmentService {
     private static void addExtraKillersForConscience(
             ServerWorld world,
             GameWorldComponent gameComponent,
+            TraitWorldComponent traitWorld,
             List<ServerPlayerEntity> players,
             List<PlayerPlan> plans,
             int publicKillerCount,
             Set<UUID> lockedRolePlayers,
-            Random random
+            Random random,
+            Collection<Identifier> randomUniqueTraitReservations
     ) {
         int originalKillerCount = EffectiveTraitService.originalKillerCount(gameComponent);
         int conscienceCount = countTrait(plans, ConscienceTrait.ID);
@@ -242,11 +257,29 @@ public final class TraitAssignmentService {
                 return;
             }
             Role originalRole = gameComponent.getRole(extraKiller.player());
-            extraKiller.clearRandomTraits();
+            replaceRandomTraitsForConscienceCompensation(
+                    extraKiller,
+                    randomUniqueTraitReservations,
+                    List.of()
+            );
             clearInitialRoleItemsForConscienceCompensation(extraKiller.player(), originalRole);
             gameComponent.addRole(extraKiller.player(), compensationRole);
             replaceLatestConscienceCompensationRoleHistoryEntry(roleHistory, extraKiller.player().getUuid(), compensationRole);
             RoleAssigned.EVENT.invoker().assignRole(extraKiller.player(), compensationRole);
+            rebuildUniqueTraitReservations(randomUniqueTraitReservations, plans);
+            List<Identifier> rerolledTraits = TraitSelector.selectRandomTraits(
+                    world,
+                    gameComponent,
+                    traitWorld,
+                    extraKiller.player(),
+                    random,
+                    players.size(),
+                    extraKiller.lockedTraits(),
+                    randomUniqueTraitReservations,
+                    CONSCIENCE_COMPENSATION_REROLL_EXCLUSIONS
+            );
+            extraKiller.replaceRandomTraits(rerolledTraits);
+            rebuildUniqueTraitReservations(randomUniqueTraitReservations, plans);
             TraitPlayerComponent.KEY.get(extraKiller.player()).sync();
             gameComponent.sync();
         }
@@ -331,17 +364,20 @@ public final class TraitAssignmentService {
         return canUseAsConscienceCompensationTarget(
                 role,
                 plan.traits(),
-                lockedRolePlayers.contains(plan.player().getUuid())
+                lockedRolePlayers.contains(plan.player().getUuid()),
+                plan.hasLocks()
         );
     }
 
     static boolean canUseAsConscienceCompensationTarget(
             Role role,
             Collection<Identifier> traits,
-            boolean roleLocked
+            boolean roleLocked,
+            boolean traitLocked
     ) {
         return role != null
                 && !roleLocked
+                && !traitLocked
                 && EffectiveTraitService.isOriginalCivilian(role)
                 && role != WatheRoles.VIGILANTE
                 && role != WatheRoles.VETERAN
@@ -591,6 +627,37 @@ public final class TraitAssignmentService {
         }
     }
 
+    static void rebuildUniqueTraitReservations(
+            Collection<Identifier> reservedUniqueTraits,
+            Collection<PlayerPlan> plans
+    ) {
+        reservedUniqueTraits.clear();
+        for (PlayerPlan plan : plans) {
+            reserveUniqueTraits(reservedUniqueTraits, plan.traits());
+        }
+    }
+
+    static void recalibrateUniqueTraitReservations(
+            Collection<Identifier> reservedUniqueTraits,
+            Collection<PlayerPlan> plans
+    ) {
+        rebuildUniqueTraitReservations(reservedUniqueTraits, plans);
+    }
+
+    static void replaceRandomTraitsForConscienceCompensation(
+            PlayerPlan plan,
+            Collection<Identifier> reservedUniqueTraits,
+            Collection<Identifier> replacementTraits
+    ) {
+        for (Identifier traitId : plan.randomTraits()) {
+            if (isUniqueTrait(traitId)) {
+                reservedUniqueTraits.remove(traitId);
+            }
+        }
+        plan.replaceRandomTraits(replacementTraits);
+        reserveUniqueTraits(reservedUniqueTraits, plan.randomTraits());
+    }
+
     private static void enforceUniqueTraitLimits(List<PlayerPlan> plans) {
         LinkedHashSet<Identifier> usedUniqueTraits = new LinkedHashSet<>();
         for (PlayerPlan plan : plans) {
@@ -641,6 +708,14 @@ public final class TraitAssignmentService {
             return lockedTraits.isEmpty() && randomTraits.isEmpty();
         }
 
+        List<Identifier> lockedTraits() {
+            return List.copyOf(lockedTraits);
+        }
+
+        List<Identifier> randomTraits() {
+            return List.copyOf(randomTraits);
+        }
+
         List<Identifier> traits() {
             LinkedHashSet<Identifier> traits = new LinkedHashSet<>();
             traits.addAll(lockedTraits);
@@ -680,6 +755,21 @@ public final class TraitAssignmentService {
 
         void clearRandomTraits() {
             randomTraits.clear();
+        }
+
+        void replaceRandomTraits(Collection<Identifier> replacementTraits) {
+            randomTraits.clear();
+            if (replacementTraits == null) {
+                return;
+            }
+            for (Identifier traitId : replacementTraits) {
+                if (lockedTraits.size() + randomTraits.size() >= TraitPlayerComponent.MAX_TRAITS) {
+                    break;
+                }
+                if (!lockedTraits.contains(traitId) && !randomTraits.contains(traitId)) {
+                    randomTraits.add(traitId);
+                }
+            }
         }
 
         void forceRequiredTrait(Identifier traitId) {
