@@ -386,6 +386,19 @@ tasks.register("verifyArchitecture") {
             )
         }
 
+        def sparkFactionApiMetadata = verifyDependencyJar(
+                sparkFactionApiJarName,
+                "sparkfactionapi",
+                project.sparkfactionapi_version.toString(),
+                project.sparkfactionapi_sha256.toString()
+        )
+        if (sparkFactionApiMetadata.depends?.wathe?.toString() != project.wathe_version.toString()) {
+            throw new GradleException(
+                    "SparkFactionAPI embedded Wathe dependency mismatch: expected ${project.wathe_version}, " +
+                            "found ${sparkFactionApiMetadata.depends?.wathe}"
+            )
+        }
+
         def metadata = new groovy.json.JsonSlurper().parse(file("src/main/resources/fabric.mod.json"))
         def expectedWatheVersionTemplate = '${wathe_version}'
         if (metadata.depends?.wathe != expectedWatheVersionTemplate) {
@@ -414,8 +427,9 @@ tasks.register("verifyArchitecture") {
             )
         }
         [
-                wathe        : project.wathe_version.toString(),
-                noellesroles : project.noellesroles_version.toString()
+                wathe           : project.wathe_version.toString(),
+                noellesroles    : project.noellesroles_version.toString(),
+                sparkfactionapi : project.sparkfactionapi_version.toString()
         ].each { modId, expectedVersion ->
             if (trackedMetadata.depends?.get(modId)?.toString() != expectedVersion) {
                 throw new GradleException(

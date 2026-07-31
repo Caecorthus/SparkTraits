@@ -43,7 +43,7 @@
     "java": ">=21",
     "wathe": "1.5.6-spark-1.21.1",
     "noellesroles": "1.7.6-h1.5.6-spark",
-    "sparkfactionapi": ">=0.1.5.9",
+    "sparkfactionapi": ">=0.1.6.1",
     "ratatouille": ">=1.4.3-1.21.1",
     "cardinal-components-base": ">=6.1.1",
     "cardinal-components-entity": ">=6.1.1",
