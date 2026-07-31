@@ -392,9 +392,10 @@ tasks.register("verifyArchitecture") {
                 project.sparkfactionapi_version.toString(),
                 project.sparkfactionapi_sha256.toString()
         )
-        if (sparkFactionApiMetadata.depends?.wathe?.toString() != project.wathe_version.toString()) {
+        def expectedSparkFactionApiWatheDependency = ">=${project.wathe_version}"
+        if (sparkFactionApiMetadata.depends?.wathe?.toString() != expectedSparkFactionApiWatheDependency) {
             throw new GradleException(
-                    "SparkFactionAPI embedded Wathe dependency mismatch: expected ${project.wathe_version}, " +
+                    "SparkFactionAPI embedded Wathe dependency mismatch: expected ${expectedSparkFactionApiWatheDependency}, " +
                             "found ${sparkFactionApiMetadata.depends?.wathe}"
             )
         }
