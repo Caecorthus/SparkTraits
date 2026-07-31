@@ -47,7 +47,7 @@ class SpiritSleuthVisibilityMixinContractTest {
         assertTrue(normalizedSource.contains(
                 "return resolveSpectatorPlayerHeadVisibility( invisibleToViewer, "
                         + "GlobalTraitService.hasTrait(viewer, SpiritSleuthTrait.ID), "
-                        + "viewer == null || viewer.isSpectator(), targetPlayer.isSpectator(), "
+                        + "viewer == null || viewer.isSpectator() || viewer.isCreative(), targetPlayer.isSpectator(), "
                         + "targetIsGameParticipant, targetIsDeadParticipant, "
                         + "targetTraits.isLastStandPending(), "
                         + "targetTraits.isTemporaryFakeDeathPending() );"
