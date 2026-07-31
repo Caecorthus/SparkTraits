@@ -430,7 +430,7 @@ tasks.register("verifyArchitecture") {
         [
                 wathe           : project.wathe_version.toString(),
                 noellesroles    : project.noellesroles_version.toString(),
-                sparkfactionapi : project.sparkfactionapi_version.toString()
+                sparkfactionapi : ">=${project.sparkfactionapi_version}"
         ].each { modId, expectedVersion ->
             if (trackedMetadata.depends?.get(modId)?.toString() != expectedVersion) {
                 throw new GradleException(
