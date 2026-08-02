@@ -8,6 +8,7 @@ import dev.caecorthus.sparktraits.impl.traits.global.ChildishTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.ExcellentPhysiqueTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.FastHandsTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.SteadyTrait;
+import dev.caecorthus.sparktraits.impl.traits.global.SpiritSleuthTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.TaskMasterTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
@@ -35,6 +36,7 @@ public final class SparkTraitsBuiltInTraits {
         TraitRegistry.register(new PigTrait());
         TraitRegistry.register(new SteadyTrait());
         TraitRegistry.register(new ExcellentPhysiqueTrait());
+        TraitRegistry.register(new SpiritSleuthTrait());
         CivilianTraits.register();
         PoliceTraits.register();
         KillerTraits.register();

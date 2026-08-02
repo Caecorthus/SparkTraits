@@ -33,6 +33,8 @@
   "trait.sparktraits.steady.description": "Your real sanity can rise above the normal limit.",
   "trait.sparktraits.excellent_physique.name": "Excellent Physique",
   "trait.sparktraits.excellent_physique.description": "Your stamina limit and natural stamina recovery are doubled.",
+  "trait.sparktraits.spirit_sleuth.name": "Spirit Sleuth",
+  "trait.sparktraits.spirit_sleuth.description": "You can see players who are in Spectator Mode.",
   "trait.sparktraits.extroverted.name": "Extroverted",
   "trait.sparktraits.extroverted.description": "Your sanity does not drain while at least two other living players are within eight blocks.",
   "trait.sparktraits.introverted.name": "Introverted",

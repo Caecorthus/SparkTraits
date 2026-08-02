@@ -51,7 +51,7 @@ class BaselineDependencyCompatibilityTest {
             properties.load(input);
         }
 
-        assertEquals("0.1.9.12", properties.getProperty("mod_version"));
+        assertEquals("0.1.9.8", properties.getProperty("mod_version"));
         assertEquals(WATHE_VERSION, properties.getProperty("wathe_version"));
         assertEquals(NOELLES_ROLES_VERSION, properties.getProperty("noellesroles_version"));
         assertEquals(WATHE_SHA256, properties.getProperty("wathe_sha256"));

@@ -25,6 +25,7 @@
     "PigPlayerRendererMixin",
     "PlayerPoisonComponentBluePoisonMixin",
     "RoundTextRendererMixin",
+    "SpiritSleuthLivingEntityRendererMixin",
     "TrimmedBedBluePoisonParticleMixin",
     "TraitInventoryScreenMixin",
     "TraitRoleNameRendererMixin",

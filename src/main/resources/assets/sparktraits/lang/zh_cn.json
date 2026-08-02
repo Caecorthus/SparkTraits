@@ -33,6 +33,8 @@
   "trait.sparktraits.steady.description": "你的真理智可以超过普通上限。",
   "trait.sparktraits.excellent_physique.name": "体质优异",
   "trait.sparktraits.excellent_physique.description": "你的体力上限和自然恢复速度翻倍。",
+  "trait.sparktraits.spirit_sleuth.name": "灵探",
+  "trait.sparktraits.spirit_sleuth.description": "你可以看到处于旁观模式的玩家。",
   "trait.sparktraits.extroverted.name": "外向",
   "trait.sparktraits.extroverted.description": "8格内至少有另外两名存活玩家时，你的理智不会自然流失。",
   "trait.sparktraits.introverted.name": "内向",

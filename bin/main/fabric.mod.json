@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "sparktraits",
-  "version": "0.1.9.12",
+  "version": "0.1.9.8",
   "name": "SparkTraits",
   "description": "Passive trait mechanics for Spark Wathe.",
   "authors": [
@@ -43,7 +43,7 @@
     "java": ">=21",
     "wathe": "1.5.6-spark-1.21.1",
     "noellesroles": "1.7.6-h1.5.6-spark",
-    "sparkfactionapi": ">=0.1.6.1",
+    "sparkfactionapi": ">=0.1.5.8",
     "ratatouille": ">=1.4.3-1.21.1",
     "cardinal-components-base": ">=6.1.1",
     "cardinal-components-entity": ">=6.1.1",
