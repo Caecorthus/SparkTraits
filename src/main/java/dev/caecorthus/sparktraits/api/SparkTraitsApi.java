@@ -8,9 +8,11 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTrai
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.GoingDarkRules;
 import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameFunctions;
+import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -21,6 +23,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -71,6 +74,23 @@ public final class SparkTraitsApi {
                 : TraitPlayerComponent.KEY.maybeGet(player)
                         .<Collection<Identifier>>map(TraitPlayerComponent::getRevealedTraitIds)
                         .orElseGet(List::of);
+    }
+
+    /**
+     * Applies the killer charisma discount to a shop entry when the player truly owns that trait.
+     * 仅当玩家真实拥有杀手词条【魅力】时，对商店条目套用一次折扣包装。
+     *
+     * <p>这个公共门面专门给外部模组的 shop 构建阶段使用，避免它们直接依赖
+     * {@code dev.caecorthus.sparktraits.impl} 包里的实现细节。</p>
+     */
+    public static @Nullable ShopEntry discountShopEntryForCharisma(
+            PlayerEntity player,
+            @Nullable ShopEntry entry
+    ) {
+        if (entry == null) {
+            return null;
+        }
+        return KillerTraitService.applyCharismaDiscount(player, entry);
     }
 
     /**

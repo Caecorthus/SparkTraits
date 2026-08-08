@@ -2,6 +2,8 @@ package dev.caecorthus.sparktraits.impl.traits.killer;
 
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.BuildShopEntries;
 import dev.doctor4t.wathe.api.event.PsychoModeEvents;
@@ -30,8 +32,6 @@ import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
-import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
-import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 
 /**
  * Shared runtime rules for killer-only traits.
@@ -167,6 +167,23 @@ public final class KillerTraitService {
             return entry.price();
         }
         return charismaPrice(entry.price());
+    }
+
+    /**
+     * Returns a shop entry wrapped with the charisma discount when the player actually owns that trait.
+     * 当且仅当玩家真实拥有【魅力】词条时，返回一个已包装的折扣商店条目。
+     *
+     * <p>这会让商店界面显示的价格和最终购买结算保持一致；若条目已经是折扣包装或价格本来就是非正数，
+     * 则直接原样返回，避免重复打折。</p>
+     */
+    public static @Nullable ShopEntry applyCharismaDiscount(PlayerEntity player, @Nullable ShopEntry entry) {
+        if (player == null || entry == null
+                || !hasEligibleTrait(player, KillerTraits.CHARISMA)
+                || entry instanceof DiscountedShopEntry
+                || entry.price() <= 0) {
+            return entry;
+        }
+        return discountedShopEntry(entry);
     }
 
     public static int paranoidPsychoTicks(int originalTicks) {
