@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
+import dev.caecorthus.sparktraits.client.compat.SparkWitchBlackRavenBridge;
 import dev.caecorthus.sparktraits.client.instinct.GoingDarkInstinctClientHooks;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
@@ -151,6 +152,21 @@ public abstract class WatheClientMixin {
                     true,
                     Noellesroles.TOXICOLOGIST.color()
             ));
+            return;
+        }
+
+        /*
+         * 黑羽鸦在“本能：感知”模式下显示的是 SparkWitch 已完成积点后同步给拥有者的身份快照。
+         * 善良词条同样在 WatheClient.getInstinctHighlight 的 HEAD 阶段接管高亮，如果这里继续先走
+         * 善良分支，就会把黑羽鸦的职业色快照改成善良色，或者被善良 10 格范围限制直接压成隐藏。
+         *
+         * 因此在善良普通本能逻辑之前，先通过可选反射桥询问 SparkWitch：当前目标是否应该由黑羽鸦
+         * 感知模式裁决。返回 null 表示 SparkWitch 当前不接管；返回具体颜色或 -1 时，说明黑羽鸦
+         * 感知模式已经给出最终显示结果，SparkTraits 不再覆盖。
+         */
+        Integer blackRavenSensedHighlight = SparkWitchBlackRavenBridge.resolveSensedInstinctHighlight(target);
+        if (blackRavenSensedHighlight != null) {
+            cir.setReturnValue(blackRavenSensedHighlight);
             return;
         }
 
