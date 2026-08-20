@@ -41,6 +41,7 @@
     "NoellesRolesBodyguardMixin",
     "NoellesRolesJesterMomentMixin",
     "NoellesRolesSerialKillerRewardMixin",
+    "NoellesRolesShadowJesterWinMixin",
     "NoellesRolesPacketMixin",
     "PoisonGasCloudEntityMixin",
     "PoisonUtilsMixin",

@@ -10,6 +10,7 @@ import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.ScoreboardRoleSelectorComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.game.gamemode.MurderGameMode;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
@@ -79,6 +80,26 @@ public abstract class MurderGameModeMixin {
         // Run after other win-condition hooks so neutral blockers can keep the round alive first.
         // 在其他胜利判定钩子之后运行，让中立阻塞者先正常阻止回合结束。
         EffectiveTraitService.killUnsupportedImpostorsIfNoRealKillers(serverWorld, gameWorldComponent);
+    }
+
+    @Redirect(
+            method = "tickServerGameLoop",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;isInnocent(Lnet/minecraft/entity/player/PlayerEntity;)Z"
+            )
+    )
+    private boolean sparktraits$useEffectiveCivilianForKillerWin(
+            GameWorldComponent gameWorldComponent,
+            PlayerEntity player
+    ) {
+        // Wathe 原版这里按角色原始 isInnocent() 判断“是否仍有好人存活”。
+        // 内鬼的原始职业虽然是好人，但有效阵营已经翻转为杀手；如果继续使用
+        // 原始判断，最后一名普通好人死亡后仍会被内鬼挡住 KILLERS 状态，
+        // 进而无法触发 NoellesRoles 的双影谢幕入口。
+        // 这里仅替换 MurderGameMode 的杀手胜利计算，不改变 GameWorldComponent
+        // 的全局 isInnocent() 行为，避免影响其他仍依赖原始职业阵营的逻辑。
+        return EffectiveTraitService.isEffectiveCivilian(player, gameWorldComponent);
     }
 
     @Inject(
