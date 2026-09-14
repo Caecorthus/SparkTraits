@@ -9,6 +9,10 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandServic
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.GoingDarkRules;
 import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
+import dev.caecorthus.sparktraits.impl.traits.killer.combat.CloseQuartersService;
+import dev.caecorthus.sparktraits.impl.traits.killer.combat.ForcedMeleeCooldownService;
+import dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeService;
+import net.minecraft.item.ItemStack;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -37,6 +41,40 @@ import java.util.function.Consumer;
  * 为可选下游集成提供稳定且支持空值的查询接口。
  */
 public final class SparkTraitsApi {
+    private static java.util.function.Function<PlayerEntity, float[]> lastEscapeVisionProvider;
+
+    /** Installs the client-owned, side-effect-free parameter query; never installed on a server.
+     * 安装客户端无副作用参数查询；服务端不安装。 */
+    public static void installLastEscapeVisionProvider(java.util.function.Function<PlayerEntity, float[]> provider) {
+        lastEscapeVisionProvider = provider;
+    }
+
+    /** Version 1 means this client delegates the sole escape pass to a compatible Witch renderer.
+     * 版本 1 表示客户端会将唯一脱险后处理委托给兼容的 Witch 渲染器；未初始化时为 0。 */
+    public static int getLastEscapeVisionProtocolVersion() {
+        return lastEscapeVisionProvider == null ? 0 : 1;
+    }
+
+    /**
+     * Client visual parameters [desaturation, spread, brightness], including stronger Depression.
+     * Returns a fresh neutral array on a server, before client initialization, or without escape.
+     * This query must never delegate to another compositor or render anything.
+     * 客户端返回含更强抑郁效果的[灰阶、扩散、亮度]；无效果或参数无效时返回独立中性数组。
+     * 此查询不调用其他合成器或执行渲染，避免可选模组间递归。
+     */
+    public static float[] getLastEscapeComposition(PlayerEntity player) {
+        float[] values = player == null || lastEscapeVisionProvider == null
+                ? null : lastEscapeVisionProvider.apply(player);
+        // Never expose a provider-owned or malformed array across the optional facade.
+        // 不向可选调用方暴露提供者持有的数组，也不返回空值或无效参数。
+        if (values == null || values.length != 3 || !Float.isFinite(values[0])
+                || !Float.isFinite(values[1]) || !Float.isFinite(values[2])
+                || values[0] < 0.5f || values[0] > 1.0f || values[1] < 0.0f || values[2] < 0.0f) {
+            return new float[] {0.0f, 0.0f, 1.0f};
+        }
+        return values.clone();
+    }
+
     private SparkTraitsApi() {
     }
 
@@ -50,6 +88,48 @@ public final class SparkTraitsApi {
                 && TraitPlayerComponent.KEY.maybeGet(player)
                         .map(component -> component.hasActiveTrait(traitId))
                         .orElse(false);
+    }
+
+    /**
+     * Active escape is a timed state, not a query for ownership of the hidden trait.
+     * 脱险是已触发的限时状态，不暴露隐藏词条的持有情况。
+     */
+    public static boolean isLastEscapeActive(PlayerEntity player) {
+        return player != null && LastEscapeService.isActive(player);
+    }
+
+    public static boolean isKillerInteractionBlocked(PlayerEntity player) {
+        return isLastEscapeActive(player);
+    }
+
+    public static boolean hasLastEscapeGrayscale(PlayerEntity player) {
+        return player != null && LastEscapeService.hasGrayscale(player);
+    }
+
+    public static float getLastEscapeDesaturation(PlayerEntity player) {
+        return hasLastEscapeGrayscale(player) ? 0.5f : 0.0f;
+    }
+
+    /**
+     * Forced melee lock is independent of ordinary weapon ability/attack cooldowns.
+     * 强制近战禁用独立于武器普通技能和攻击蓄力冷却。
+     */
+    public static int getForcedMeleeCooldownTicks(PlayerEntity player, ItemStack weapon) {
+        return player == null || weapon == null || weapon.isEmpty()
+                ? 0 : ForcedMeleeCooldownService.remainingTicks(player, weapon);
+    }
+
+    /**
+     * Call after normal target validation but before an immediate melee action spends resources.
+     * 在普通目标校验之后、即时近战行动消耗资源之前调用；抵挡会产生一次反制效果。
+     */
+    public static boolean shouldCancelMeleeAttack(
+            ServerPlayerEntity attacker,
+            ServerPlayerEntity victim,
+            ItemStack weapon
+    ) {
+        return attacker != null && victim != null && weapon != null
+                && CloseQuartersService.shouldCancelMeleeAttack(attacker, victim, weapon);
     }
 
     /**

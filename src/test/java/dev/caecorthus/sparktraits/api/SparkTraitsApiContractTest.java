@@ -4,7 +4,6 @@ import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -16,6 +15,7 @@ import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SparkTraitsApiContractTest {
+
     @Test
     void publicFacadeKeepsDownstreamReflectionDescriptors() throws NoSuchMethodException {
         assertPublicStaticBooleanMethod("hasActiveTrait", PlayerEntity.class, Identifier.class);
@@ -33,6 +34,12 @@ class SparkTraitsApiContractTest {
         assertPublicStaticBooleanMethod("isInstinctHidden", PlayerEntity.class, PlayerEntity.class);
         assertPublicStaticBooleanMethod("isLastStandPending", PlayerEntity.class);
         assertPublicStaticBooleanMethod("isLastStandDeathIntercepted", PlayerEntity.class);
+        assertPublicStaticBooleanMethod("isLastEscapeActive", PlayerEntity.class);
+        assertPublicStaticBooleanMethod("isKillerInteractionBlocked", PlayerEntity.class);
+        assertPublicStaticBooleanMethod("hasLastEscapeGrayscale", PlayerEntity.class);
+        assertPublicStaticBooleanMethod("shouldCancelMeleeAttack", ServerPlayerEntity.class, ServerPlayerEntity.class, ItemStack.class);
+        assertEquals(float.class, SparkTraitsApi.class.getMethod("getLastEscapeDesaturation", PlayerEntity.class).getReturnType());
+        assertEquals(int.class, SparkTraitsApi.class.getMethod("getForcedMeleeCooldownTicks", PlayerEntity.class, ItemStack.class).getReturnType());
 
         assertPublicStaticCollectionMethod("getActiveTraitIds", PlayerEntity.class);
         assertPublicStaticCollectionMethod("getRevealedTraitIds", PlayerEntity.class);
@@ -57,6 +64,12 @@ class SparkTraitsApiContractTest {
         assertFalse(SparkTraitsApi.isInstinctHidden(null, null));
         assertFalse(SparkTraitsApi.isLastStandPending(null));
         assertFalse(SparkTraitsApi.isLastStandDeathIntercepted(null));
+        assertFalse(SparkTraitsApi.isLastEscapeActive(null));
+        assertFalse(SparkTraitsApi.isKillerInteractionBlocked(null));
+        assertFalse(SparkTraitsApi.hasLastEscapeGrayscale(null));
+        assertFalse(SparkTraitsApi.shouldCancelMeleeAttack(null, null, null));
+        assertEquals(0, SparkTraitsApi.getForcedMeleeCooldownTicks(null, null));
+        assertEquals(0.0f, SparkTraitsApi.getLastEscapeDesaturation(null));
         assertTrue(SparkTraitsApi.getActiveTraitIds(null).isEmpty());
         assertTrue(SparkTraitsApi.getRevealedTraitIds(null).isEmpty());
         assertNull(SparkTraitsApi.discountShopEntryForCharisma(null, null));
@@ -64,8 +77,33 @@ class SparkTraitsApiContractTest {
     }
 
     @Test
+    void escapeVisionCapabilityIsExplicitAndNeutralArraysAreFresh() throws Exception {
+        Method version = SparkTraitsApi.class.getMethod("getLastEscapeVisionProtocolVersion");
+        Method composition = SparkTraitsApi.class.getMethod("getLastEscapeComposition", PlayerEntity.class);
+        assertEquals(int.class, version.getReturnType());
+        assertEquals(float[].class, composition.getReturnType());
+        for (Method method : new Method[] {version, composition}) {
+            assertTrue(Modifier.isStatic(method.getModifiers()));
+            assertTrue(Modifier.isPublic(method.getModifiers()));
+        }
+        assertEquals(0, SparkTraitsApi.getLastEscapeVisionProtocolVersion());
+        float[] neutral = SparkTraitsApi.getLastEscapeComposition(null);
+        neutral[0] = 1;
+        assertArrayEquals(new float[] {0, 0, 1}, SparkTraitsApi.getLastEscapeComposition(null));
+        try {
+            SparkTraitsApi.installLastEscapeVisionProvider(player -> { throw new AssertionError("Null must not reach provider"); });
+            assertEquals(1, SparkTraitsApi.getLastEscapeVisionProtocolVersion());
+            assertArrayEquals(new float[] {0, 0, 1}, SparkTraitsApi.getLastEscapeComposition(null));
+        } finally {
+            SparkTraitsApi.installLastEscapeVisionProvider(null);
+        }
+        assertEquals(0, SparkTraitsApi.getLastEscapeVisionProtocolVersion());
+    }
+
+    @Test
     void charismaDiscountIsNoOpWithoutAPlayerTraitContext() {
-        ShopEntry entry = new ShopEntry(new ItemStack(Items.STICK), 50, ShopEntry.Type.TOOL);
+        // This no-op contract must not bootstrap untransformed Minecraft registries in plain JUnit.
+        ShopEntry entry = new ShopEntry.Builder("contract", null, 50, null).build();
 
         assertSame(entry, SparkTraitsApi.discountShopEntryForCharisma(null, entry));
     }

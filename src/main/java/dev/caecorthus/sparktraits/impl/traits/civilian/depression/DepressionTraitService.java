@@ -736,6 +736,13 @@ public final class DepressionTraitService {
         return updatedState;
     }
 
+    /** Survivor exit used by Last Escape; never uses the destructive death cleanup. */
+    public static boolean endPsychoForLastEscape(ServerPlayerEntity player) {
+        if (!activePlayers.containsKey(player.getUuid())) return false;
+        endPsycho(player, true, true);
+        return true;
+    }
+
     private static void endPsycho(ServerPlayerEntity player, boolean restoreInventory, boolean restoreMoodIfSurvived) {
         ActiveState state = activePlayers.remove(player.getUuid());
         if (state == null) {
@@ -747,7 +754,8 @@ public final class DepressionTraitService {
             stopPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE_ID);
             playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);
             PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
-            psycho.stopPsycho();
+            // A terminal Wathe death attempt may already have ended psycho before Last Escape saved it.
+            if (psycho.getPsychoTicks() > 0) psycho.stopPsycho();
             psycho.sync();
             if (restoreInventory) {
                 state.inventory().restore(player);
