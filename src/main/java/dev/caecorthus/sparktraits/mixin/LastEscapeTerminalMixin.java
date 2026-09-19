@@ -29,7 +29,8 @@ public abstract class LastEscapeTerminalMixin {
             cancellable = true, require = 1, allow = 1)
     private static void sparktraits$lastSave(ServerPlayerEntity victim, boolean spawnBody,
             ServerPlayerEntity killer, Identifier reason, boolean force, CallbackInfo ci) {
-        if (!LastEscapeService.isTrainDeath(reason) && !GameConstants.DeathReasons.ESCAPED.equals(reason)
+        if (!dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules.contains(reason)
+                && !LastEscapeService.isTrainDeath(reason) && !GameConstants.DeathReasons.ESCAPED.equals(reason)
                 && LastEscapeService.tryActivate(victim)) ci.cancel();
     }
 }

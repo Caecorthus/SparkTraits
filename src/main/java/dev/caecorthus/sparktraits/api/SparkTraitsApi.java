@@ -41,6 +41,51 @@ import java.util.function.Consumer;
  * 为可选下游集成提供稳定且支持空值的查询接口。
  */
 public final class SparkTraitsApi {
+    /** One accepted trigger pull, including synthetic repeats; observers never own punishment.
+     * 一次有效扣动扳机（含补射）；观察者不接管误杀惩罚。 */
+    public interface GunShotCycleListener {
+        void cycleStarted(ServerPlayerEntity shooter, UUID cycleId, net.minecraft.item.Item weapon);
+        Object beforeTargetKill(ServerPlayerEntity shooter, UUID cycleId, ServerPlayerEntity target);
+        void afterTargetKill(ServerPlayerEntity shooter, UUID cycleId, ServerPlayerEntity target, Object token);
+        void initialCooldownEstablished(ServerPlayerEntity shooter, UUID cycleId, net.minecraft.item.Item weapon,
+                                        int startTick, int endTick, int currentTick);
+        void cycleClosed(ServerPlayerEntity shooter, UUID cycleId);
+    }
+
+    public static void registerGunShotCycleListener(GunShotCycleListener listener) {
+        dev.caecorthus.sparktraits.impl.traits.civilian.police.GunShotCycles.addListener(listener);
+    }
+
+    /** Updates and syncs exact remaining time without applying cooldown modifiers twice.
+     * 精确修改并同步剩余时间，不重复计算冷却倍率。 */
+    public static void setExactItemCooldownRemaining(ServerPlayerEntity player, net.minecraft.item.Item item, int ticks) {
+        if (player != null && item != null) {
+            dev.caecorthus.sparktraits.impl.traits.killer.combat.ExactItemCooldowns.setExact(player, item, ticks);
+        }
+    }
+
+    public static int getItemCooldownTick(PlayerEntity player) {
+        return player == null ? 0 : ((dev.caecorthus.sparktraits.mixin.ItemCooldownManagerAccessor)
+                player.getItemCooldownManager()).sparktraits$getTick();
+    }
+
+    public static int getItemCooldownRemaining(PlayerEntity player, net.minecraft.item.Item item) {
+        return dev.caecorthus.sparktraits.impl.traits.killer.combat.ExactItemCooldowns.remainingTicks(player, item);
+    }
+
+    public static void registerTerminalDeathReason(Identifier reason) {
+        dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules.register(reason);
+    }
+
+    public static boolean isTerminalDeathReason(Identifier reason) {
+        return dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules.contains(reason);
+    }
+
+    public static boolean isRoleSkillBlocked(PlayerEntity player) {
+        return player != null && (isKillerInteractionBlocked(player)
+                || dev.caecorthus.sparktraits.impl.compatibility.noellesroles.SilencedKillerRestrictionService.isRestricted(player));
+    }
+
     private static java.util.function.Function<PlayerEntity, float[]> lastEscapeVisionProvider;
 
     /** Installs the client-owned, side-effect-free parameter query; never installed on a server.

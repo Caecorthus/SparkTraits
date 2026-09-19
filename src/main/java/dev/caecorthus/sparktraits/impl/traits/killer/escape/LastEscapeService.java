@@ -79,7 +79,8 @@ public final class LastEscapeService {
     }
 
     public static boolean blocksDeath(PlayerEntity player, Identifier reason) {
-        return isActive(player) && !isTrainDeath(reason);
+        return isActive(player) && !isTrainDeath(reason)
+                && !dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules.contains(reason);
     }
 
     public static boolean tryActivate(ServerPlayerEntity player) {

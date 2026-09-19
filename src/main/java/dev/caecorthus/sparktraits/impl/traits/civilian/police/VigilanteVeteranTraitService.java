@@ -91,11 +91,13 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static void register() {
+        GunShotCycles.register();
         ServerTickEvents.END_WORLD_TICK.register(VigilanteVeteranTraitService::tickWorld);
     }
 
     public static boolean canSelectVigilanteTrait(Role role) {
-        return role == WatheRoles.VIGILANTE;
+        return role == WatheRoles.VIGILANTE
+                || (role != null && Identifier.of("sparkwitch", "emma").equals(role.identifier()));
     }
 
     public static boolean canSelectVeteranTrait(Role role) {
@@ -333,13 +335,15 @@ public final class VigilanteVeteranTraitService {
             Identifier deathReason
     ) {
         boolean eligibleShot = isHeavyArtilleryShot(shooter, victim, deathReason);
-        GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason);
+        GunShotCycles.observeTargetKill(shooter, victim,
+                () -> GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason));
         if (shouldRetryHeavyArtilleryDamage(
                 eligibleShot,
                 GameFunctions.isPlayerPlayingAndAlive(victim),
                 isJesterMomentActiveOrTransitioning(victim)
         )) {
-            GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason);
+            GunShotCycles.observeTargetKill(shooter, victim,
+                    () -> GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason));
         }
     }
 
@@ -440,13 +444,16 @@ public final class VigilanteVeteranTraitService {
             return;
         }
         GameWorldComponent scheduledGame = GameWorldComponent.KEY.get(scheduledWorld);
+        GunShotCycles.Cycle cycle = GunShotCycles.current();
         // Do not replay Wathe's full gun packet handler: it owns inventory, punishment, and cooldown side effects.
         // 不重复执行 Wathe 的完整枪械包处理；那里负责扣枪、惩罚和冷却，重复调用会扩大副作用。
         for (int shot = 1; shot < NIKO_BURST_SHOTS; shot++) {
             int repeatDelay = NIKO_BURST_INTERVAL_TICKS * shot;
             AtomicReference<Runnable> pendingPunishment = new AtomicReference<>();
+            GunShotCycles.expectRepeat(cycle);
             Scheduler.schedule(
-                    () -> repeatNikoBurstShot(shooter, scheduledWorld, scheduledGame, pendingPunishment),
+                    () -> GunShotCycles.runRepeat(cycle,
+                            () -> repeatNikoBurstShot(shooter, scheduledWorld, scheduledGame, pendingPunishment)),
                     repeatDelay
             );
             Scheduler.schedule(

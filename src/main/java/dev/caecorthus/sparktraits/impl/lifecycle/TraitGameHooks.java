@@ -66,14 +66,18 @@ public final class TraitGameHooks {
             }
         });
 
-        KillPlayer.BEFORE.register(LastStandService::beforeKill);
-        KillPlayer.BEFORE.register(DepressionTraitService::beforeKill);
+        KillPlayer.BEFORE.register((victim, killer, reason) -> TerminalDeathRules.contains(reason)
+                ? null : LastStandService.beforeKill(victim, killer, reason));
+        KillPlayer.BEFORE.register((victim, killer, reason) -> TerminalDeathRules.contains(reason)
+                ? null : DepressionTraitService.beforeKill(victim, killer, reason));
 
         KillPlayer.AFTER.register((victim, killer, deathReason) -> {
             LastEscapeService.onDeath(victim);
             TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(victim);
             TraitWorldComponent.KEY.get(victim.getWorld()).snapshotDeathTraits(victim.getUuid(), playerTraits.getActiveTraitIds());
-            boolean lastStandStarted = LastStandService.tryStartAfterKill(victim, killer, deathReason);
+            boolean terminal = TerminalDeathRules.contains(deathReason);
+            if (terminal) LastStandService.clearPlayer(victim);
+            boolean lastStandStarted = !terminal && LastStandService.tryStartAfterKill(victim, killer, deathReason);
             PigTraitService.playDeathSound(victim);
             EffectiveTraitService.handleAfterKill(victim, killer, deathReason);
             DepressionTraitService.handleAfterKill(victim, killer, deathReason);
