@@ -57,6 +57,7 @@ public final class EffectiveTraitService {
     private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
     private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
     private static final Identifier SPARKWITCH_SAINT_ID = Identifier.of("sparkwitch", "saint");
+    private static final Identifier SPARKWITCH_BELL_RINGER_ID = Identifier.of("sparkwitch", "bell_ringer");
     private static final Identifier NOELLES_SHADOW_JESTER_ID = Identifier.of("noellesroles", "shadow_jester");
 
     private EffectiveTraitService() {
@@ -556,7 +557,14 @@ public final class EffectiveTraitService {
         return originalKillerCount >= 2
                 && roleEnabled
                 && isOriginalKiller(role)
+                && !isConscienceBlockedRole(role)
                 && !hasImpostor(selectedTraits);
+    }
+
+    /** Owner rule: SparkWitch's Bell Ringer never receives Conscience; other killer traits stay eligible.
+     *  所有者规则：SparkWitch 的敲钟人永不获得善良；其他杀手词条不受影响。 */
+    public static boolean isConscienceBlockedRole(Role role) {
+        return role != null && role.identifier().equals(SPARKWITCH_BELL_RINGER_ID);
     }
 
     public static boolean canSelectImpostor(Role role, GameWorldComponent gameComponent, Collection<Identifier> selectedTraits) {
