@@ -201,6 +201,38 @@ def verifyAssassinScreenSelector = tasks.register("verifyAssassinScreenSelector"
     }
 }
 
+tasks.register("verifyInventoryScreenSelector") {
+    dependsOn remappedModJar
+    inputs.file(remappedModJar.flatMap { it.archiveFile })
+    inputs.file(watheJarName)
+    doLast {
+        def modZip = new java.util.zip.ZipFile(remappedModJar.get().archiveFile.get().asFile)
+        def providerZip = new java.util.zip.ZipFile(file(watheJarName))
+        try {
+            def config = new groovy.json.JsonSlurper().parse(modZip.getInputStream(modZip.getEntry("sparktraits.client.mixins.json")))
+            if (config.required != true || config.injectors?.defaultRequire?.toString() != "1" ||
+                    !(config.client ?: []).contains("TraitInventoryScreenMixin")) {
+                throw new GradleException("Owner inventory mixin must remain required and configured")
+            }
+            def node = readClassNode(modZip, "dev/caecorthus/sparktraits/client/mixin/TraitInventoryScreenMixin.class")
+            def handler = node.methods.find { it.name == 'sparktraits$renderOwnerTraits' }
+            def annotations = (handler?.visibleAnnotations ?: []) + (handler?.invisibleAnnotations ?: [])
+            def injection = annotations.find { it.desc == "Lorg/spongepowered/asm/mixin/injection/Inject;" }
+            if (annotationValue(injection, "method") != ["method_25394(Lnet/minecraft/class_332;IIF)V"] ||
+                    annotationValue(injection, "require")?.toString() == "0") {
+                throw new GradleException("Packaged owner inventory selector must exactly match Wathe render")
+            }
+            def provider = readClassNode(providerZip, "dev/doctor4t/wathe/client/gui/screen/ingame/LimitedInventoryScreen.class")
+            if (!provider.methods.any { it.name == "method_25394" && it.desc == "(Lnet/minecraft/class_332;IIF)V" }) {
+                throw new GradleException("Wathe is missing the exact owner inventory render target")
+            }
+        } finally {
+            providerZip.close()
+            modZip.close()
+        }
+    }
+}
+
 tasks.register("verifyModJarVersion") {
     dependsOn remappedModJar
     inputs.file(remappedModJar.flatMap { it.archiveFile })
@@ -301,6 +333,11 @@ def targetJavaVersion = 21
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
     it.options.release.set(targetJavaVersion)
+}
+
+sourceSets.test {
+    compileClasspath += sourceSets.client.output
+    runtimeClasspath += sourceSets.client.output
 }
 
 tasks.test {

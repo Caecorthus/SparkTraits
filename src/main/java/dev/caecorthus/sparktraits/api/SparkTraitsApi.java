@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.api;
 import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.impl.presentation.OwnerInventoryPresentation;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
@@ -25,6 +26,7 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -34,6 +36,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 /**
@@ -41,6 +44,25 @@ import java.util.function.Consumer;
  * 为可选下游集成提供稳定且支持空值的查询接口。
  */
 public final class SparkTraitsApi {
+    /**
+     * Visits an ordered snapshot of effective, owner-visible inventory trait texts.
+     * Client only in effect, common-safe on servers. Mutable texts are detached copies.
+     * An empty visit is successful; collection/visitor exceptions propagate to the presenter.
+     */
+    public static void visitOwnerInventoryTraits(PlayerEntity player, BiConsumer<Text, List<Text>> visitor) {
+        OwnerInventoryPresentation.visit(player, visitor);
+    }
+
+    /**
+     * V1 optional inventory presentation protocol. Registration is retriable until client init.
+     * The supplier must report a complete, frozen decision scoped to the current render call,
+     * remain stable through every TAIL, and return false outside that scope. First registrant wins.
+     * Returning true commits to drawing the complete owner card (including exported traits).
+     */
+    public static boolean registerExternalInventoryPresenterV1(BooleanSupplier presenter) {
+        return OwnerInventoryPresentation.register(presenter);
+    }
+
     /** One accepted trigger pull, including synthetic repeats; observers never own punishment.
      * 一次有效扣动扳机（含补射）；观察者不接管误杀惩罚。 */
     public interface GunShotCycleListener {

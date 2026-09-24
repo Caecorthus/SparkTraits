@@ -24,11 +24,15 @@ import net.minecraft.entity.player.PlayerEntity;
 public class SparkTraitsClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        dev.caecorthus.sparktraits.client.gui.OwnerInventoryClientAdapter.install();
         SparkTraitsServerConnection.reset();
         SparkTraitsClientVersionHandshake.registerClient();
         NewKillerTraitsClient.initialize();
         ParticleFactoryRegistry.getInstance().register(SparkTraitsParticles.BLUE_POISON, PoisonParticle.Factory::new);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SparkTraitsServerConnection.reset());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            SparkTraitsServerConnection.reset();
+            dev.caecorthus.sparktraits.client.gui.OwnerInventoryClientAdapter.resetNativeCard();
+        });
         registerFinalMomentHighlight();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             DepressionRageLoopController.tick(client);
