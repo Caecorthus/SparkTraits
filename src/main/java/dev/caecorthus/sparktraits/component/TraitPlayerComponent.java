@@ -6,6 +6,7 @@ import dev.caecorthus.sparktraits.api.TraitAssignmentReason;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.caecorthus.sparktraits.api.TraitRemovalReason;
 import dev.caecorthus.sparktraits.api.event.TraitEvents;
+import dev.caecorthus.sparktraits.compat.SparkWitchKillAttributionBridge;
 import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
@@ -553,11 +554,13 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         if (EffectiveTraitService.isEffectiveCivilian(gameComponent.getRole(player), activeTraits)) {
             return;
         }
-        ServerPlayerEntity killer = null;
-        if (poisoner != null && player.getWorld().getPlayerByUuid(poisoner) instanceof ServerPlayerEntity serverPoisoner) {
-            killer = serverPoisoner;
-        }
-        GameFunctions.killPlayer(serverPlayer, true, killer, GameConstants.DeathReasons.POISON);
+        ServerPlayerEntity killer = poisoner != null
+                && player.getWorld().getPlayerByUuid(poisoner) instanceof ServerPlayerEntity serverPoisoner
+                ? serverPoisoner : null;
+        // Keep the recorded UUID even if the poisoner is offline or in another world.
+        // 即使投毒者离线或已前往其他世界，也保留原始责任人 UUID。
+        SparkWitchKillAttributionBridge.runWithKillAttribution(serverPlayer.getServerWorld(), poisoner,
+                () -> GameFunctions.killPlayer(serverPlayer, true, killer, GameConstants.DeathReasons.POISON));
     }
 
     private void syncSpiritProjectionInstinctState() {

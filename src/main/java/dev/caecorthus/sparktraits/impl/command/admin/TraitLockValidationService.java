@@ -14,8 +14,10 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 
 import java.util.Collection;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.selection.TraitRoleEligibility;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 
 /**
  * Shared command-time validation for next-round trait and role locks.
@@ -79,6 +81,11 @@ public final class TraitLockValidationService {
      */
     private static boolean isCommandLockCompatibleWithRole(Trait trait, Role role) {
         if (!isAudienceCompatibleWithRole(trait, role)) {
+            return false;
+        }
+        // Same permanent exclusion as round assignment, so locks fail loudly instead of being dropped.
+        // 与开局分配相同的永久互斥，让锁定直接报错而不是在开局时被静默丢弃。
+        if (trait.id().equals(ConscienceTrait.ID) && EffectiveTraitService.isConscienceBlockedRole(role)) {
             return false;
         }
         return !trait.id().equals(ImpostorTrait.ID)
