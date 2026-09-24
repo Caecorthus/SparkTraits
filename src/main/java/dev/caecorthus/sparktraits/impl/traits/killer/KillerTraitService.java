@@ -14,6 +14,7 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.util.ShopEntry;
 import dev.doctor4t.wathe.util.ShopUtils;
+import net.fabricmc.fabric.api.event.Event;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -47,6 +48,7 @@ public final class KillerTraitService {
     public static final float OPPRESSIVE_DRAIN_MULTIPLIER = 1.2f;
     public static final double THRUST_EXTRA_KNOCKBACK = 0.25;
     public static final Identifier THRUST_KNOCKBACK_MODIFIER_ID = SparkTraits.id("thrust_knockback");
+    public static final Identifier CHARISMA_SHOP_PHASE = SparkTraits.id("charisma_discount");
 
     private static final ThreadLocal<Deque<KillAttempt>> KILL_ATTEMPTS = ThreadLocal.withInitial(ArrayDeque::new);
     private static final ThreadLocal<Boolean> SECOND_STRIKE_REPLAYING = ThreadLocal.withInitial(() -> false);
@@ -60,7 +62,12 @@ public final class KillerTraitService {
     }
 
     public static void register() {
-        BuildShopEntries.EVENT.register((player, context) -> {
+        // Downstream role shops (e.g. SparkWitch Witch Maiden) clear and rebuild entries in the default phase,
+        // so the discount must wrap the final list; the explicit ordering is required because unlinked phases sort by id.
+        // 下游职业商店（如 SparkWitch 巫女）会在默认阶段清空并重建条目，魅力必须包装最终列表；
+        // 未显式排序的阶段会按 id 排序，因此必须声明排在默认阶段之后。
+        BuildShopEntries.EVENT.addPhaseOrdering(Event.DEFAULT_PHASE, CHARISMA_SHOP_PHASE);
+        BuildShopEntries.EVENT.register(CHARISMA_SHOP_PHASE, (player, context) -> {
             if (!hasEligibleTrait(player, KillerTraits.CHARISMA)) {
                 return;
             }
@@ -235,7 +242,19 @@ public final class KillerTraitService {
                 && !force
                 && !SECOND_STRIKE_REPLAYING.get()
                 && hasEligibleTrait(killer, KillerTraits.SECOND_STRIKE);
-        KILL_ATTEMPTS.get().push(eligible ? new KillAttempt(ShieldState.capture(victim)) : KillAttempt.EMPTY);
+        KILL_ATTEMPTS.get().push(new KillAttempt(eligible ? ShieldState.capture(victim) : null));
+    }
+
+    public static void terminateKillAttempt() {
+        KillAttempt attempt = KILL_ATTEMPTS.get().peek();
+        if (attempt != null) attempt.terminated = true;
+        else KILL_ATTEMPTS.remove();
+    }
+
+    public static void abortKillAttempt() {
+        Deque<KillAttempt> attempts = KILL_ATTEMPTS.get();
+        if (!attempts.isEmpty()) attempts.pop();
+        if (attempts.isEmpty()) KILL_ATTEMPTS.remove();
     }
 
     public static void finishKillAttempt(
@@ -250,7 +269,7 @@ public final class KillerTraitService {
         if (attempts.isEmpty()) {
             KILL_ATTEMPTS.remove();
         }
-        if (attempt.before == null || killer == null) {
+        if (attempt.before == null || attempt.terminated || killer == null) {
             return;
         }
 
@@ -425,22 +444,26 @@ public final class KillerTraitService {
         return canSelectKillerTrait(game.getRole(player), TraitPlayerComponent.KEY.get(player).getActiveTraitIds());
     }
 
-    private record KillAttempt(@Nullable ShieldState before) {
+    private static final class KillAttempt {
         private static final KillAttempt EMPTY = new KillAttempt(null);
+        private final ShieldState before;
+        private boolean terminated;
+        private KillAttempt(@Nullable ShieldState before) { this.before = before; }
     }
 
-    private record ShieldState(int psychoArmour, boolean ironManBuff, int whiskeyLayers) {
+    private record ShieldState(int psychoArmour, boolean psychoActive, boolean ironManBuff, int whiskeyLayers) {
         private static ShieldState capture(ServerPlayerEntity player) {
             PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
             int armour = psycho.getPsychoTicks() > 0 ? psycho.getArmour() : 0;
             boolean ironMan = IronManPlayerComponent.KEY.get(player).hasBuff();
             StatusEffectInstance whiskey = player.getStatusEffect(ModEffects.WHISKEY_SHIELD);
             int whiskeyLayers = whiskey == null ? 0 : whiskey.getAmplifier() + 1;
-            return new ShieldState(armour, ironMan, whiskeyLayers);
+            return new ShieldState(armour, psycho.getPsychoTicks() > 0, ironMan, whiskeyLayers);
         }
 
         private boolean wasConsumedBy(ShieldState after) {
-            return after.psychoArmour < psychoArmour
+            // stopPsycho clears armour too; only an active psycho losing armour absorbed a hit.
+            return (after.psychoActive && after.psychoArmour < psychoArmour)
                     || (ironManBuff && !after.ironManBuff)
                     || after.whiskeyLayers < whiskeyLayers;
         }

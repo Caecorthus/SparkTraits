@@ -4,6 +4,7 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.client.audio.DepressionRageLoopController;
 import dev.caecorthus.sparktraits.client.hud.DepressionHud;
+import dev.caecorthus.sparktraits.client.killer.NewKillerTraitsClient;
 import dev.caecorthus.sparktraits.client.net.version.SparkTraitsClientVersionHandshake;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.resource.SparkTraitsParticles;
@@ -26,6 +27,7 @@ public class SparkTraitsClient implements ClientModInitializer {
         dev.caecorthus.sparktraits.client.gui.OwnerInventoryClientAdapter.install();
         SparkTraitsServerConnection.reset();
         SparkTraitsClientVersionHandshake.registerClient();
+        NewKillerTraitsClient.initialize();
         ParticleFactoryRegistry.getInstance().register(SparkTraitsParticles.BLUE_POISON, PoisonParticle.Factory::new);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             SparkTraitsServerConnection.reset();

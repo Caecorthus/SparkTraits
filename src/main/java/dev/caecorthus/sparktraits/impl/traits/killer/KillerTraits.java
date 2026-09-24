@@ -4,6 +4,8 @@ import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitDefinition;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
+import dev.caecorthus.sparktraits.compat.SparkStrengthTeamEconomyBridge;
+import dev.caecorthus.sparktraits.impl.traits.killer.combat.CloseQuartersService;
 import net.minecraft.util.Identifier;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
@@ -22,6 +24,10 @@ public final class KillerTraits {
     public static final Identifier SECOND_STRIKE = SparkTraits.id("second_strike");
     public static final Identifier OPPRESSIVE = SparkTraits.id("oppressive");
     public static final Identifier CORNERED = SparkTraits.id("cornered");
+    public static final Identifier TEAM_FIRST = SparkTraits.id("team_first");
+    public static final Identifier EXHILARATED = SparkTraits.id("exhilarated");
+    public static final Identifier CLOSE_QUARTERS = SparkTraits.id("close_quarters");
+    public static final Identifier LAST_ESCAPE = SparkTraits.id("last_escape");
 
     private KillerTraits() {
     }
@@ -50,6 +56,16 @@ public final class KillerTraits {
                 .uniquePerGame()
                 .build());
         TraitRegistry.register(base(CORNERED, 0x6F263D).build());
+        TraitRegistry.register(base(TEAM_FIRST, 0xD6A640)
+                .predicate(context -> KillerTraitService.canSelectKillerTrait(context.role(), context.selectedTraitIds())
+                        && SparkStrengthTeamEconomyBridge.isAvailable())
+                .build());
+        TraitRegistry.register(base(EXHILARATED, 0xE86B35).build());
+        TraitRegistry.register(base(CLOSE_QUARTERS, 0xA93236)
+                .predicate(context -> KillerTraitService.canSelectKillerTrait(context.role(), context.selectedTraitIds())
+                        && CloseQuartersService.canSelect(context.player()))
+                .build());
+        TraitRegistry.register(base(LAST_ESCAPE, 0xAAAAB8).hiddenFromOwnerAtStart().build());
     }
 
     private static TraitDefinition.Builder base(Identifier id, int color) {

@@ -57,6 +57,7 @@ public final class EffectiveTraitService {
     private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
     private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
     private static final Identifier SPARKWITCH_SAINT_ID = Identifier.of("sparkwitch", "saint");
+    private static final Identifier SPARKWITCH_BELL_RINGER_ID = Identifier.of("sparkwitch", "bell_ringer");
     private static final Identifier NOELLES_SHADOW_JESTER_ID = Identifier.of("noellesroles", "shadow_jester");
 
     private EffectiveTraitService() {
@@ -556,7 +557,14 @@ public final class EffectiveTraitService {
         return originalKillerCount >= 2
                 && roleEnabled
                 && isOriginalKiller(role)
+                && !isConscienceBlockedRole(role)
                 && !hasImpostor(selectedTraits);
+    }
+
+    /** Owner rule: SparkWitch's Bell Ringer never receives Conscience; other killer traits stay eligible.
+     *  所有者规则：SparkWitch 的敲钟人永不获得善良；其他杀手词条不受影响。 */
+    public static boolean isConscienceBlockedRole(Role role) {
+        return role != null && role.identifier().equals(SPARKWITCH_BELL_RINGER_ID);
     }
 
     public static boolean canSelectImpostor(Role role, GameWorldComponent gameComponent, Collection<Identifier> selectedTraits) {
@@ -912,6 +920,10 @@ public final class EffectiveTraitService {
     }
 
     public static void handleAfterKill(ServerPlayerEntity victim, ServerPlayerEntity killer, Identifier deathReason) {
+        handleAfterKill(victim, killer, deathReason, false);
+    }
+
+    public static void handleAfterKill(ServerPlayerEntity victim, ServerPlayerEntity killer, Identifier deathReason, boolean bombManiacGrenade) {
         if (victim == null || killer == null || victim.getUuid().equals(killer.getUuid())) {
             return;
         }
@@ -920,10 +932,17 @@ public final class EffectiveTraitService {
         Collection<Identifier> victimTraits = TraitPlayerComponent.KEY.get(victim).getActiveTraitIds();
         boolean victimIsEffectiveCivilian = isEffectiveCivilian(victimRole, victimTraits);
         Identifier poisonSource = EffectiveDeathConsequenceRules.consumePoisonSource(victim.getUuid());
-        if (hasConscience(killer)) {
-            if (shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, poisonSource) && GameFunctions.isPlayerPlayingAndAlive(killer)) {
-                GameFunctions.killPlayer(killer, true, null, GameConstants.DeathReasons.SHOT_INNOCENT, true);
-            } else if (shouldRewardConscienceKill(victimRole, victimTraits)) {
+        Collection<Identifier> killerTraits = TraitPlayerComponent.KEY.get(killer).getActiveTraitIds();
+        boolean conscience = hasConscience(killerTraits);
+        boolean punish = (conscience && EffectiveDeathConsequenceRules.shouldPunishConscienceKill(
+                victimIsEffectiveCivilian, deathReason, poisonSource, bombManiacGrenade
+        )) || EffectiveDeathConsequenceRules.shouldPunishVeteranKnifeKill(
+                game.getRole(killer), killerTraits, victimRole, victimTraits, deathReason
+        );
+        if (punish && GameFunctions.isPlayerPlayingAndAlive(killer)) {
+            GameFunctions.killPlayer(killer, true, null, GameConstants.DeathReasons.SHOT_INNOCENT, true);
+        } else if (conscience) {
+            if (shouldRewardConscienceKill(victimRole, victimTraits)) {
                 int reward = ConscienceSerialKillerService.rewardForConscienceKill(killer, victim, true);
                 if (reward > 0) {
                     PlayerShopComponent.KEY.get(killer).addToBalance(reward);

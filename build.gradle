@@ -300,6 +300,7 @@ tasks.register("verifyModJarVersion") {
 
             [
                     "dev/caecorthus/sparktraits/api/SparkTraitsApi.class",
+                    "dev/caecorthus/sparktraits/compat/SparkWitchKillAttributionBridge.class",
                     "dev/caecorthus/sparktraits/client/SparkTraitsClient.class",
                     "dev/caecorthus/sparktraits/client/audio/CautiousSoundDebug.class",
                     "dev/caecorthus/sparktraits/client/audio/DepressionRageLoopController.class",
@@ -357,7 +358,8 @@ tasks.register("verifyArchitecture") {
     inputs.file(noellesRolesJarName)
     inputs.file(sparkFactionApiJarName)
     inputs.file("src/main/resources/fabric.mod.json")
-    inputs.file("bin/main/fabric.mod.json")
+    dependsOn tasks.named("processResources")
+    inputs.file(layout.buildDirectory.file("resources/main/fabric.mod.json"))
     inputs.file("gradle.properties")
 
     doLast {
@@ -450,16 +452,16 @@ tasks.register("verifyArchitecture") {
             )
         }
 
-        def trackedMetadataFile = file("bin/main/fabric.mod.json")
-        if (!trackedMetadataFile.isFile()) {
-            throw new GradleException("Missing tracked IDE metadata snapshot: ${trackedMetadataFile}")
+        def processedMetadataFile = layout.buildDirectory.file("resources/main/fabric.mod.json").get().asFile
+        if (!processedMetadataFile.isFile()) {
+            throw new GradleException("Missing processed metadata: ${processedMetadataFile}")
         }
-        def trackedMetadata = new groovy.json.JsonSlurper().parse(trackedMetadataFile)
-        if (trackedMetadata.id?.toString() != "sparktraits" ||
-                trackedMetadata.version?.toString() != project.mod_version.toString()) {
+        def processedMetadata = new groovy.json.JsonSlurper().parse(processedMetadataFile)
+        if (processedMetadata.id?.toString() != "sparktraits" ||
+                processedMetadata.version?.toString() != project.mod_version.toString()) {
             throw new GradleException(
-                    "Tracked IDE metadata must identify sparktraits ${project.mod_version}; " +
-                            "found ${trackedMetadata.id} ${trackedMetadata.version}"
+                    "Processed metadata must identify sparktraits ${project.mod_version}; " +
+                            "found ${processedMetadata.id} ${processedMetadata.version}"
             )
         }
         [
@@ -467,10 +469,10 @@ tasks.register("verifyArchitecture") {
                 noellesroles    : project.noellesroles_version.toString(),
                 sparkfactionapi : ">=${project.sparkfactionapi_version}"
         ].each { modId, expectedVersion ->
-            if (trackedMetadata.depends?.get(modId)?.toString() != expectedVersion) {
+            if (processedMetadata.depends?.get(modId)?.toString() != expectedVersion) {
                 throw new GradleException(
-                        "Tracked IDE metadata dependency ${modId} must be ${expectedVersion}; " +
-                                "found ${trackedMetadata.depends?.get(modId)}"
+                        "Processed metadata dependency ${modId} must be ${expectedVersion}; " +
+                                "found ${processedMetadata.depends?.get(modId)}"
                 )
             }
         }

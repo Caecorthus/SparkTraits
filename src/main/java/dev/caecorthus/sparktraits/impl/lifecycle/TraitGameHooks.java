@@ -15,6 +15,7 @@ import java.util.UUID;
 import dev.caecorthus.sparktraits.impl.compatibility.noellesroles.SilencedKillerRestrictionService;
 import dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi.SparkFactionApiEffectiveFactionBridge;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.death.BombManiacKillContext;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBombService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBomberFrenzyService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceEconomyService;
@@ -26,6 +27,10 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorBodyguardService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorRevolverService;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
+import dev.caecorthus.sparktraits.impl.traits.killer.ExhilaratedService;
+import dev.caecorthus.sparktraits.impl.traits.killer.combat.CloseQuartersService;
+import dev.caecorthus.sparktraits.impl.traits.killer.combat.ForcedMeleeCooldownService;
+import dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
@@ -40,6 +45,9 @@ public final class TraitGameHooks {
         GlobalTraitService.register();
         CivilianTraitService.register();
         KillerTraitService.register();
+        ForcedMeleeCooldownService.register();
+        CloseQuartersService.register();
+        LastEscapeService.register();
         VigilanteVeteranTraitService.register();
         ImpostorRevolverService.register();
         ConscienceSerialKillerService.register();
@@ -59,15 +67,23 @@ public final class TraitGameHooks {
             }
         });
 
-        KillPlayer.BEFORE.register(LastStandService::beforeKill);
-        KillPlayer.BEFORE.register(DepressionTraitService::beforeKill);
+        KillPlayer.BEFORE.register((victim, killer, reason) -> TerminalDeathRules.contains(reason)
+                ? null : LastStandService.beforeKill(victim, killer, reason));
+        KillPlayer.BEFORE.register((victim, killer, reason) -> TerminalDeathRules.contains(reason)
+                ? null : DepressionTraitService.beforeKill(victim, killer, reason));
 
         KillPlayer.AFTER.register((victim, killer, deathReason) -> {
+            boolean bombManiacGrenade = BombManiacKillContext.claim(
+                    victim.getUuid(), killer == null ? null : killer.getUuid(), deathReason
+            );
+            LastEscapeService.onDeath(victim);
             TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(victim);
             TraitWorldComponent.KEY.get(victim.getWorld()).snapshotDeathTraits(victim.getUuid(), playerTraits.getActiveTraitIds());
-            boolean lastStandStarted = LastStandService.tryStartAfterKill(victim, killer, deathReason);
+            boolean terminal = TerminalDeathRules.contains(deathReason);
+            if (terminal) LastStandService.clearPlayer(victim);
+            boolean lastStandStarted = !terminal && LastStandService.tryStartAfterKill(victim, killer, deathReason);
             PigTraitService.playDeathSound(victim);
-            EffectiveTraitService.handleAfterKill(victim, killer, deathReason);
+            EffectiveTraitService.handleAfterKill(victim, killer, deathReason, bombManiacGrenade);
             DepressionTraitService.handleAfterKill(victim, killer, deathReason);
             if (lastStandStarted) {
                 syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
@@ -75,6 +91,7 @@ public final class TraitGameHooks {
             }
             ConscienceEconomyService.rewardAfterConfirmedRealDeath(victim);
             KillerTraitService.handleAfterRealKill(victim, killer, deathReason);
+            ExhilaratedService.afterRealKill(victim, killer);
             ImpostorBodyguardService.handleAfterKill(victim);
             ConscienceSerialKillerService.handleAfterKill(victim, killer, deathReason);
             ConscienceBomberFrenzyService.clearPlayer(victim);
@@ -92,6 +109,7 @@ public final class TraitGameHooks {
             if (!(world instanceof ServerWorld serverWorld)) {
                 return;
             }
+            LastEscapeService.clearRound(serverWorld);
             ConscienceBombService.clearAll();
             ConscienceBomberFrenzyService.clearAll(serverWorld);
             ConscienceSerialKillerService.clearAll();

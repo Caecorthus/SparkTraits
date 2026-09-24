@@ -10,6 +10,8 @@ import dev.caecorthus.sparktraits.api.Trait;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.compat.SparkStrengthTeamEconomyBridge;
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraits;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.command.argument.IdentifierArgumentType;
@@ -112,6 +114,7 @@ public final class SparkTraitsCommands {
 
     private static LiteralArgumentBuilder<ServerCommandSource> listPlayerTraitsCommand(String literalName) {
         return literal(literalName)
+                .requires(source -> source.hasPermissionLevel(2))
                 .then(argument("players", EntityArgumentType.players())
                         .executes(context -> {
                             int count = 0;
@@ -205,6 +208,9 @@ public final class SparkTraitsCommands {
     }
 
     private static AddResult canAddPending(ServerCommandSource source, ServerPlayerEntity player, TraitPlayerComponent component, Trait trait) {
+        if (trait.id().equals(KillerTraits.TEAM_FIRST) && !SparkStrengthTeamEconomyBridge.isAvailable()) {
+            return AddResult.failure("Team First requires SparkStrength's trait-aware shared team economy");
+        }
         Collection<Identifier> pending = component.getPendingTraitIds();
         if (pending.contains(trait.id())) {
             return AddResult.failure("trait is already pending");
