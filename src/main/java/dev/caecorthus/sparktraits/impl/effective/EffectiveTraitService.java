@@ -912,6 +912,10 @@ public final class EffectiveTraitService {
     }
 
     public static void handleAfterKill(ServerPlayerEntity victim, ServerPlayerEntity killer, Identifier deathReason) {
+        handleAfterKill(victim, killer, deathReason, false);
+    }
+
+    public static void handleAfterKill(ServerPlayerEntity victim, ServerPlayerEntity killer, Identifier deathReason, boolean bombManiacGrenade) {
         if (victim == null || killer == null || victim.getUuid().equals(killer.getUuid())) {
             return;
         }
@@ -920,10 +924,17 @@ public final class EffectiveTraitService {
         Collection<Identifier> victimTraits = TraitPlayerComponent.KEY.get(victim).getActiveTraitIds();
         boolean victimIsEffectiveCivilian = isEffectiveCivilian(victimRole, victimTraits);
         Identifier poisonSource = EffectiveDeathConsequenceRules.consumePoisonSource(victim.getUuid());
-        if (hasConscience(killer)) {
-            if (shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, poisonSource) && GameFunctions.isPlayerPlayingAndAlive(killer)) {
-                GameFunctions.killPlayer(killer, true, null, GameConstants.DeathReasons.SHOT_INNOCENT, true);
-            } else if (shouldRewardConscienceKill(victimRole, victimTraits)) {
+        Collection<Identifier> killerTraits = TraitPlayerComponent.KEY.get(killer).getActiveTraitIds();
+        boolean conscience = hasConscience(killerTraits);
+        boolean punish = (conscience && EffectiveDeathConsequenceRules.shouldPunishConscienceKill(
+                victimIsEffectiveCivilian, deathReason, poisonSource, bombManiacGrenade
+        )) || EffectiveDeathConsequenceRules.shouldPunishVeteranKnifeKill(
+                game.getRole(killer), killerTraits, victimRole, victimTraits, deathReason
+        );
+        if (punish && GameFunctions.isPlayerPlayingAndAlive(killer)) {
+            GameFunctions.killPlayer(killer, true, null, GameConstants.DeathReasons.SHOT_INNOCENT, true);
+        } else if (conscience) {
+            if (shouldRewardConscienceKill(victimRole, victimTraits)) {
                 int reward = ConscienceSerialKillerService.rewardForConscienceKill(killer, victim, true);
                 if (reward > 0) {
                     PlayerShopComponent.KEY.get(killer).addToBalance(reward);

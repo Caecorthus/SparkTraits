@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.impl.effective.death;
 import dev.caecorthus.sparktraits.impl.effective.alignment.EffectiveAlignment;
 import dev.caecorthus.sparktraits.impl.effective.economy.EffectiveEconomyRules;
 import dev.doctor4t.wathe.api.Role;
+import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.game.GameConstants;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
@@ -30,14 +31,40 @@ public final class EffectiveDeathConsequenceRules {
         return shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, null);
     }
 
-    /** Punishes Conscience for direct effective-civilian kills, but not area grenade or gas-bomb poison deaths.
-     *  善良直接击杀有效好人会受罚，但手雷范围伤害与毒气弹中毒不会触发惩罚。 */
+    /** Ordinary grenades punish Conscience; only launch-marked Bomb Maniac grenades are exempt.
+     *  普通手雷误杀会惩罚善良，仅发射时标记的炸弹狂手雷豁免。 */
     public static boolean shouldPunishConscienceKill(
             boolean victimIsEffectiveCivilian,
             Identifier deathReason,
             Identifier poisonSource
     ) {
-        return victimIsEffectiveCivilian && !isAreaDamageDeathReason(deathReason, poisonSource);
+        return shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, poisonSource, false);
+    }
+
+    public static boolean shouldPunishConscienceKill(
+            boolean victimIsEffectiveCivilian,
+            Identifier deathReason,
+            Identifier poisonSource,
+            boolean bombManiacGrenade
+    ) {
+        return victimIsEffectiveCivilian
+                && !(bombManiacGrenade && GameConstants.DeathReasons.GRENADE.equals(deathReason))
+                && !(GameConstants.DeathReasons.POISON.equals(deathReason)
+                && Noellesroles.POISON_SOURCE_GAS_BOMB.equals(poisonSource));
+    }
+
+    public static boolean shouldPunishVeteranKnifeKill(
+            Role killerRole,
+            Collection<Identifier> killerTraits,
+            Role victimRole,
+            Collection<Identifier> victimTraits,
+            Identifier deathReason
+    ) {
+        return killerRole == WatheRoles.VETERAN
+                && !EffectiveAlignment.hasImpostor(killerTraits)
+                && GameConstants.DeathReasons.KNIFE.equals(deathReason)
+                && EffectiveAlignment.isOriginalKiller(victimRole)
+                && EffectiveAlignment.hasConscience(victimTraits);
     }
 
     /** Records poison source attribution for one later victim-death decision.
@@ -68,9 +95,4 @@ public final class EffectiveDeathConsequenceRules {
         return EffectiveEconomyRules.impostorKillReward(victimRole, victimTraits, canAccessShop);
     }
 
-    private static boolean isAreaDamageDeathReason(Identifier deathReason, Identifier poisonSource) {
-        return GameConstants.DeathReasons.GRENADE.equals(deathReason)
-                || (GameConstants.DeathReasons.POISON.equals(deathReason)
-                && Noellesroles.POISON_SOURCE_GAS_BOMB.equals(poisonSource));
-    }
 }
