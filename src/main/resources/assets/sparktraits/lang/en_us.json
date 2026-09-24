@@ -1,5 +1,6 @@
 {
   "gui.sparktraits.traits": "Traits",
+  "gui.sparktraits.inventory.more": "+%s more",
   "trait.sparktraits.last_stand.name": "Last Stand",
   "trait.sparktraits.last_stand.description": "A belief keeps you alive.",
   "trait.sparktraits.conscience.name": "Conscience",

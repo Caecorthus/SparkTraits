@@ -1,5 +1,6 @@
 {
   "gui.sparktraits.traits": "天赋",
+  "gui.sparktraits.inventory.more": "+%s 项",
   "trait.sparktraits.last_stand.name": "背水一战",
   "trait.sparktraits.last_stand.description": "信念让你撑过最后一刻。",
   "trait.sparktraits.conscience.name": "善良",
