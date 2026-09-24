@@ -114,6 +114,7 @@ public final class SparkTraitsCommands {
 
     private static LiteralArgumentBuilder<ServerCommandSource> listPlayerTraitsCommand(String literalName) {
         return literal(literalName)
+                .requires(source -> source.hasPermissionLevel(2))
                 .then(argument("players", EntityArgumentType.players())
                         .executes(context -> {
                             int count = 0;
