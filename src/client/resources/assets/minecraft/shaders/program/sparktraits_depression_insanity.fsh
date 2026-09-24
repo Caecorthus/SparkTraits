@@ -7,6 +7,7 @@
 uniform sampler2D DiffuseSampler;
 uniform float DesaturateFactor;
 uniform float SpreadFactor;
+uniform float Brightness;
 
 in vec2 texCoord;
 
@@ -29,5 +30,5 @@ void main()
 {
     vec4 color = texture(DiffuseSampler, texCoord);
     color.rgb = desaturate(spread(color.rgb, SpreadFactor), DesaturateFactor);
-    fragColor = color * 1.2;
+    fragColor = color * Brightness;
 }

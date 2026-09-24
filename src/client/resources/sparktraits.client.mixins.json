@@ -4,6 +4,12 @@
   "package": "dev.caecorthus.sparktraits.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "CloseQuartersKnifePredictionMixin",
+    "ForcedMeleeCrosshairMixin",
+    "ForcedMeleeInGameHudMixin",
+    "LastEscapeHandledScreenMixin",
+    "LastEscapeInteractionManagerMixin",
+    "LastEscapeMinecraftClientMixin",
     "ArmorFeatureRendererInvoker",
     "AssassinScreenMixin",
     "BeveragePlateBluePoisonParticleMixin",

@@ -235,7 +235,19 @@ public final class KillerTraitService {
                 && !force
                 && !SECOND_STRIKE_REPLAYING.get()
                 && hasEligibleTrait(killer, KillerTraits.SECOND_STRIKE);
-        KILL_ATTEMPTS.get().push(eligible ? new KillAttempt(ShieldState.capture(victim)) : KillAttempt.EMPTY);
+        KILL_ATTEMPTS.get().push(new KillAttempt(eligible ? ShieldState.capture(victim) : null));
+    }
+
+    public static void terminateKillAttempt() {
+        KillAttempt attempt = KILL_ATTEMPTS.get().peek();
+        if (attempt != null) attempt.terminated = true;
+        else KILL_ATTEMPTS.remove();
+    }
+
+    public static void abortKillAttempt() {
+        Deque<KillAttempt> attempts = KILL_ATTEMPTS.get();
+        if (!attempts.isEmpty()) attempts.pop();
+        if (attempts.isEmpty()) KILL_ATTEMPTS.remove();
     }
 
     public static void finishKillAttempt(
@@ -250,7 +262,7 @@ public final class KillerTraitService {
         if (attempts.isEmpty()) {
             KILL_ATTEMPTS.remove();
         }
-        if (attempt.before == null || killer == null) {
+        if (attempt.before == null || attempt.terminated || killer == null) {
             return;
         }
 
@@ -425,22 +437,26 @@ public final class KillerTraitService {
         return canSelectKillerTrait(game.getRole(player), TraitPlayerComponent.KEY.get(player).getActiveTraitIds());
     }
 
-    private record KillAttempt(@Nullable ShieldState before) {
+    private static final class KillAttempt {
         private static final KillAttempt EMPTY = new KillAttempt(null);
+        private final ShieldState before;
+        private boolean terminated;
+        private KillAttempt(@Nullable ShieldState before) { this.before = before; }
     }
 
-    private record ShieldState(int psychoArmour, boolean ironManBuff, int whiskeyLayers) {
+    private record ShieldState(int psychoArmour, boolean psychoActive, boolean ironManBuff, int whiskeyLayers) {
         private static ShieldState capture(ServerPlayerEntity player) {
             PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
             int armour = psycho.getPsychoTicks() > 0 ? psycho.getArmour() : 0;
             boolean ironMan = IronManPlayerComponent.KEY.get(player).hasBuff();
             StatusEffectInstance whiskey = player.getStatusEffect(ModEffects.WHISKEY_SHIELD);
             int whiskeyLayers = whiskey == null ? 0 : whiskey.getAmplifier() + 1;
-            return new ShieldState(armour, ironMan, whiskeyLayers);
+            return new ShieldState(armour, psycho.getPsychoTicks() > 0, ironMan, whiskeyLayers);
         }
 
         private boolean wasConsumedBy(ShieldState after) {
-            return after.psychoArmour < psychoArmour
+            // stopPsycho clears armour too; only an active psycho losing armour absorbed a hit.
+            return (after.psychoActive && after.psychoArmour < psychoArmour)
                     || (ironManBuff && !after.ironManBuff)
                     || after.whiskeyLayers < whiskeyLayers;
         }

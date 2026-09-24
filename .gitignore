@@ -18,3 +18,7 @@
 /DOWNSTREAM_MIGRATION_NOTES.md
 /.vscode/
 /docs/superpowers/
+/docs/
+
+# Local test source code
+/src/test/
