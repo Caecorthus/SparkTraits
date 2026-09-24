@@ -14,6 +14,7 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.util.ShopEntry;
 import dev.doctor4t.wathe.util.ShopUtils;
+import net.fabricmc.fabric.api.event.Event;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -47,6 +48,7 @@ public final class KillerTraitService {
     public static final float OPPRESSIVE_DRAIN_MULTIPLIER = 1.2f;
     public static final double THRUST_EXTRA_KNOCKBACK = 0.25;
     public static final Identifier THRUST_KNOCKBACK_MODIFIER_ID = SparkTraits.id("thrust_knockback");
+    public static final Identifier CHARISMA_SHOP_PHASE = SparkTraits.id("charisma_discount");
 
     private static final ThreadLocal<Deque<KillAttempt>> KILL_ATTEMPTS = ThreadLocal.withInitial(ArrayDeque::new);
     private static final ThreadLocal<Boolean> SECOND_STRIKE_REPLAYING = ThreadLocal.withInitial(() -> false);
@@ -60,7 +62,12 @@ public final class KillerTraitService {
     }
 
     public static void register() {
-        BuildShopEntries.EVENT.register((player, context) -> {
+        // Downstream role shops (e.g. SparkWitch Witch Maiden) clear and rebuild entries in the default phase,
+        // so the discount must wrap the final list; the explicit ordering is required because unlinked phases sort by id.
+        // 下游职业商店（如 SparkWitch 巫女）会在默认阶段清空并重建条目，魅力必须包装最终列表；
+        // 未显式排序的阶段会按 id 排序，因此必须声明排在默认阶段之后。
+        BuildShopEntries.EVENT.addPhaseOrdering(Event.DEFAULT_PHASE, CHARISMA_SHOP_PHASE);
+        BuildShopEntries.EVENT.register(CHARISMA_SHOP_PHASE, (player, context) -> {
             if (!hasEligibleTrait(player, KillerTraits.CHARISMA)) {
                 return;
             }
