@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.death.BombManiacKillContext;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BombManiacGrenadeAccess;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBomberFrenzyRules;
 import dev.doctor4t.wathe.api.Role;
@@ -57,7 +58,11 @@ public abstract class ConscienceBomberGrenadeEntityMixin implements BombManiacGr
                         effectiveCivilian
                 );
         if (shouldKill) {
-            GameFunctions.killPlayer(target, spawnBody, killer, deathReason);
+            BombManiacKillContext.withSource(
+                    target.getUuid(), killer == null ? null : killer.getUuid(), deathReason,
+                    sparktraits$isBombManiac(),
+                    () -> GameFunctions.killPlayer(target, spawnBody, killer, deathReason)
+            );
         }
     }
 }
