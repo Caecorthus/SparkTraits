@@ -115,9 +115,9 @@ public final class InventoryInfoCard {
     }
 
     /**
-     * {@code tooltipBlockers}: the price tags, the only z >= 300 draws made before the card tooltip. {@code storeFrames}:
-     * the 30x30 shop-slot frames under them; a tooltip top never cuts through one (no frame sliver above the box).
-     * 价签为唯一遮挡物；storeFrames 为价签下方的 30x30 商店槽边框，提示框顶边不会横切边框（不留边框碎条）。
+     * {@code tooltipBlockers}: the price tags, which the tooltip avoids when there is room (it draws above them when there
+     * is not). {@code storeFrames}: the 30x30 shop-slot frames under them; a tooltip top never cuts through one.
+     * 价签：有空间时提示框避开它们（空间不足时盖在其上）；storeFrames 为价签下方的 30x30 商店槽边框，提示框顶边不会横切边框。
      */
     public record Snapshot(List<Section> sections, InventoryCardLayout.Layout layout, List<InventoryCardLayout.Rect> tooltipBlockers,
                            List<InventoryCardLayout.Rect> storeFrames) {
@@ -701,10 +701,12 @@ public final class InventoryInfoCard {
     private record TipCache(Snapshot snapshot, TextRenderer font, InventoryCardLayout.Row row, int width, int height, @Nullable Tip tip) {}
 
     /**
-     * Brass tooltip left of the card at z=300 (below Assist's modal and Wathe's z=400 price tags), never scaled.
-     * Content-top candidates: the hovered label's row, above the first price tag it would hit, below the price band;
-     * only price tags block it. The wrapped layout is cached per hovered row, so hovering costs no re-wrap per frame.
-     * 黄铜提示框位于卡片左侧 z=300，绝不缩放；仅价签视为遮挡，依次尝试三个候选位置；排版按悬停行缓存，悬停时不再逐帧换行。
+     * Brass tooltip left of the card at z=450: above Wathe's z=400 price tags and item tooltips, below SparkAssist's z=500
+     * guide modal (which also hides inventory hover while open). Never scaled. Content-top candidates: the hovered
+     * label's row, above the first price tag it would hit, below the price band; when none fits (tall tooltips on
+     * 320x240) it overlaps the price tags instead of being covered by them. The wrapped layout is cached per hovered row.
+     * 黄铜提示框位于卡片左侧 z=450：高于 Wathe 价签与物品提示（400），低于 SparkAssist 指南模态层（500，打开时也屏蔽背包悬停），
+     * 绝不缩放；依次尝试三个候选位置，都放不下时（如 320x240 的长提示）盖在价签之上而不是被遮住；排版按悬停行缓存。
      */
     private static void drawTooltip(DrawContext context, TextRenderer font, Snapshot snapshot, InventoryCardLayout.Row row,
                                     int width, int height) {
@@ -721,9 +723,9 @@ public final class InventoryInfoCard {
         int x = tip.x(), y = tip.y();
         context.getMatrices().push();
         try {
-            // Vanilla drawTooltip internally adds 400. Drawing wrapped text ourselves keeps BOTH
-            // background and glyphs below Assist's modal layer, including the default text offset.
-            context.getMatrices().translate(x, y, 300);
+            // Vanilla drawTooltip internally adds 400; drawing ourselves pins background and glyphs to 450, between
+            // the price tags (400) and Assist's modal layer (500). 自行绘制以固定在价签（400）与指南模态层（500）之间。
+            context.getMatrices().translate(x, y, 450);
             InventoryCardPaint.brassTooltip(context, 0, 0, tip.width(), tip.height());
             int lineY = 0;
             for (int i = 0; i < tip.lines().size(); i++) {
