@@ -42,8 +42,8 @@ import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import dev.caecorthus.sparktraits.SparkTraits;
 
 /**
- * Shared rules for Vigilante and Veteran-only traits.
- * 义警与老兵专属天赋的共享规则入口，避免影响其他角色或阵营翻转逻辑。
+ * Shared rules for police-category gun traits and Veteran-only traits.
+ * 警职类别枪械天赋与老兵专属天赋的共享规则入口，避免影响其他角色或阵营翻转逻辑。
  */
 public final class VigilanteVeteranTraitService {
     public static final double REVOLVER_RANGE = 30.0;
@@ -95,9 +95,10 @@ public final class VigilanteVeteranTraitService {
         ServerTickEvents.END_WORLD_TICK.register(VigilanteVeteranTraitService::tickWorld);
     }
 
+    /** Selection and runtime gate for the gun police traits; see {@link PoliceRoleCategory}.
+     *  枪械警类天赋的抽取与运行时判定入口，规则见 {@link PoliceRoleCategory}。 */
     public static boolean canSelectVigilanteTrait(Role role) {
-        return role == WatheRoles.VIGILANTE
-                || (role != null && Identifier.of("sparkwitch", "emma").equals(role.identifier()));
+        return PoliceRoleCategory.canReceiveGunPoliceTraits(role);
     }
 
     public static boolean canSelectVeteranTrait(Role role) {
@@ -124,6 +125,18 @@ public final class VigilanteVeteranTraitService {
 
     public static double gunRange(PlayerEntity player, double baseRange) {
         return gunRange(baseRange, roleOf(player), traitsOf(player), isSneaking(player));
+    }
+
+    /** Marksman-only range multiplier for downstream police weapons; never Niko's fixed range.
+     *  供下游警用武器使用的精确枪手射程倍率，仅看精确枪手，绝不返回 Niko 固定射程。 */
+    public static double marksmanRangeMultiplier(Role role, Collection<Identifier> traits) {
+        return canUseVigilanteTrait(role, traits, PoliceTraits.MARKSMAN) ? MARKSMAN_RANGE_MULTIPLIER : 1.0;
+    }
+
+    /** Resolves the runtime police role and synced traits, so it is safe on both client and server.
+     *  解析运行时警职与同步天赋，客户端与服务端均可安全调用。 */
+    public static double marksmanRangeMultiplier(PlayerEntity player) {
+        return marksmanRangeMultiplier(roleOf(player), traitsOf(player));
     }
 
     public static int fastReloadCooldown(Item item, int duration, Role role, Collection<Identifier> traits) {
