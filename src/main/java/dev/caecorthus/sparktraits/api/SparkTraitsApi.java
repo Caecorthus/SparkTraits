@@ -367,6 +367,39 @@ public final class SparkTraitsApi {
     }
 
     /**
+     * Returns whether this attacker's hit just turned into a non-final kill (e.g. a Depression fake death):
+     * the victim survives, and the weapon should keep only {@link #getNonFinalKillCooldownTicks(int)}.
+     * 返回该攻击者的这一击是否刚刚成为非最终击杀（如抑郁假死）：受害者未死亡，武器只保留
+     * {@link #getNonFinalKillCooldownTicks(int)} 的冷却。
+     */
+    public static boolean isNonFinalKillPending(ServerPlayerEntity victim, ServerPlayerEntity attacker) {
+        return victim != null && attacker != null && DepressionTraitService.isPendingFrom(victim, attacker);
+    }
+
+    /**
+     * Weapon cooldown to keep after a non-final kill: 20% of the original, rounded up.
+     * SparkTraits already applies it to item cooldowns; weapons with their own cooldown state use this value.
+     * 非最终击杀后武器应保留的冷却：原冷却的 20%，向上取整。物品冷却已由 SparkTraits 处理，
+     * 自带冷却状态的武器使用此值。
+     */
+    public static int getNonFinalKillCooldownTicks(int originalTicks) {
+        return dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionFakeKillCooldowns.discountedTicks(originalTicks);
+    }
+
+    /**
+     * Runs a kill that happens away from the attacker's hands (e.g. a push that later makes the victim fall),
+     * naming the weapon item that keeps the non-final-kill cooldown if the kill turns out non-final.
+     * 执行不在攻击者手中发生的击杀（如推人后受害者坠车），并指明若成为非最终击杀时应缩短冷却的武器物品。
+     */
+    public static void runWithNonFinalKillWeapon(net.minecraft.item.Item weapon, Runnable kill) {
+        if (weapon == null) {
+            kill.run();
+            return;
+        }
+        dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionFakeKillCooldowns.withWeaponHint(weapon, kill);
+    }
+
+    /**
      * Returns whether the entity is an exact fake-death body owned by SparkTraits runtime state.
      * 返回该实体是否为 SparkTraits 运行时状态精确记录的假死尸体。
      */

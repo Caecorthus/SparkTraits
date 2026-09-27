@@ -75,6 +75,12 @@ public final class EffectiveDeathConsequenceRules {
         }
     }
 
+    /** Reads poison source attribution without consuming it (the death decision still consumes it once).
+     *  读取毒源归因但不消费（死亡判定仍会消费一次）。 */
+    public static Identifier peekPoisonSource(UUID victimUuid) {
+        return victimUuid == null ? null : poisonSources.get(victimUuid);
+    }
+
     /** Consumes poison source attribution exactly once.
      *  毒源归因只消费一次。 */
     public static Identifier consumePoisonSource(UUID victimUuid) {
