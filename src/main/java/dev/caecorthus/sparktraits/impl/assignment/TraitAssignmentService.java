@@ -45,6 +45,7 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTraitService;
 
@@ -369,6 +370,8 @@ public final class TraitAssignmentService {
         );
     }
 
+    /** Police-category roles are never drafted as compensation killers, so none keeps a police weapon.
+     *  警职类别身份永不被选为补偿杀手，避免其带着警用武器转为杀手。 */
     static boolean canUseAsConscienceCompensationTarget(
             Role role,
             Collection<Identifier> traits,
@@ -379,8 +382,7 @@ public final class TraitAssignmentService {
                 && !roleLocked
                 && !traitLocked
                 && EffectiveTraitService.isOriginalCivilian(role)
-                && role != WatheRoles.VIGILANTE
-                && role != WatheRoles.VETERAN
+                && !PoliceRoleCategory.isPolice(role)
                 && !traits.contains(ImpostorTrait.ID)
                 && !traits.contains(ConscienceTrait.ID);
     }

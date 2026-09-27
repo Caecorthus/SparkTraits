@@ -17,6 +17,7 @@ import java.util.Collection;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.selection.TraitRoleEligibility;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 
 /**
@@ -88,10 +89,13 @@ public final class TraitLockValidationService {
         if (trait.id().equals(ConscienceTrait.ID) && EffectiveTraitService.isConscienceBlockedRole(role)) {
             return false;
         }
+        // Police-category roles mirror round assignment's Impostor block.
+        // 警职类别身份与开局分配的内鬼排除保持一致。
         return !trait.id().equals(ImpostorTrait.ID)
                 || isUnknownRole(role)
                 || (!role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
-                && !role.identifier().equals(SPARKWITCH_SAINT_ID));
+                && !role.identifier().equals(SPARKWITCH_SAINT_ID)
+                && !PoliceRoleCategory.isPolice(role));
     }
 
     public static ServerPlayerEntity findOtherPendingUniqueTraitOwner(MinecraftServer server, ServerPlayerEntity target, Trait trait) {

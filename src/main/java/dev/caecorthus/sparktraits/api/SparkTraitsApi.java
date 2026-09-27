@@ -95,6 +95,15 @@ public final class SparkTraitsApi {
         return dev.caecorthus.sparktraits.impl.traits.killer.combat.ExactItemCooldowns.remainingTicks(player, item);
     }
 
+    /** Marksman range multiplier for downstream police weapons: 1.3 when the player's runtime police role
+     * holds an active Marksman, otherwise 1.0. Never Niko's fixed range. Null-safe, client- and server-safe.
+     * 下游警用武器的精确枪手射程倍率：运行时警职持有生效的精确枪手时为 1.3，否则为 1.0；
+     * 绝不返回 Niko 固定射程。支持空值，客户端与服务端均可调用。 */
+    public static double getMarksmanRangeMultiplier(PlayerEntity player) {
+        return player == null || player.getWorld() == null ? 1.0
+                : dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService.marksmanRangeMultiplier(player);
+    }
+
     public static void registerTerminalDeathReason(Identifier reason) {
         dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules.register(reason);
     }

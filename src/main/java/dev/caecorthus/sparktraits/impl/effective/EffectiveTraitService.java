@@ -11,9 +11,9 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerial
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
 import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.api.event.ShouldPunishGunShooter;
@@ -609,12 +609,11 @@ public final class EffectiveTraitService {
         return role != null && role.identifier().equals(Noellesroles.UNDERCOVER_ID);
     }
 
-    /** Keeps high-agency innocent roles from being converted into Impostor.
-     *  防止强机制无辜者角色被转换成内鬼。 */
+    /** Keeps high-agency innocent roles, including every police-category role, from being converted into Impostor.
+     *  防止强机制无辜者角色（含所有警职类别身份）被转换成内鬼。 */
     private static boolean isImpostorBlockedRole(Role role) {
         return role != null
-                && (role == WatheRoles.VIGILANTE
-                || role == WatheRoles.VETERAN
+                && (PoliceRoleCategory.isPolice(role)
                 || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
                 || role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
                 || role.identifier().equals(SPARKWITCH_SAINT_ID));
