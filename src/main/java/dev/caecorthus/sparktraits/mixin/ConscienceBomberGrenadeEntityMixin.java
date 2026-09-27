@@ -3,12 +3,14 @@ package dev.caecorthus.sparktraits.mixin;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.effective.death.BombManiacKillContext;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionFakeKillCooldowns;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BombManiacGrenadeAccess;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBomberFrenzyRules;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.entity.GrenadeEntity;
 import dev.doctor4t.wathe.game.GameFunctions;
+import dev.doctor4t.wathe.index.WatheItems;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,8 +18,8 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-/** Applies the launch snapshot only at Wathe's ordinary grenade kill call.
- *  仅在 Wathe 普通手雷的击杀调用处应用发射快照。 */
+/** Applies the launch snapshot only at Wathe's ordinary grenade kill call, and names the grenade as the weapon.
+ *  仅在 Wathe 普通手雷的击杀调用处应用发射快照，并指明武器为手雷。 */
 @Mixin(GrenadeEntity.class)
 public abstract class ConscienceBomberGrenadeEntityMixin implements BombManiacGrenadeAccess {
     @Unique
@@ -61,7 +63,8 @@ public abstract class ConscienceBomberGrenadeEntityMixin implements BombManiacGr
             BombManiacKillContext.withSource(
                     target.getUuid(), killer == null ? null : killer.getUuid(), deathReason,
                     sparktraits$isBombManiac(),
-                    () -> GameFunctions.killPlayer(target, spawnBody, killer, deathReason)
+                    () -> DepressionFakeKillCooldowns.withWeaponHint(WatheItems.GRENADE,
+                            () -> GameFunctions.killPlayer(target, spawnBody, killer, deathReason))
             );
         }
     }

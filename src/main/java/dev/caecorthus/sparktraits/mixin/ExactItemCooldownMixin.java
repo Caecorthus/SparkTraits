@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionFakeKillCooldowns;
 import dev.caecorthus.sparktraits.impl.traits.killer.combat.ExactItemCooldowns;
 import dev.caecorthus.sparktraits.impl.traits.killer.combat.ForcedMeleeCooldownService;
 import net.minecraft.entity.player.ItemCooldownManager;
@@ -32,6 +33,16 @@ public abstract class ExactItemCooldownMixin {
             target = "Lnet/minecraft/entity/player/ItemCooldownManager;onCooldownUpdate(Lnet/minecraft/item/Item;I)V"), index = 1)
     private int sparktraits$syncExactDuration(Item item, int duration) {
         return ExactItemCooldowns.remainingTicks((ItemCooldownManager) (Object) this, item);
+    }
+
+    /** Lets a pending Depression fake kill see which weapon cooldown the attack wrote afterwards.
+     *  让待处理的抑郁假死得知攻击随后写入了哪件武器的冷却。 */
+    @Inject(method = "set", at = @At("TAIL"))
+    private void sparktraits$recordFakeKillWeaponWrite(Item item, int duration, CallbackInfo ci) {
+        if ((Object) this instanceof ServerItemCooldownManager manager
+                && !ExactItemCooldowns.isExactWrite(manager, item)) {
+            DepressionFakeKillCooldowns.recordWrite(((ServerItemCooldownManagerAccessor) manager).sparktraits$getPlayer(), item);
+        }
     }
 
     @Inject(method = "remove", at = @At("HEAD"), cancellable = true)

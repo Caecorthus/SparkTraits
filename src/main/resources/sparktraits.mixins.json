@@ -36,6 +36,7 @@
     "ConscienceBomberGrenadeItemMixin",
     "CrowbarItemMixin",
     "DemonHunterShootPacketMixin",
+    "DepressionServerTaskMixin",
     "ExcellentPhysiqueStaminaMixin",
     "FastHandsCooldownMixin",
     "FastReloadCooldownMixin",

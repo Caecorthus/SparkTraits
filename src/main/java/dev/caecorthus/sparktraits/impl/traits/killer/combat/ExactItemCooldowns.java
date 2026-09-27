@@ -60,6 +60,12 @@ public final class ExactItemCooldowns {
         }
     }
 
+    /** True while {@link #setExact} is installing this exact duration. 仅在 setExact 写入该精确时长期间为 true。 */
+    public static boolean isExactWrite(ItemCooldownManager manager, Item item) {
+        Write write = EXACT_WRITE.get();
+        return write != null && write.manager == manager && write.item == item;
+    }
+
     public static int durationForWrite(ItemCooldownManager manager, Item item, int modifiedDuration,
                                        ServerPlayerEntity owner) {
         Write write = EXACT_WRITE.get();

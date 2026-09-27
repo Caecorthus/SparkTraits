@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl.traits.civilian.police;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionFakeKillCooldowns;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
@@ -458,6 +459,9 @@ public final class VigilanteVeteranTraitService {
         }
         GameWorldComponent scheduledGame = GameWorldComponent.KEY.get(scheduledWorld);
         GunShotCycles.Cycle cycle = GunShotCycles.current();
+        // Repeat shots write no cooldown of their own; a Depression fake kill shortens the gun that fired the burst.
+        // 连射不单独写冷却；若触发抑郁假死，缩短的是打出这轮连射的枪。
+        Item burstWeapon = shooter.getMainHandStack().getItem();
         // Do not replay Wathe's full gun packet handler: it owns inventory, punishment, and cooldown side effects.
         // 不重复执行 Wathe 的完整枪械包处理；那里负责扣枪、惩罚和冷却，重复调用会扩大副作用。
         for (int shot = 1; shot < NIKO_BURST_SHOTS; shot++) {
@@ -465,8 +469,8 @@ public final class VigilanteVeteranTraitService {
             AtomicReference<Runnable> pendingPunishment = new AtomicReference<>();
             GunShotCycles.expectRepeat(cycle);
             Scheduler.schedule(
-                    () -> GunShotCycles.runRepeat(cycle,
-                            () -> repeatNikoBurstShot(shooter, scheduledWorld, scheduledGame, pendingPunishment)),
+                    () -> GunShotCycles.runRepeat(cycle, () -> DepressionFakeKillCooldowns.withWeaponHint(burstWeapon,
+                            () -> repeatNikoBurstShot(shooter, scheduledWorld, scheduledGame, pendingPunishment))),
                     repeatDelay
             );
             Scheduler.schedule(
