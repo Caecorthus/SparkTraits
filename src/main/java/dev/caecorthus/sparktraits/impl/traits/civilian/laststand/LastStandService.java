@@ -763,14 +763,17 @@ public final class LastStandService {
     }
 
     /**
-     * The return point is recorded right after Wathe's own round-start placement (a room spawn, or the lobby
-     * spot plus play-area offset and one block), which Wathe never safety-checks, so it is trusted the same way.
+     * The return point is recorded when Last Stand is assigned: normally right after Wathe's own round-start
+     * placement (a room spawn, or the lobby spot plus play-area offset and one block), which Wathe never
+     * safety-checks, so it is trusted the same way; a mid-round re-assignment (a runtime trait restore)
+     * records the player's current, already-occupied position.
      * Only true suffocation, the world height limits or leaving Wathe's play area reject it. No support-block or
      * box-overlap test: partial blocks (beds, slabs), block-edge spawns and the one-block legacy lift are fine,
      * and entities never veto.
-     * 回归点记录于 wathe 开局放置玩家之后（房间出生点，或大厅位置加游玩区偏移再加一格），wathe 自身从不做安全
-     * 检查，因此这里同样信任它。仅在真正窒息、超出世界高度或离开 wathe 游玩区时拒绝；不做脚下支撑或碰撞箱重叠
-     * 检查：床、半砖等非完整方块、方块边缘出生点和旧版抬高一格都可接受，实体也不能否决回归。
+     * 回归点在获得背水一战时记录：通常位于 wathe 开局放置玩家之后（房间出生点，或大厅位置加游玩区偏移再加
+     * 一格），wathe 自身从不做安全检查，因此这里同样信任它；局中重新获得（运行时恢复词条）时记录的是玩家当前
+     * 所在位置。仅在真正窒息、超出世界高度或离开 wathe 游玩区时拒绝；不做脚下支撑或碰撞箱重叠检查：
+     * 床、半砖等非完整方块、方块边缘出生点和旧版抬高一格都可接受，实体也不能否决回归。
      */
     private static ReturnPointCheck checkReturnPoint(ServerPlayerEntity player, ServerWorld world, Vec3d pos) {
         BlockPos feet = BlockPos.ofFloored(pos);
