@@ -852,8 +852,8 @@ public final class EffectiveTraitService {
     }
 
     /**
-     * Grants SparkTraits task money only when the base role does not already pay for tasks.
-     * 仅在原职业没有自带任务金币时，由 SparkTraits 给阵营翻转玩家补发任务金币。
+     * Conscience/Impostor +50 task money; stacks on top of role-owned task income (see EffectiveEconomyRules).
+     * 善良/内鬼的 +50 任务金币；与职业自带的任务收入叠加（见 EffectiveEconomyRules）。
      */
     public static boolean shouldRewardTaskMoney(Role role, Collection<Identifier> traits) {
         return EffectiveEconomyRules.shouldRewardTaskMoney(role, traits);
