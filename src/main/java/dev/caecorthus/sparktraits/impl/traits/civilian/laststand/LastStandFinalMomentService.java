@@ -245,7 +245,9 @@ public final class LastStandFinalMomentService {
         PlayerState onlyLivingPlayer = null;
         int livingPlayers = 0;
         for (PlayerState player : players) {
-            if (!player.alive()) {
+            // A living SparkWitch Fiend must not delay the survivor's win (D1).
+            // 存活的 SparkWitch 魔人不得拖延幸存者的胜利（D1）。
+            if (!player.alive() || isSparkWitchFiend(player.role())) {
                 continue;
             }
             livingPlayers++;
