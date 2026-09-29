@@ -68,6 +68,7 @@ public final class LastStandFinalMomentService {
     private static final int FINAL_MOMENT_NONE_COLOR = 0xFFFFFF;
     private static final Identifier SPARKWITCH_GRAND_WITCH_ID = Identifier.of("sparkwitch", "grand_witch");
     private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
+    private static final Identifier SPARKWITCH_FIEND_ID = Identifier.of("sparkwitch", "fiend");
 
     private LastStandFinalMomentService() {
     }
@@ -100,7 +101,9 @@ public final class LastStandFinalMomentService {
         boolean blockedByOrdinaryCivilian = false;
 
         for (PlayerState player : players) {
-            if (!player.alive()) {
+            // The SparkWitch Fiend never affects a win (its own moment suspends wins in SparkWitch), so it is no opposing faction here.
+            // SparkWitch 魔人从不影响胜负（魔人时刻由 SparkWitch 自行暂停胜利判定），因此这里不算作对立阵营。
+            if (!player.alive() || isSparkWitchFiend(player.role())) {
                 continue;
             }
             boolean effectiveCivilian = EffectiveTraitService.isEffectiveCivilian(player.role(), player.traitIds());
@@ -436,6 +439,9 @@ public final class LastStandFinalMomentService {
         gameComponent.sync();
 
         for (ServerPlayerEntity player : livingPlayers(world, gameComponent)) {
+            if (isSparkWitchFiend(gameComponent.getRole(player))) {
+                continue;
+            }
             PlayerShopComponent.KEY.get(player).addToBalance(FINAL_MONEY_REWARD);
             SparkWitchManaCompatibility.addMana(player, FINAL_MANA_REWARD);
         }
@@ -492,6 +498,10 @@ public final class LastStandFinalMomentService {
 
     private static boolean isLooseEndRole(@Nullable Role role) {
         return role != null && WatheRoles.LOOSE_END.identifier().equals(role.identifier());
+    }
+
+    static boolean isSparkWitchFiend(@Nullable Role role) {
+        return role != null && SPARKWITCH_FIEND_ID.equals(role.identifier());
     }
 
     private static boolean isSparkWitchFactionRole(@Nullable Role role) {
