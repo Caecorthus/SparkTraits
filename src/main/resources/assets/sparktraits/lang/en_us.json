@@ -57,7 +57,7 @@
   "trait.sparktraits.well_trained.name": "Well Trained",
   "trait.sparktraits.well_trained.description": "Low sanity no longer hinders you, and sanity drains thirty percent slower.",
   "trait.sparktraits.going_dark.name": "Going Dark",
-  "trait.sparktraits.going_dark.description": "During blackouts, instinct used by Killers, Impostors, Grand Witches, Murderous Witches, Accomplices, and Corrupt Cops cannot reveal you.",
+  "trait.sparktraits.going_dark.description": "During blackouts, instinct used by Killers, Impostors, Grand Witches, Murderous Witches, Accomplices, Corrupt Cops, and Insiders cannot reveal you.",
   "trait.sparktraits.bloodthirsty.name": "Bloodthirsty",
   "trait.sparktraits.bloodthirsty.description": "Each real kill shortens supported weapon cooldowns by 5% per counted stack, capped by one third of the round player count.",
   "trait.sparktraits.the_showman.name": "The Showman",

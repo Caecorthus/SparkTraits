@@ -16,7 +16,8 @@ public final class GoingDarkRules {
             Identifier.of("sparkwitch", "grand_witch"),
             Identifier.of("sparkwitch", "murderous_witch"),
             Identifier.of("sparkwitch", "accomplice"),
-            Identifier.of("noellesroles", "corrupt_cop")
+            Identifier.of("noellesroles", "corrupt_cop"),
+            Identifier.of("sparkwitch", "insider")
     );
 
     private GoingDarkRules() {

@@ -55,6 +55,9 @@ public final class EffectiveTraitService {
     private static final Identifier SPARKWITCH_GRAND_WITCH_ID = Identifier.of("sparkwitch", "grand_witch");
     private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
     private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
+    // SparkWitch's Insider shares the Corrupt Cop's team and keeps its win rule after the Corrupt Cop dies.
+    // SparkWitch 内应与黑警同属一个阵营，黑警死后由内应继续承担该阵营的胜利规则。
+    private static final Identifier SPARKWITCH_INSIDER_ID = Identifier.of("sparkwitch", "insider");
     private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
     private static final Identifier SPARKWITCH_SAINT_ID = Identifier.of("sparkwitch", "saint");
     private static final Identifier SPARKWITCH_BELL_RINGER_ID = Identifier.of("sparkwitch", "bell_ringer");
@@ -753,6 +756,7 @@ public final class EffectiveTraitService {
                 || SPARKWITCH_ACCOMPLICE_ID.equals(role.identifier())
                 || SPARKWITCH_MURDEROUS_WITCH_ID.equals(role.identifier())
                 || Noellesroles.CORRUPT_COP_ID.equals(role.identifier())
+                || SPARKWITCH_INSIDER_ID.equals(role.identifier())
                 || Noellesroles.TAOTIE_ID.equals(role.identifier()));
     }
 
