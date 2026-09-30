@@ -5,7 +5,6 @@ import dev.caecorthus.sparktraits.api.Trait;
 import dev.caecorthus.sparktraits.api.TraitAssignmentReason;
 import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitSelectionContext;
-import dev.doctor4t.wathe.index.WatheItems;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
@@ -45,10 +44,6 @@ public final class ConscienceTrait implements Trait {
      *  Wathe 在词条分配之前的 RoleAssigned 中给所有杀手阵营发放对讲机；善良杀手不能继续旁听杀手队伍。 */
     @Override
     public void onAssigned(ServerPlayerEntity player, TraitAssignmentReason reason) {
-        player.getInventory().remove(
-                stack -> stack.isOf(WatheItems.WALKIE_TALKIE),
-                Integer.MAX_VALUE,
-                player.playerScreenHandler.getCraftingInput()
-        );
+        ConscienceWalkieTalkieService.removeWalkieTalkies(player);
     }
 }
