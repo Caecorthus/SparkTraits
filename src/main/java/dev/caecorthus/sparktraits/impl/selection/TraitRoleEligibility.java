@@ -16,7 +16,8 @@ public final class TraitRoleEligibility {
             Identifier.of(SPARKWITCH_MOD_ID, "grand_witch"),
             Identifier.of(SPARKWITCH_MOD_ID, "accomplice"),
             Identifier.of(SPARKWITCH_MOD_ID, "apprentice_witch"),
-            Identifier.of(SPARKWITCH_MOD_ID, "murderous_witch")
+            Identifier.of(SPARKWITCH_MOD_ID, "murderous_witch"),
+            Identifier.of(SPARKWITCH_MOD_ID, "fiend")
     );
 
     private TraitRoleEligibility() {
