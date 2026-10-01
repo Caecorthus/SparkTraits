@@ -71,6 +71,7 @@
     "PlayerMoodComponentMixin",
     "PlayerPoisonComponentMixin",
     "PlayerEntityMixin",
+    "RaycastShapeScopeMixin",
     "RoleHistoryComponentAccessor",
     "SerialKillerPlayerComponentAccessor",
     "SerialKillerPlayerComponentMixin",
