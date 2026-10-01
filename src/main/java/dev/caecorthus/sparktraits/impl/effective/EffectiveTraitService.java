@@ -55,6 +55,10 @@ public final class EffectiveTraitService {
     public static final Identifier SELF_REALIZATION = SparkTraits.id("self_realization");
     private static final Identifier SPARKWITCH_GRAND_WITCH_ID = Identifier.of("sparkwitch", "grand_witch");
     private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
+    // SparkWitch special accomplices block team wins exactly like the Accomplice.
+    // SparkWitch 特殊共犯与共犯一样阻止队伍胜利。
+    private static final Identifier SPARKWITCH_ABYSS_LISTENER_ID = Identifier.of("sparkwitch", "abyss_listener");
+    private static final Identifier SPARKWITCH_POTION_GUNNER_ID = Identifier.of("sparkwitch", "potion_gunner");
     private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
     // SparkWitch's Insider shares the Corrupt Cop's team and keeps its win rule after the Corrupt Cop dies.
     // SparkWitch 内应与黑警同属一个阵营，黑警死后由内应继续承担该阵营的胜利规则。
@@ -784,6 +788,8 @@ public final class EffectiveTraitService {
         return role != null
                 && (SPARKWITCH_GRAND_WITCH_ID.equals(role.identifier())
                 || SPARKWITCH_ACCOMPLICE_ID.equals(role.identifier())
+                || SPARKWITCH_ABYSS_LISTENER_ID.equals(role.identifier())
+                || SPARKWITCH_POTION_GUNNER_ID.equals(role.identifier())
                 || SPARKWITCH_MURDEROUS_WITCH_ID.equals(role.identifier())
                 || Noellesroles.CORRUPT_COP_ID.equals(role.identifier())
                 || SPARKWITCH_INSIDER_ID.equals(role.identifier())
