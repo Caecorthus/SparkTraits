@@ -18,15 +18,18 @@ public final class EffectiveEconomyRules {
     }
 
     /**
-     * Grants SparkTraits task money only when the base role does not already pay for tasks.
-     * 仅在原职业没有自带任务金币时，由 SparkTraits 给阵营翻转玩家补发任务金币。
+     * Grants the Conscience/Impostor +50 task money. Owner rule: it stacks on top of any role-owned task income
+     * (NoellesRoles Bartender, SparkStrength Detective, ...), so the role never suppresses it.
+     * 发放善良/内鬼的 +50 任务金币。所有者规则：与职业自带的任务收入（NoellesRoles 酒保、SparkStrength 侦探等）叠加，
+     * 职业本身不会取消该奖励。
      */
     public static boolean shouldRewardTaskMoney(Role role, Collection<Identifier> traits) {
         return traits != null
-                && (EffectiveAlignment.hasConscience(traits) || EffectiveAlignment.hasImpostor(traits))
-                && !hasNativeTaskMoneyReward(role);
+                && (EffectiveAlignment.hasConscience(traits) || EffectiveAlignment.hasImpostor(traits));
     }
 
+    /** Roles whose task money NoellesRoles pays itself; only Money Tree eligibility reads this, never the trait payout.
+     *  由 NoellesRoles 自行发放任务金币的职业；仅用于摇钱树资格判定，不参与词条任务金币发放。 */
     public static boolean hasNativeTaskMoneyReward(Role role) {
         return role != null
                 && (role.equals(Noellesroles.BARTENDER)

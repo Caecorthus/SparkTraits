@@ -418,7 +418,6 @@ public final class SparkTraitsApi {
         }
 
         TraitPlayerComponent targetTraits = TraitPlayerComponent.KEY.maybeGet(target).orElse(null);
-        boolean spiritProjecting = EffectiveTraitService.isSpiritProjecting(target);
         boolean finalMomentActive = TraitWorldComponent.KEY.maybeGet(viewer.getWorld())
                 .map(TraitWorldComponent::isFinalMomentActive)
                 .orElse(false);
@@ -444,7 +443,9 @@ public final class SparkTraitsApi {
                 finalMomentActive,
                 targetTraits != null && targetTraits.isLastStandPending(),
                 targetTraits != null && targetTraits.isKillerInstinctHidden(),
-                spiritProjecting,
+                // Spirit projection leaves a defenseless body; downstream instinct sources must still outline it.
+                // 灵魂出窍留下的肉身毫无防备，下游本能来源仍须为其描边。
+                false,
                 goingDarkSuppressed
         );
     }

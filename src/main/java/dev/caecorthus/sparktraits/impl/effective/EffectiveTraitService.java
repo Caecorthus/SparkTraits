@@ -158,7 +158,9 @@ public final class EffectiveTraitService {
             return false;
         }
         TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
-        return shouldHideFromKillerInstinct(traits.isLastStandPending(), traits.isKillerInstinctHidden(), isSpiritProjecting(player));
+        // Spirit projection leaves a defenseless body; it must stay instinct-visible, so projection is not an input here.
+        // 灵魂出窍留下的肉身毫无防备，必须保持可被本能透视，因此出窍状态不参与此处判断。
+        return shouldHideFromKillerInstinct(traits.isLastStandPending(), traits.isKillerInstinctHidden());
     }
 
     public static boolean shouldHideFromKillerInstinct(boolean lastStandPending, boolean killerInstinctHidden) {
@@ -228,6 +230,8 @@ public final class EffectiveTraitService {
                 && (viewerRole == null || !viewerRole.identifier().equals(Noellesroles.DEMON_HUNTER_ID));
     }
 
+    /** No longer feeds any instinct rule: the projecting body stays instinct-visible. Kept with field 18's relay until an approved cleanup.
+     *  已不再参与任何本能规则：出窍本体保持可被透视。在获批清理前与第 18 号同步字段的转发一同保留。 */
     public static boolean isSpiritProjecting(PlayerEntity player) {
         if (player == null) {
             return false;
@@ -848,8 +852,8 @@ public final class EffectiveTraitService {
     }
 
     /**
-     * Grants SparkTraits task money only when the base role does not already pay for tasks.
-     * 仅在原职业没有自带任务金币时，由 SparkTraits 给阵营翻转玩家补发任务金币。
+     * Conscience/Impostor +50 task money; stacks on top of role-owned task income (see EffectiveEconomyRules).
+     * 善良/内鬼的 +50 任务金币；与职业自带的任务收入叠加（见 EffectiveEconomyRules）。
      */
     public static boolean shouldRewardTaskMoney(Role role, Collection<Identifier> traits) {
         return EffectiveEconomyRules.shouldRewardTaskMoney(role, traits);

@@ -190,7 +190,9 @@ public abstract class WatheClientMixin {
                         viewer.squaredDistanceTo(playerTarget),
                         targetTraits.isLastStandPending(),
                         targetTraits.isKillerInstinctHidden(),
-                        EffectiveTraitService.isSpiritProjecting(playerTarget),
+                        // A projecting Spirit Walker's body stays visible within the normal Conscience range.
+                        // 灵界行者出窍时留下的肉身在善良的正常范围内仍可被透视。
+                        false,
                         bombHolderIgnoresRange || poisonedTargetIgnoresRange
                 );
                 cir.setReturnValue(shouldHighlight
