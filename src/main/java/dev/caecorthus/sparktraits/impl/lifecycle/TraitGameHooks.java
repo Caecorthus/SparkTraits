@@ -21,6 +21,7 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBomber
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceEconomyService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerialKillerService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceWalkieTalkieService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
@@ -53,6 +54,7 @@ public final class TraitGameHooks {
         ConscienceSerialKillerService.register();
         ConsciencePoisonerService.register();
         ConscienceBomberFrenzyService.register();
+        ConscienceWalkieTalkieService.register();
         SilencedKillerRestrictionService.register();
         DepressionTraitService.register();
         ResetPlayer.EVENT.register(player -> {
