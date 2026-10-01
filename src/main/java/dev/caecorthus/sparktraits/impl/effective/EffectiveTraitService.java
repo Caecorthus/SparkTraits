@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl.effective;
 
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.compat.SparkStrengthCoronerBridge;
 import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.impl.effective.alignment.EffectiveAlignment;
 import dev.caecorthus.sparktraits.impl.effective.death.EffectiveDeathConsequenceRules;
@@ -109,7 +110,8 @@ public final class EffectiveTraitService {
                     game.getRole(viewer),
                     viewerTraits,
                     game.getRole(target),
-                    publicEffectiveTraitIds(target)
+                    publicEffectiveTraitIds(target),
+                    SparkStrengthCoronerBridge.appearsAsKillerCohort(target)
             );
             if (override == null) {
                 return null;
@@ -354,7 +356,17 @@ public final class EffectiveTraitService {
     /** Mirrors NoellesRoles' Undercover deception for SparkTraits' Impostor instinct.
      *  为 SparkTraits 的内鬼本能同步 NoellesRoles 卧底伪装成杀手同伙的规则。 */
     public static boolean appearsAsKillerToKillerInstinct(Role targetRole, boolean targetCanUseKillerFeatures) {
-        return targetCanUseKillerFeatures || isUndercover(targetRole);
+        return appearsAsKillerToKillerInstinct(targetRole, targetCanUseKillerFeatures, false);
+    }
+
+    /** Also mirrors SparkStrength's Coroner killer/Undercover body disguise, which native killers see as a cohort.
+     *  同时同步 SparkStrength 验尸官伪装成杀手/卧底尸体身份时被原生杀手视为同伙的规则。 */
+    public static boolean appearsAsKillerToKillerInstinct(
+            Role targetRole,
+            boolean targetCanUseKillerFeatures,
+            boolean targetHasCoronerKillerDisguise
+    ) {
+        return targetCanUseKillerFeatures || isUndercover(targetRole) || targetHasCoronerKillerDisguise;
     }
 
     public static Boolean conscienceMorphlingCohortOverride(
@@ -638,6 +650,16 @@ public final class EffectiveTraitService {
             Role targetRole,
             Collection<Identifier> targetTraits
     ) {
+        return cohortOverride(viewerRole, viewerTraits, targetRole, targetTraits, false);
+    }
+
+    public static Boolean cohortOverride(
+            Role viewerRole,
+            Collection<Identifier> viewerTraits,
+            Role targetRole,
+            Collection<Identifier> targetTraits,
+            boolean targetHasCoronerKillerDisguise
+    ) {
         if (hasConscience(viewerTraits)) {
             return Boolean.FALSE;
         }
@@ -650,7 +672,9 @@ public final class EffectiveTraitService {
         if (hasImpostor(targetTraits)) {
             return Boolean.TRUE;
         }
-        if (hasImpostor(viewerTraits) && isUndercover(targetRole)) {
+        // SparkStrength's Coroner cohort hook requires native killer features, so Impostor needs it mirrored here.
+        // SparkStrength 的验尸官同伙提示要求原生杀手功能，内鬼需要在这里同步。
+        if (hasImpostor(viewerTraits) && (isUndercover(targetRole) || targetHasCoronerKillerDisguise)) {
             return Boolean.TRUE;
         }
         return null;

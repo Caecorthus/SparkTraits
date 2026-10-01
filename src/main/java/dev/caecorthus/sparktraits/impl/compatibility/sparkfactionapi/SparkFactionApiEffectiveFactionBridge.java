@@ -38,7 +38,7 @@ public final class SparkFactionApiEffectiveFactionBridge {
         return resolveEffectiveFaction(effectiveTraitIds(player, gameComponent), currentFaction);
     }
 
-    static Identifier resolveEffectiveFaction(Collection<Identifier> traits, Identifier currentFaction) {
+    public static Identifier resolveEffectiveFaction(Collection<Identifier> traits, Identifier currentFaction) {
         if (traits == null || currentFaction == null) {
             return null;
         }
