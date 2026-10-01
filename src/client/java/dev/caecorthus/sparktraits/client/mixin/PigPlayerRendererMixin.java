@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.api.SparkTraitsApi;
+import dev.caecorthus.sparktraits.client.render.ChameleonRenderAlpha;
 import dev.caecorthus.sparktraits.client.render.PigPlayerRenderer;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTraitService;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
@@ -51,7 +52,8 @@ public abstract class PigPlayerRendererMixin {
                 && (!player.isInvisible() || spectatorReveal)
                 && PigTraitService.isPig(player)) {
             Identifier headTexture = getTexture(player);
-            PigPlayerRenderer.render(player, yaw, tickDelta, matrices, vertexConsumers, light, headTexture);
+            PigPlayerRenderer.render(player, yaw, tickDelta, matrices, vertexConsumers, light, headTexture,
+                    ChameleonRenderAlpha.resolve(player));
             ci.cancel();
         }
     }

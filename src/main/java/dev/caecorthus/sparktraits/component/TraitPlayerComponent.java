@@ -11,6 +11,8 @@ import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
+import dev.caecorthus.sparktraits.impl.traits.civilian.chameleon.ChameleonRules;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceTraits;
@@ -27,6 +29,7 @@ import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.NotNull;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
@@ -94,6 +97,12 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Runtime-only Pig ambient cadence, mirroring vanilla pig sound delay.
     // 运行期猪哼声节奏计数，模拟原版猪的环境音延迟。
     private int pigAmbientSoundChance;
+    // Public world tick at which a Chameleon became still; clients derive the fade from it.
+    // 公开的变色龙开始静止的世界刻，客户端据此推算淡化进度。
+    private long chameleonStillSinceTick = ChameleonRules.NONE;
+    // Server-only position the Chameleon's stillness is measured from.
+    // 仅服务端使用的变色龙静止判定基准位置。
+    private Vec3d chameleonAnchor;
     public TraitPlayerComponent(PlayerEntity player) {
         this.player = player;
     }
@@ -227,6 +236,31 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     public void resetPigAmbientSoundChance() {
         this.pigAmbientSoundChance = 0;
+    }
+
+    public long getChameleonStillSinceTick() {
+        return chameleonStillSinceTick;
+    }
+
+    public Vec3d getChameleonAnchor() {
+        return chameleonAnchor;
+    }
+
+    public void updateChameleonStillness(long stillSinceTick, Vec3d anchor) {
+        this.chameleonAnchor = anchor;
+        if (this.chameleonStillSinceTick != stillSinceTick) {
+            this.chameleonStillSinceTick = stillSinceTick;
+            sync();
+        }
+    }
+
+    public void resetChameleonStillness() {
+        updateChameleonStillness(ChameleonRules.NONE, null);
+    }
+
+    private void clearChameleonStillness() {
+        chameleonStillSinceTick = ChameleonRules.NONE;
+        chameleonAnchor = null;
     }
 
     public void setDepressionSuicideTicks(int ticks) {
@@ -439,6 +473,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         if (!activeTraits.contains(PigTrait.ID)) {
             pigActive = false;
         }
+        if (!activeTraits.contains(CivilianTraits.CHAMELEON)) {
+            clearChameleonStillness();
+        }
 
         if (player instanceof ServerPlayerEntity serverPlayer) {
             for (Identifier traitId : plan.missing()) {
@@ -464,7 +501,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid
                 && depressionSuicideTicks <= 0 && !depressionPsychoActive
                 && depressionPsychoAttacker == null && depressionCounterTarget == null
-                && !pigActive) {
+                && !pigActive && chameleonStillSinceTick == ChameleonRules.NONE) {
             return;
         }
         // Pig dimensions read the active trait set, so reset once after the set is cleared.
@@ -500,6 +537,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionCounterTarget = null;
         pigActive = false;
         resetPigAmbientSoundChance();
+        clearChameleonStillness();
         if (hadPigActive) {
             player.calculateDimensions();
         }
@@ -605,6 +643,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         buf.writeBoolean(spiritProjectionInstinctHidden);
         buf.writeBoolean(temporaryFakeDeathPending);
         buf.writeVarInt(owner && consciencePoisonTicks > 0 ? consciencePoisonInitialTicks : 0);
+        writeOptionalTick(buf, chameleonStillSinceTick);
     }
 
     @Override
@@ -640,6 +679,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         spiritProjectionInstinctHidden = buf.readableBytes() > 0 && buf.readBoolean();
         temporaryFakeDeathPending = buf.readableBytes() > 0 && buf.readBoolean();
         consciencePoisonInitialTicks = buf.readableBytes() > 0 ? buf.readVarInt() : Math.max(0, consciencePoisonTicks);
+        chameleonStillSinceTick = buf.readableBytes() > 0 ? readOptionalTick(buf) : ChameleonRules.NONE;
         if (wasPigActive != isPigActive()) {
             player.calculateDimensions();
         }
@@ -693,6 +733,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionCounterTarget = null;
         pigActive = false;
         resetPigAmbientSoundChance();
+        clearChameleonStillness();
         fromNbt(tag.getList("ActiveTraits", NbtElement.STRING_TYPE), activeTraits);
         fromNbt(tag.getList("PendingTraits", NbtElement.STRING_TYPE), pendingTraits);
         fromNbt(tag.getList("RevealedTraits", NbtElement.STRING_TYPE), revealedTraits);
@@ -801,5 +842,16 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             return null;
         }
         return buf.readUuid();
+    }
+
+    private static void writeOptionalTick(RegistryByteBuf buf, long tick) {
+        buf.writeBoolean(tick >= 0);
+        if (tick >= 0) {
+            buf.writeVarLong(tick);
+        }
+    }
+
+    private static long readOptionalTick(RegistryByteBuf buf) {
+        return buf.readBoolean() ? buf.readVarLong() : ChameleonRules.NONE;
     }
 }

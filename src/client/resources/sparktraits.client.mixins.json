@@ -18,6 +18,8 @@
     "BombManiacDrawContextMixin",
     "CautiousClientWorldSoundMixin",
     "CautiousPresenceFootstepsVolumeMixin",
+    "ChameleonEntityRenderDispatcherMixin",
+    "ChameleonLivingEntityRendererMixin",
     "DepressionGameRendererMixin",
     "DepressionPsychoArmSkinMixin",
     "DepressionInGameHudMixin",

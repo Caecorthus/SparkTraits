@@ -175,16 +175,18 @@ public final class EffectiveTraitService {
     }
 
     /** Final Moment overrides every SparkTraits-owned instinct suppression, matching Wathe's highlight priority.
-     *  终局时刻覆盖所有 SparkTraits 本能屏蔽，与 Wathe 的高亮优先级保持一致。 */
+     *  Viewer-relative suppression covers Going Dark and fully faded Chameleons.
+     *  终局时刻覆盖所有 SparkTraits 本能屏蔽，与 Wathe 的高亮优先级保持一致；
+     *  观察者相关屏蔽包括隐蔽行动与完全透明的变色龙。 */
     public static boolean shouldHideFromInstinct(
             boolean finalMomentActive,
             boolean lastStandPending,
             boolean killerInstinctHidden,
             boolean spiritProjecting,
-            boolean goingDarkSuppressed
+            boolean viewerSuppressed
     ) {
         return !finalMomentActive
-                && (goingDarkSuppressed || shouldHideFromKillerInstinct(
+                && (viewerSuppressed || shouldHideFromKillerInstinct(
                         lastStandPending,
                         killerInstinctHidden,
                         spiritProjecting

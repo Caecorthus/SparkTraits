@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.client.compat.SparkWitchBlackRavenBridge;
+import dev.caecorthus.sparktraits.client.instinct.ChameleonInstinctClientHooks;
 import dev.caecorthus.sparktraits.client.instinct.GoingDarkInstinctClientHooks;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
@@ -102,6 +103,13 @@ public abstract class WatheClientMixin {
         }
 
         if (playerTarget != null && GoingDarkInstinctClientHooks.shouldSuppress(viewer, playerTarget, game)) {
+            cir.setReturnValue(-1);
+            return;
+        }
+
+        // A fully faded Chameleon hides from every living viewer's instinct overlay.
+        // 完全透明的变色龙对所有存活观察者的本能高亮隐藏。
+        if (playerTarget != null && ChameleonInstinctClientHooks.shouldSuppress(viewer, playerTarget)) {
             cir.setReturnValue(-1);
             return;
         }
