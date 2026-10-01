@@ -18,6 +18,7 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceTraits;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTrait;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
@@ -80,6 +81,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     private int consciencePoisonTicks = -1;
     private int consciencePoisonInitialTicks;
     private UUID consciencePoisoner;
+    // Server-only blue-poison sanity drain window, in ticks.
+    // 蓝毒扣理智的剩余时长（tick），仅服务端使用。
+    private int blueSanityDrainTicks;
     private Identifier serialKillerMurdererRole;
     private int bloodthirstyKillCount;
     private boolean corneredLastKillerRewardPaid;
@@ -310,6 +314,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         setConsciencePoisonTicks(-1, null);
     }
 
+    public void extendBlueSanityDrain(int ticks) {
+        blueSanityDrainTicks = Math.max(blueSanityDrainTicks, ticks);
+    }
+
     public void setLastStandPending(boolean lastStandPending) {
         if (this.lastStandPending != lastStandPending) {
             this.lastStandPending = lastStandPending;
@@ -496,7 +504,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         if (activeTraits.isEmpty() && revealedTraits.isEmpty() && !killerInstinctHidden && !lastStandPending
                 && !temporaryFakeDeathPending
                 && !goingDarkInstinctHidden && !cautiousSoundSuppressed
-                && consciencePoisonTicks <= 0
+                && consciencePoisonTicks <= 0 && blueSanityDrainTicks <= 0
                 && !conscienceInstinctVisible && !impostorInstinctVisible && serialKillerMurdererRole == null
                 && bloodthirstyKillCount <= 0 && !corneredLastKillerRewardPaid
                 && depressionSuicideTicks <= 0 && !depressionPsychoActive
@@ -528,6 +536,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         consciencePoisonTicks = -1;
         consciencePoisonInitialTicks = 0;
         consciencePoisoner = null;
+        blueSanityDrainTicks = 0;
         serialKillerMurdererRole = null;
         bloodthirstyKillCount = 0;
         corneredLastKillerRewardPaid = false;
@@ -571,6 +580,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     @Override
     public void serverTick() {
         syncSpiritProjectionInstinctState();
+        tickBlueSanityDrain();
         if (consciencePoisonTicks <= 0) {
             return;
         }
@@ -599,6 +609,21 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         // 即使投毒者离线或已前往其他世界，也保留原始责任人 UUID。
         SparkWitchKillAttributionBridge.runWithKillAttribution(serverPlayer.getServerWorld(), poisoner,
                 () -> GameFunctions.killPlayer(serverPlayer, true, killer, GameConstants.DeathReasons.POISON));
+    }
+
+    private void tickBlueSanityDrain() {
+        if (blueSanityDrainTicks <= 0) {
+            return;
+        }
+        blueSanityDrainTicks--;
+        if (!GameFunctions.isPlayerPlayingAndAlive(player)) {
+            blueSanityDrainTicks = 0;
+            return;
+        }
+        // Players without real sanity are unaffected because Wathe pins their mood.
+        // 没有真理智的玩家不受影响，Wathe 会固定其理智值。
+        PlayerMoodComponent mood = PlayerMoodComponent.KEY.get(player);
+        mood.setMood(ConsciencePoisonerService.moodAfterBlueSanityDrain(mood.getMood()));
     }
 
     private void syncSpiritProjectionInstinctState() {
@@ -724,6 +749,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         consciencePoisonTicks = -1;
         consciencePoisonInitialTicks = 0;
         consciencePoisoner = null;
+        blueSanityDrainTicks = 0;
         serialKillerMurdererRole = null;
         bloodthirstyKillCount = 0;
         corneredLastKillerRewardPaid = false;

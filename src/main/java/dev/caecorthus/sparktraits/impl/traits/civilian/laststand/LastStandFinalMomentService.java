@@ -4,9 +4,12 @@ import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.api.TraitAssignmentReason;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi.SparkFactionApiEffectiveFactionBridge;
 import dev.caecorthus.sparktraits.impl.replay.SparkTraitsReplayEvents;
 import dev.caecorthus.sparktraits.mixin.RoleHistoryComponentAccessor;
-import dev.doctor4t.wathe.api.Faction;
+import dev.caecorthus.sparkfactionapi.api.FactionDefinition;
+import dev.caecorthus.sparkfactionapi.api.FactionIds;
+import dev.caecorthus.sparkfactionapi.api.SparkFactionApi;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
@@ -61,13 +64,7 @@ public final class LastStandFinalMomentService {
     private static final int TITLE_FADE_IN_TICKS = 10;
     private static final int TITLE_STAY_TICKS = 100;
     private static final int TITLE_FADE_OUT_TICKS = 10;
-    private static final int FINAL_MOMENT_CIVILIAN_COLOR = 0x36E51B;
-    private static final int FINAL_MOMENT_KILLER_COLOR = 0xC13838;
-    private static final int FINAL_MOMENT_NEUTRAL_COLOR = 0xFFFF00;
-    private static final int FINAL_MOMENT_WITCH_COLOR = 0xB567FF;
-    private static final int FINAL_MOMENT_NONE_COLOR = 0xFFFFFF;
-    private static final Identifier SPARKWITCH_GRAND_WITCH_ID = Identifier.of("sparkwitch", "grand_witch");
-    private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
+    private static final int UNKNOWN_FACTION_COLOR = 0xFFFFFF;
     private static final Identifier SPARKWITCH_FIEND_ID = Identifier.of("sparkwitch", "fiend");
 
     private LastStandFinalMomentService() {
@@ -297,43 +294,44 @@ public final class LastStandFinalMomentService {
         return duration;
     }
 
-    public static int finalMomentHighlightColor(@Nullable Role role) {
-        return finalMomentHighlightColor(role, List.of(), false);
-    }
-
-    public static int finalMomentHighlightColor(@Nullable Role role, boolean lastStandFinalMomentLooseEnd) {
-        return finalMomentHighlightColor(role, List.of(), lastStandFinalMomentLooseEnd);
-    }
-
     public static int finalMomentHighlightColor(
-            @Nullable Role role,
-            @Nullable Collection<Identifier> traits,
+            PlayerEntity player,
+            GameWorldComponent gameComponent,
             boolean lastStandFinalMomentLooseEnd
     ) {
+        Role role = gameComponent.getRole(player);
+        // Base faction, not the full effective chain: SparkWitch maps Murderous Witch to an ability-bridge
+        // faction, but it is still a native neutral role.
+        // 使用基础阵营而非完整有效阵营链：SparkWitch 把杀意魔女映射到能力桥接阵营，但它仍是原生中立职业。
+        Identifier faction = finalMomentHighlightFaction(
+                role,
+                lastStandFinalMomentLooseEnd,
+                SparkFactionApi.resolveBaseFaction(role),
+                TraitPlayerComponent.KEY.get(player).getActiveTraitIds()
+        );
+        return SparkFactionApi.getFaction(faction)
+                .map(FactionDefinition::color)
+                .orElse(UNKNOWN_FACTION_COLOR);
+    }
+
+    /** Picks the faction whose registered SparkFactionAPI color Final Moment shows.
+     *  选出终局时刻高亮所用的阵营，颜色取该阵营在 SparkFactionAPI 中登记的阵营色。 */
+    static Identifier finalMomentHighlightFaction(
+            @Nullable Role role,
+            boolean lastStandFinalMomentLooseEnd,
+            @Nullable Identifier baseFaction,
+            @Nullable Collection<Identifier> traits
+    ) {
         if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
-            return FINAL_MOMENT_CIVILIAN_COLOR;
+            return FactionIds.CIVILIAN;
         }
-        Collection<Identifier> activeTraits = traits == null ? List.of() : traits;
-        // Final Moment colors follow effective alignment so flipped traits do not leak base-role colors.
-        // 终局时刻按有效阵营染色，避免阵营翻转天赋泄露原职业颜色。
-        if (EffectiveTraitService.hasImpostor(activeTraits)) {
-            return FINAL_MOMENT_KILLER_COLOR;
+        if (baseFaction == null) {
+            return FactionIds.NONE;
         }
-        if (EffectiveTraitService.hasConscience(activeTraits)) {
-            return FINAL_MOMENT_CIVILIAN_COLOR;
-        }
-        // SparkWitch's custom witch faction appears as native neutral here, so keep its current purple.
-        // SparkWitch 自定义魔女阵营在这里会表现为原生中立，因此保留当前淡紫色。
-        if (isSparkWitchFactionRole(role)) {
-            return FINAL_MOMENT_WITCH_COLOR;
-        }
-        Faction faction = role == null ? Faction.NONE : role.getFaction();
-        return switch (faction) {
-            case CIVILIAN -> FINAL_MOMENT_CIVILIAN_COLOR;
-            case KILLER -> FINAL_MOMENT_KILLER_COLOR;
-            case NEUTRAL -> FINAL_MOMENT_NEUTRAL_COLOR;
-            case NONE -> FINAL_MOMENT_NONE_COLOR;
-        };
+        // Impostor/Conscience flips keep flipped players from leaking their base-role faction.
+        // 内鬼/善良的阵营翻转避免泄露原职业阵营。
+        Identifier flipped = SparkFactionApiEffectiveFactionBridge.resolveEffectiveFaction(traits, baseFaction);
+        return flipped == null ? baseFaction : flipped;
     }
 
     public static boolean didFinalMomentPlayerWin(
@@ -504,14 +502,6 @@ public final class LastStandFinalMomentService {
 
     static boolean isSparkWitchFiend(@Nullable Role role) {
         return role != null && SPARKWITCH_FIEND_ID.equals(role.identifier());
-    }
-
-    private static boolean isSparkWitchFactionRole(@Nullable Role role) {
-        if (role == null) {
-            return false;
-        }
-        Identifier roleId = role.identifier();
-        return SPARKWITCH_GRAND_WITCH_ID.equals(roleId) || SPARKWITCH_ACCOMPLICE_ID.equals(roleId);
     }
 
     private static List<ServerPlayerEntity> livingPlayers(ServerWorld world, GameWorldComponent gameComponent) {
