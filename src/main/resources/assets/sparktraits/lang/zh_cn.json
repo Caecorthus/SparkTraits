@@ -63,7 +63,7 @@
   "trait.sparktraits.well_trained.name": "训练有素",
   "trait.sparktraits.well_trained.description": "低理智不再妨碍你，且理智流失速度降低百分之三十。",
   "trait.sparktraits.going_dark.name": "隐蔽行动",
-  "trait.sparktraits.going_dark.description": "关灯期间，杀手、内鬼、大魔女、杀意魔女、共犯、黑警和内应的本能无法透视你。",
+  "trait.sparktraits.going_dark.description": "关灯期间，杀手、内鬼、大魔女、杀意魔女、共犯（含特殊共犯）、黑警和内应的本能无法透视你。",
   "trait.sparktraits.bloodthirsty.name": "嗜血",
   "trait.sparktraits.bloodthirsty.description": "每层真实击杀使受支持武器的冷却缩短 5%，计入层数上限为本局人数的三分之一。",
   "trait.sparktraits.the_showman.name": "作秀",
