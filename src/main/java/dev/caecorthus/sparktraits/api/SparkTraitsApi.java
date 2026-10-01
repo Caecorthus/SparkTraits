@@ -104,6 +104,16 @@ public final class SparkTraitsApi {
                 : dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService.marksmanRangeMultiplier(player);
     }
 
+    /** Throw charge for downstream throwables that time their own charge instead of vanilla item use:
+     * shortened when the player holds an active Herculean Strength, otherwise {@code baseTicks}.
+     * Launch speed needs no call; SparkTraits scales every thrown projectile itself. Null-safe, both sides.
+     * 供自行计时蓄力（不走原版使用流程）的下游投掷物查询蓄力时长：玩家持有生效的力大无穷时缩短，
+     * 否则返回 {@code baseTicks}。初速无需调用，SparkTraits 会自行放大所有投掷物。支持空值，两端均可调用。 */
+    public static int getThrowChargeTicks(PlayerEntity player, int baseTicks) {
+        return player == null || player.getWorld() == null ? baseTicks
+                : dev.caecorthus.sparktraits.impl.traits.killer.HerculeanStrengthService.throwChargeTicks(player, baseTicks);
+    }
+
     public static void registerTerminalDeathReason(Identifier reason) {
         dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules.register(reason);
     }

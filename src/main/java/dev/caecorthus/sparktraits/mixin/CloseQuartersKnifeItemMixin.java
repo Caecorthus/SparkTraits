@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
 import dev.caecorthus.sparktraits.impl.traits.killer.combat.CloseQuartersService;
 import dev.caecorthus.sparktraits.impl.traits.killer.combat.CombatTimingRules;
 import dev.doctor4t.wathe.item.KnifeItem;
@@ -25,10 +26,13 @@ public abstract class CloseQuartersKnifeItemMixin {
     }
 
     @ModifyConstant(method = "onStoppedUsing", constant = @Constant(intValue = 10))
-    private int sparktraits$threeTickWindup(int original, ItemStack stack, World world, LivingEntity user, int remaining) {
+    private int sparktraits$shorterWindup(int original, ItemStack stack, World world, LivingEntity user, int remaining) {
+        if (!(user instanceof PlayerEntity player)) return original;
         // Wathe uses elapsed > threshold, not >= threshold. 2 means the first accepted tick is 3.
-        return user instanceof PlayerEntity player && CloseQuartersService.isRaisedKnife(stack)
-                && CloseQuartersService.hasRaisedKnifeTrait(player) ? CombatTimingRules.KNIFE_WINDUP_TICKS - 1 : original;
+        if (CloseQuartersService.isRaisedKnife(stack) && CloseQuartersService.hasRaisedKnifeTrait(player)) {
+            return CombatTimingRules.KNIFE_WINDUP_TICKS - 1;
+        }
+        return KillerTraitService.seasonedKnifeReleaseThreshold(player, original);
     }
 
     @Inject(method = "onStoppedUsing", at = @At("HEAD"), cancellable = true)

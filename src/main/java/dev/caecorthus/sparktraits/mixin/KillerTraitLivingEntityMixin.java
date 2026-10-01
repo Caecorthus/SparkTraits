@@ -10,16 +10,18 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Adds Thrust as a narrow extra knockback modifier for eligible killer weapons.
- * 将突刺作为合格杀手武器上的窄范围额外击退修饰。
+ * Keeps held-weapon attribute modifiers for killer traits in step with the held item: Thrust knockback
+ * and Manic bat attack speed.
+ * 让杀手天赋的手持武器属性修饰随手持物品同步：突刺的击退与狂躁的球棒攻速。
  */
 @Mixin(LivingEntity.class)
 public abstract class KillerTraitLivingEntityMixin {
     @Inject(method = "tick", at = @At("HEAD"))
-    private void sparktraits$updateThrustKnockback(CallbackInfo ci) {
+    private void sparktraits$updateHeldWeaponModifiers(CallbackInfo ci) {
         if ((Object) this instanceof PlayerEntity player
                 && !SparkTraitsServerConnection.isUnconfirmedClientEntity(player)) {
             KillerTraitService.updateThrustKnockback(player);
+            KillerTraitService.updateManicAttackSpeed(player);
         }
     }
 }

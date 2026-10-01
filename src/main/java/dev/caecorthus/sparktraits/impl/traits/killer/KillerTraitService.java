@@ -33,6 +33,7 @@ import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 /**
  * Shared runtime rules for killer-only traits.
@@ -49,13 +50,25 @@ public final class KillerTraitService {
     public static final double THRUST_EXTRA_KNOCKBACK = 0.25;
     public static final Identifier THRUST_KNOCKBACK_MODIFIER_ID = SparkTraits.id("thrust_knockback");
     public static final Identifier CHARISMA_SHOP_PHASE = SparkTraits.id("charisma_discount");
+    public static final int MASTER_SABOTEUR_DURATION_PERCENT = 150;
+    public static final int SEASONED_WINDUP_PERCENT = 80;
+    // Attack cooldown is 20 / attack speed ticks, so a 20% shorter cooldown needs 1 / 0.8 - 1 extra speed.
+    // 攻击冷却为 20 / 攻速 刻，冷却缩短 20% 需要额外 1 / 0.8 - 1 的攻速。
+    public static final double MANIC_ATTACK_SPEED_BONUS = 0.25;
+    public static final Identifier MANIC_ATTACK_SPEED_MODIFIER_ID = SparkTraits.id("manic_attack_speed");
 
     private static final ThreadLocal<Deque<KillAttempt>> KILL_ATTEMPTS = ThreadLocal.withInitial(ArrayDeque::new);
     private static final ThreadLocal<Boolean> SECOND_STRIKE_REPLAYING = ThreadLocal.withInitial(() -> false);
+    private static final ThreadLocal<Boolean> MASTER_SABOTEUR_BLACKOUT = ThreadLocal.withInitial(() -> false);
     private static final EntityAttributeModifier THRUST_KNOCKBACK_MODIFIER = new EntityAttributeModifier(
             THRUST_KNOCKBACK_MODIFIER_ID,
             THRUST_EXTRA_KNOCKBACK,
             EntityAttributeModifier.Operation.ADD_VALUE
+    );
+    private static final EntityAttributeModifier MANIC_ATTACK_SPEED_MODIFIER = new EntityAttributeModifier(
+            MANIC_ATTACK_SPEED_MODIFIER_ID,
+            MANIC_ATTACK_SPEED_BONUS,
+            EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
     );
 
     private KillerTraitService() {
@@ -104,6 +117,10 @@ public final class KillerTraitService {
 
     public static boolean hasPsychoModeShopEntry(PlayerEntity player) {
         return hasShopEntry(player, List.of("psycho_mode"), List.of(WatheItems.PSYCHO_MODE));
+    }
+
+    public static boolean hasBlackoutShopEntry(PlayerEntity player) {
+        return hasShopEntry(player, List.of("blackout"), List.of(WatheItems.BLACKOUT));
     }
 
     public static boolean hasThrustWeaponAccess(PlayerEntity player) {
@@ -191,6 +208,51 @@ public final class KillerTraitService {
             return entry;
         }
         return discountedShopEntry(entry);
+    }
+
+    /**
+     * Scopes one shop blackout to its buyer so only a Master Saboteur's own blackout is extended.
+     * 将一次商店关灯限定到购买者，只延长破坏大师本人发起的关灯。
+     */
+    public static boolean triggerBlackoutFor(PlayerEntity initiator, BooleanSupplier trigger) {
+        boolean previous = MASTER_SABOTEUR_BLACKOUT.get();
+        MASTER_SABOTEUR_BLACKOUT.set(hasEligibleTrait(initiator, KillerTraits.MASTER_SABOTEUR));
+        try {
+            return trigger.getAsBoolean();
+        } finally {
+            if (previous) {
+                MASTER_SABOTEUR_BLACKOUT.set(true);
+            } else {
+                MASTER_SABOTEUR_BLACKOUT.remove();
+            }
+        }
+    }
+
+    public static int masterSaboteurBlackoutDuration(int duration) {
+        return masterSaboteurBlackoutDuration(duration, MASTER_SABOTEUR_BLACKOUT.get());
+    }
+
+    static int masterSaboteurBlackoutDuration(int duration, boolean ownBlackout) {
+        if (!ownBlackout || duration <= 0) {
+            return duration;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, (long) duration * MASTER_SABOTEUR_DURATION_PERCENT / 100);
+    }
+
+    public static int seasonedKnifeReleaseThreshold(PlayerEntity player, int threshold) {
+        return seasonedKnifeReleaseThreshold(threshold, hasEligibleTrait(player, KillerTraits.SEASONED));
+    }
+
+    /**
+     * Wathe accepts a stab once elapsed use ticks exceed the threshold, so the windup is threshold + 1 ticks.
+     * Wathe 在已用刻数超过阈值后才接受出刀，因此前摇为阈值加一刻。
+     */
+    static int seasonedKnifeReleaseThreshold(int threshold, boolean seasoned) {
+        if (!seasoned || threshold <= 0) {
+            return threshold;
+        }
+        int windupTicks = ((threshold + 1) * SEASONED_WINDUP_PERCENT + 99) / 100;
+        return Math.max(0, windupTicks - 1);
     }
 
     public static int paranoidPsychoTicks(int originalTicks) {
@@ -343,6 +405,19 @@ public final class KillerTraitService {
         }
     }
 
+    public static void updateManicAttackSpeed(PlayerEntity player) {
+        EntityAttributeInstance attackSpeed = player.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_SPEED);
+        if (attackSpeed == null) {
+            return;
+        }
+        boolean active = player.getMainHandStack().isOf(WatheItems.BAT) && hasEligibleTrait(player, KillerTraits.MANIC);
+        if (active && !attackSpeed.hasModifier(MANIC_ATTACK_SPEED_MODIFIER_ID)) {
+            attackSpeed.addTemporaryModifier(MANIC_ATTACK_SPEED_MODIFIER);
+        } else if (!active && attackSpeed.hasModifier(MANIC_ATTACK_SPEED_MODIFIER_ID)) {
+            attackSpeed.removeModifier(MANIC_ATTACK_SPEED_MODIFIER_ID);
+        }
+    }
+
     private static ShopEntry discountedShopEntry(ShopEntry entry) {
         if (entry instanceof DiscountedShopEntry || entry.price() <= 0) {
             return entry;
@@ -430,7 +505,7 @@ public final class KillerTraitService {
         return KillerWeaponTags.isThrustWeapon(player.getMainHandStack());
     }
 
-    private static boolean hasEligibleTrait(PlayerEntity player, Identifier traitId) {
+    static boolean hasEligibleTrait(PlayerEntity player, Identifier traitId) {
         return player != null
                 && TraitPlayerComponent.KEY.get(player).hasActiveTrait(traitId)
                 && hasEligibleKillerTraitOwner(player);
