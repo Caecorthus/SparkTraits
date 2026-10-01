@@ -1,12 +1,14 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.GoingDarkSyncService;
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
 import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import net.minecraft.server.world.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import dev.caecorthus.sparktraits.SparkTraits;
 
@@ -18,6 +20,13 @@ import dev.caecorthus.sparktraits.SparkTraits;
 public abstract class WorldBlackoutComponentMixin {
     @Shadow
     public abstract boolean isBlackoutActive();
+
+    // Every light's duration passes through here before it feeds both the light and the blackout timer.
+    // 每盏灯的时长在写入灯具与关灯计时前都会经过这里。
+    @ModifyVariable(method = "triggerBlackout", at = @At("STORE"), name = "duration")
+    private int sparktraits$extendMasterSaboteurBlackout(int duration) {
+        return KillerTraitService.masterSaboteurBlackoutDuration(duration);
+    }
 
     @Inject(method = "applyBlackoutEffects", at = @At("TAIL"))
     private void sparktraits$syncGoingDarkDuringBlackout(ServerWorld serverWorld, CallbackInfo ci) {
