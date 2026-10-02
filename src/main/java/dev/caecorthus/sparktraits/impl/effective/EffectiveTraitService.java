@@ -274,6 +274,7 @@ public final class EffectiveTraitService {
                 instinctEnabled,
                 targetPlayingAndAlive,
                 targetSpectatingOrCreative,
+                false,
                 targetDistanceSquared,
                 lastStandPending,
                 killerInstinctHidden,
@@ -282,10 +283,13 @@ public final class EffectiveTraitService {
         );
     }
 
+    /** Invisible targets (Phantom, Phantom backpack, Last Escape) never show, matching NoellesRoles' invisible skip.
+     *  隐身目标（幽灵、幽灵背包隐身、最后逃亡）从不显示，与 NoellesRoles 跳过隐身目标的规则一致。 */
     public static boolean shouldConscienceInstinctHighlightTarget(
             boolean instinctEnabled,
             boolean targetPlayingAndAlive,
             boolean targetSpectatingOrCreative,
+            boolean targetInvisible,
             double targetDistanceSquared,
             boolean lastStandPending,
             boolean killerInstinctHidden,
@@ -294,6 +298,7 @@ public final class EffectiveTraitService {
     ) {
         return instinctEnabled
                 && !targetSpectatingOrCreative
+                && !targetInvisible
                 && !spiritProjecting
                 && (ignoreRangeLimit || targetDistanceSquared <= CONSCIENCE_INSTINCT_RANGE_SQUARED)
                 && (targetPlayingAndAlive || lastStandPending || killerInstinctHidden);

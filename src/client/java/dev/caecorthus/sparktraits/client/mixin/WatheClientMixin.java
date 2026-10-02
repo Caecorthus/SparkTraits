@@ -140,11 +140,12 @@ public abstract class WatheClientMixin {
             return;
         }
 
-        // NoellesRoles serial-killer targets are always visible; keep that before Conscience range logic.
-        // NoellesRoles 的连环杀手目标不受善良本能距离限制，先保留原目标高亮。
+        // NoellesRoles serial-killer targets are always visible unless invisible; keep that before Conscience range logic.
+        // NoellesRoles 的连环杀手目标不受善良本能距离限制（隐身时除外），先保留原目标高亮。
         if (playerTarget != null && ConscienceSerialKillerService.shouldUseSerialKillerTargetHighlight(
                 game.isRole(viewer, Noellesroles.SERIAL_KILLER),
-                SerialKillerPlayerComponent.KEY.get(viewer).isCurrentTarget(playerTarget.getUuid())
+                SerialKillerPlayerComponent.KEY.get(viewer).isCurrentTarget(playerTarget.getUuid()),
+                playerTarget.isInvisible()
         )) {
             cir.setReturnValue(Noellesroles.SERIAL_KILLER.color());
             return;
@@ -152,9 +153,12 @@ public abstract class WatheClientMixin {
 
         boolean targetHasBluePoison = targetTraits != null && targetTraits.hasConsciencePoison();
         boolean targetHasNormalPoison = playerTarget != null && PlayerPoisonComponent.KEY.get(playerTarget).poisonTicks > 0;
+        // Like NoellesRoles' Toxicologist outline, blue poison never reveals an invisible target.
+        // 与 NoellesRoles 毒理学家描边一致，蓝毒不会暴露隐身目标。
         if (playerTarget != null
                 && targetHasBluePoison
                 && game.isRole(viewer, Noellesroles.TOXICOLOGIST)
+                && !playerTarget.isInvisible()
                 && viewer.canSee(playerTarget)) {
             cir.setReturnValue(ConsciencePoisonerService.poisonHighlightColor(
                     targetHasNormalPoison,
@@ -196,6 +200,7 @@ public abstract class WatheClientMixin {
                         WatheClient.isInstinctEnabled(),
                         GameFunctions.isPlayerPlayingAndAlive(playerTarget),
                         GameFunctions.isPlayerSpectatingOrCreative(playerTarget),
+                        playerTarget.isInvisible(),
                         viewer.squaredDistanceTo(playerTarget),
                         targetTraits.isLastStandPending(),
                         targetTraits.isKillerInstinctHidden(),

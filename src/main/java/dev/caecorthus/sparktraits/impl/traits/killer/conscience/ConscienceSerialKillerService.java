@@ -73,10 +73,14 @@ public final class ConscienceSerialKillerService {
         return conscienceSerialKiller;
     }
 
-    /** Keeps NoellesRoles target instinct as an always-visible Serial Killer outline.
-     *  保留 NoellesRoles 目标本能：无距离限制，并使用连环杀手边框色。 */
-    public static boolean shouldUseSerialKillerTargetHighlight(boolean serialKiller, boolean currentTarget) {
-        return serialKiller && currentTarget;
+    /** Keeps NoellesRoles target instinct as an always-visible Serial Killer outline, which it also skips for invisible targets.
+     *  保留 NoellesRoles 目标本能：无距离限制，并使用连环杀手边框色；与其一致，隐身目标不显示。 */
+    public static boolean shouldUseSerialKillerTargetHighlight(
+            boolean serialKiller,
+            boolean currentTarget,
+            boolean targetInvisible
+    ) {
+        return serialKiller && currentTarget && !targetInvisible;
     }
 
     public static int conscienceKillReward(boolean conscienceSerialKiller, boolean rewardableVictim, boolean targetMurderer) {
