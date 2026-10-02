@@ -27,6 +27,7 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 public final class TraitLockValidationService {
     private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
     private static final Identifier SPARKWITCH_SAINT_ID = Identifier.of("sparkwitch", "saint");
+    private static final Identifier SPARKWITCH_BLIND_ID = Identifier.of("sparkwitch", "blind");
 
     private TraitLockValidationService() {
     }
@@ -95,6 +96,7 @@ public final class TraitLockValidationService {
                 || isUnknownRole(role)
                 || (!role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
                 && !role.identifier().equals(SPARKWITCH_SAINT_ID)
+                && !role.identifier().equals(SPARKWITCH_BLIND_ID)
                 && !PoliceRoleCategory.isPolice(role));
     }
 
