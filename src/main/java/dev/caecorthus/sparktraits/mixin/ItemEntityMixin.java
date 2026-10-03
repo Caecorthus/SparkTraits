@@ -3,7 +3,6 @@ package dev.caecorthus.sparktraits.mixin;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorRevolverService;
-import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBomberFrenzyService;
 import dev.doctor4t.wathe.index.tag.WatheItemTags;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -27,11 +26,6 @@ public abstract class ItemEntityMixin {
 
     @Inject(method = "onPlayerCollision", at = @At("HEAD"), cancellable = true)
     private void sparktraits$blockImpostorGroundGunPickup(PlayerEntity player, CallbackInfo ci) {
-        if (ConscienceBomberFrenzyService.isMarkedGrenade(getStack())) {
-            ((ItemEntity) (Object) this).discard();
-            ci.cancel();
-            return;
-        }
         if (player.isCreative() || player.getWorld().isClient) {
             return;
         }
