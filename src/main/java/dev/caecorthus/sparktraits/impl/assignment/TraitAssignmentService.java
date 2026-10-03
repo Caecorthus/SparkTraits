@@ -149,7 +149,7 @@ public final class TraitAssignmentService {
         enforceRandomDepressionCap(plans, players.size());
 
         traitWorld.clearRoundState();
-        for (PlayerPlan plan : plans) {
+        for (PlayerPlan plan : conscienceFirst(plans)) {
             markUniqueTraits(traitWorld, plan.traits());
             TraitAssignmentReason reason = plan.hasLocks() ? TraitAssignmentReason.PENDING_LOCK : TraitAssignmentReason.RANDOM;
             TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(plan.player());
@@ -610,6 +610,28 @@ public final class TraitAssignmentService {
     }
 
     record ForcedTraitPlan(List<Identifier> lockedTraits, List<Identifier> randomTraits) {
+    }
+
+    /**
+     * Every setActiveTraits call syncs at once, so Conscience must land before Impostor: otherwise a killer about to
+     * turn civilian would still count as an effective killer and receive the Impostor instinct flag. The per-tick
+     * recipient watcher cannot repair this, because roles and traits land in the same tick.
+     * 每次 setActiveTraits 都会立即同步，因此善良必须先于内鬼落地；否则即将转为好人的杀手仍被视为有效杀手，
+     * 会收到内鬼的本能标记。职业与天赋在同一 tick 内落地，逐 tick 的接收者监视无法事后补救。
+     */
+    static List<PlayerPlan> conscienceFirst(List<PlayerPlan> plans) {
+        List<PlayerPlan> ordered = new ArrayList<>(plans.size());
+        for (PlayerPlan plan : plans) {
+            if (plan.traits().contains(ConscienceTrait.ID)) {
+                ordered.add(plan);
+            }
+        }
+        for (PlayerPlan plan : plans) {
+            if (!plan.traits().contains(ConscienceTrait.ID)) {
+                ordered.add(plan);
+            }
+        }
+        return ordered;
     }
 
     private static void markUniqueTraits(TraitWorldComponent traitWorld, Collection<Identifier> traits) {

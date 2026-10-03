@@ -190,10 +190,15 @@ public class TraitWorldComponent implements AutoSyncedComponent {
 
     @Override
     public void writeSyncPacket(RegistryByteBuf buf, ServerPlayerEntity recipient) {
+        TraitSyncVisibility.Recipient view = TraitPlayerComponent.syncRecipient(recipient);
         writeIdentifierSet(buf, disabledTraits);
-        writeIdentifierSet(buf, usedUniqueTraits);
-        buf.writeVarInt(deathTraitSnapshots.size());
-        for (Map.Entry<UUID, List<Identifier>> entry : deathTraitSnapshots.entrySet()) {
+        // Same layout for everyone; hidden round state is written as empty for recipients outside its audience.
+        // 所有接收者使用同一布局；不在可见范围内的接收者收到空的本局隐藏状态。
+        writeIdentifierSet(buf, TraitSyncVisibility.usedUniqueTraitsFor(view, usedUniqueTraits));
+        Map<UUID, List<Identifier>> visibleDeathTraitSnapshots =
+                TraitSyncVisibility.deathTraitSnapshotsFor(view, deathTraitSnapshots);
+        buf.writeVarInt(visibleDeathTraitSnapshots.size());
+        for (Map.Entry<UUID, List<Identifier>> entry : visibleDeathTraitSnapshots.entrySet()) {
             buf.writeUuid(entry.getKey());
             writeIdentifierSet(buf, entry.getValue());
         }
