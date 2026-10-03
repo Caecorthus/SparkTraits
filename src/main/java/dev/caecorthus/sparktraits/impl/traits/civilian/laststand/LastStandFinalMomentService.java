@@ -67,6 +67,7 @@ public final class LastStandFinalMomentService {
     private static final int TITLE_FADE_OUT_TICKS = 10;
     private static final int UNKNOWN_FACTION_COLOR = 0xFFFFFF;
     private static final Identifier SPARKWITCH_FIEND_ID = Identifier.of("sparkwitch", "fiend");
+    static final Identifier FINAL_MOMENT_TIMEOUT = SparkTraits.id("final_moment_timeout");
 
     private LastStandFinalMomentService() {
     }
@@ -190,6 +191,44 @@ public final class LastStandFinalMomentService {
             return CheckWinCondition.WinResult.block();
         }
         return null;
+    }
+
+    /**
+     * Final Moment never ends as a time win: when the clock runs out, every Final Moment Loose End drops dead
+     * and the round resolves for whoever is left.
+     * 终局时刻不会以时间胜利结束：计时归零时所有终局亡命徒当场暴毙，回合按剩余玩家结算。
+     */
+    public static GameFunctions.WinStatus resolveFinalMomentTimeout(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            GameFunctions.WinStatus currentStatus
+    ) {
+        if (world == null
+                || gameComponent == null
+                || currentStatus != GameFunctions.WinStatus.TIME
+                || gameComponent.getGameStatus() != GameWorldComponent.GameStatus.ACTIVE
+                || !TraitWorldComponent.KEY.get(world).isFinalMomentActive()) {
+            return currentStatus;
+        }
+        for (ServerPlayerEntity player : livingPlayers(world, gameComponent)) {
+            if (isFinalMomentLooseEnd(player)) {
+                GameFunctions.killPlayer(player, true, null, FINAL_MOMENT_TIMEOUT, true);
+            }
+        }
+        return timedOutFinalMomentStatus(snapshotPlayers(world, gameComponent));
+    }
+
+    static GameFunctions.WinStatus timedOutFinalMomentStatus(Collection<PlayerState> players) {
+        for (PlayerState player : players) {
+            if (player.alive() && EffectiveTraitService.isEffectiveCivilian(player.role(), player.traitIds())) {
+                // A civilian who outlasted the clock keeps the ordinary time win.
+                // 撑过计时的平民仍按普通时间胜利结算。
+                return GameFunctions.WinStatus.TIME;
+            }
+        }
+        // With the civilian side wiped out, KILLERS lets the effective-team and neutral listeners settle the survivors.
+        // 平民阵营已全灭，交给 KILLERS 让有效阵营与中立监听器结算剩余玩家。
+        return GameFunctions.WinStatus.KILLERS;
     }
 
     public static boolean shouldCancelRoundEndFinalization(
@@ -340,10 +379,11 @@ public final class LastStandFinalMomentService {
             @Nullable Role role,
             boolean lastStandFinalMomentLooseEnd
     ) {
+        // Running out the clock kills the Loose End, so only a passenger win counts for it.
+        // 拖到计时结束会让亡命徒暴毙，因此只有平民胜利才算它获胜。
         return lastStandFinalMomentLooseEnd
                 && isLooseEndRole(role)
-                && (winStatus == GameFunctions.WinStatus.PASSENGERS
-                || winStatus == GameFunctions.WinStatus.TIME);
+                && winStatus == GameFunctions.WinStatus.PASSENGERS;
     }
 
     static boolean isFinalMomentLooseEndBlackoutImmune(
