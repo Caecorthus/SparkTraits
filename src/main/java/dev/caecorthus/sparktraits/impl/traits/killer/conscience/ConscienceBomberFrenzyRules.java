@@ -15,6 +15,9 @@ public final class ConscienceBomberFrenzyRules {
     private static final Set<Identifier> VULNERABLE_WITCH_ROLES = Set.of(
             Identifier.of("sparkwitch", "grand_witch"),
             Identifier.of("sparkwitch", "accomplice"),
+            // SparkWitch special accomplices share every Accomplice rule. / SparkWitch 特殊共犯沿用共犯的全部规则。
+            Identifier.of("sparkwitch", "abyss_listener"),
+            Identifier.of("sparkwitch", "potion_gunner"),
             Identifier.of("sparkwitch", "murderous_witch")
     );
 
