@@ -636,6 +636,9 @@ public final class EffectiveTraitService {
         return role != null
                 && (PoliceRoleCategory.isPolice(role)
                 || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
+                // Toxicologist owns SparkStrength's blue-poison kit, which must stay on the innocent side.
+                // 毒理学家持有 SparkStrength 的蓝毒道具，必须保持好人身份。
+                || role.identifier().equals(Noellesroles.TOXICOLOGIST_ID)
                 || role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
                 || role.identifier().equals(SPARKWITCH_SAINT_ID));
     }

@@ -8,6 +8,7 @@ import dev.caecorthus.sparktraits.api.TraitRemovalReason;
 import dev.caecorthus.sparktraits.api.event.TraitEvents;
 import dev.caecorthus.sparktraits.compat.SparkWitchKillAttributionBridge;
 import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BluePoisonInteropService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
@@ -318,6 +319,12 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         blueSanityDrainTicks = Math.max(blueSanityDrainTicks, ticks);
     }
 
+    /** Server-only remaining drain window; never synced, so a client copy always reads 0.
+     *  仅服务端的剩余扣理智时长；不会同步，客户端副本始终为 0。 */
+    public int getBlueSanityDrainTicks() {
+        return blueSanityDrainTicks;
+    }
+
     public void setLastStandPending(boolean lastStandPending) {
         if (this.lastStandPending != lastStandPending) {
             this.lastStandPending = lastStandPending;
@@ -618,6 +625,12 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         blueSanityDrainTicks--;
         if (!GameFunctions.isPlayerPlayingAndAlive(player)) {
             blueSanityDrainTicks = 0;
+            return;
+        }
+        // Downstream exemptions (SparkStrength's Toxicologist) replace only the drain; the window keeps counting down.
+        // 下游豁免（如 SparkStrength 毒理学家）只替换扣理智效果；窗口仍照常倒计时。
+        if (player instanceof ServerPlayerEntity serverPlayer
+                && BluePoisonInteropService.isBlueSanityDrainExempt(serverPlayer)) {
             return;
         }
         // Players without real sanity are unaffected because Wathe pins their mood.

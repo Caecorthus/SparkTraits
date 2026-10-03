@@ -12,6 +12,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import org.agmas.noellesroles.Noellesroles;
 
 import java.util.Collection;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
@@ -94,6 +95,7 @@ public final class TraitLockValidationService {
         return !trait.id().equals(ImpostorTrait.ID)
                 || isUnknownRole(role)
                 || (!role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
+                && !role.identifier().equals(Noellesroles.TOXICOLOGIST_ID)
                 && !role.identifier().equals(SPARKWITCH_SAINT_ID)
                 && !PoliceRoleCategory.isPolice(role));
     }

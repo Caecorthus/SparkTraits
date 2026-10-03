@@ -13,6 +13,7 @@ import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
 import dev.caecorthus.sparktraits.impl.traits.killer.combat.CloseQuartersService;
 import dev.caecorthus.sparktraits.impl.traits.killer.combat.ForcedMeleeCooldownService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BluePoisonInteropService;
 import dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeService;
 import net.minecraft.item.ItemStack;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -29,6 +30,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,6 +41,7 @@ import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Stable, null-safe queries for optional downstream integrations.
@@ -466,6 +469,95 @@ public final class SparkTraitsApi {
                 false,
                 goingDarkSuppressed || chameleonSuppressed
         );
+    }
+
+    /**
+     * Server only. Swaps a beverage plate's native Wathe poison for Conscience blue poison. With native poison present,
+     * clears it, adds a blue layer owned by {@code poisoner} unless one already exists (the old owner is kept), and
+     * returns true. Returns false without changes when there is no native poison, on client worlds, for null
+     * arguments, or when {@code pos} holds no plate.
+     * 仅服务端。把餐盘上的 Wathe 原生毒换成善良蓝毒：存在原生毒时清除它，若尚无蓝毒层则添加归属
+     * {@code poisoner} 的蓝毒层（已有蓝毒层保留原归属者），并返回 true。无原生毒、客户端世界、参数为空
+     * 或该位置不是餐盘时不做修改并返回 false。
+     */
+    public static boolean convertPlatePoisonToBlue(World world, BlockPos pos, UUID poisoner) {
+        return BluePoisonInteropService.convertPlatePoisonToBlue(world, pos, poisoner);
+    }
+
+    /**
+     * Server only. Bed variant of {@link #convertPlatePoisonToBlue}: {@code pos} may be either bed half, and both the
+     * native scorpion and the blue scorpion are read from and written to the bed head.
+     * 仅服务端。{@link #convertPlatePoisonToBlue} 的床版本：{@code pos} 可以是床的任一半，原生蝎子与蓝蝎子
+     * 都在床头读写。
+     */
+    public static boolean convertBedPoisonToBlue(World world, BlockPos pos, UUID poisoner) {
+        return BluePoisonInteropService.convertBedPoisonToBlue(world, pos, poisoner);
+    }
+
+    /**
+     * Stack variant of {@link #convertPlatePoisonToBlue}: removes Wathe's poisoner component and adds a blue marker
+     * owned by {@code poisoner} unless one is already present. Returns false when the stack carries no native poison.
+     * {@link #convertPlatePoisonToBlue} 的物品版本：移除 Wathe 投毒者组件，若尚无蓝毒标记则添加归属
+     * {@code poisoner} 的标记。物品没有原生毒时返回 false。
+     */
+    public static boolean convertStackPoisonToBlue(ItemStack stack, UUID poisoner) {
+        return BluePoisonInteropService.convertStackPoisonToBlue(stack, poisoner);
+    }
+
+    /**
+     * Stamps (overwrites) a blue-poison marker owned by {@code poisoner}; eating the stack springs the blue trap.
+     * No-op for null or empty stacks.
+     * 写入（覆盖）归属 {@code poisoner} 的蓝毒标记；食用该物品会触发蓝毒陷阱。空值或空物品时不做任何事。
+     */
+    public static void markStackBluePoison(ItemStack stack, UUID poisoner) {
+        BluePoisonInteropService.markStackBluePoison(stack, poisoner);
+    }
+
+    /**
+     * Returns the blue-poison owner on the stack, or null when absent or malformed. Never throws.
+     * 返回物品上的蓝毒归属者；没有标记或格式错误时返回 null，不会抛异常。
+     */
+    public static @Nullable UUID getStackBluePoisoner(ItemStack stack) {
+        return BluePoisonInteropService.getStackBluePoisoner(stack);
+    }
+
+    /**
+     * Server only. Springs a blue trap with Conscience Poisoner's alignment rules: effective civilians get a short
+     * sanity-drain window, everyone else lethal blue poison. No-op unless the target is playing and alive.
+     * 仅服务端。按善良毒师的阵营规则触发蓝毒陷阱：有效好人获得短暂扣理智窗口，其余玩家中致死蓝毒。
+     * 目标不在局内或已死亡时不做任何事。
+     */
+    public static void applyBlueTrap(ServerPlayerEntity target, UUID poisoner) {
+        BluePoisonInteropService.applyBlueTrap(target, poisoner);
+    }
+
+    /**
+     * Server only. Extends the blue sanity-drain window to at least {@code ticks} (never shortens it).
+     * No-op for {@code ticks <= 0} or targets that are not playing and alive.
+     * 仅服务端。把蓝毒扣理智窗口延长到至少 {@code ticks}（不会缩短）。{@code ticks <= 0} 或目标不在局内存活时不做任何事。
+     */
+    public static void applyBlueSanityDrain(ServerPlayerEntity target, int ticks) {
+        BluePoisonInteropService.applyBlueSanityDrain(target, ticks);
+    }
+
+    /**
+     * Server-authoritative remaining blue sanity-drain ticks. The window is never synced, so this is 0 on clients
+     * and for null players.
+     * 服务端权威的蓝毒扣理智剩余 tick。该窗口不会同步，因此客户端与空玩家始终返回 0。
+     */
+    public static int getBlueSanityDrainTicks(PlayerEntity player) {
+        return BluePoisonInteropService.getBlueSanityDrainTicks(player);
+    }
+
+    /**
+     * Registers a server-thread predicate; while any registered predicate returns true for a player, SparkTraits skips
+     * that player's blue sanity drain but still counts the window down (so the owner can apply its own effect).
+     * A throwing predicate counts as not exempt. Registering the same instance twice has no extra effect.
+     * 注册服务端线程谓词：只要任一谓词对某玩家返回 true，SparkTraits 就跳过该玩家的蓝毒扣理智，但窗口照常倒计时
+     * （便于注册方施加自己的效果）。抛异常的谓词视为不豁免；重复注册同一实例没有额外效果。
+     */
+    public static void registerBlueSanityDrainExemption(Predicate<ServerPlayerEntity> exemption) {
+        BluePoisonInteropService.registerBlueSanityDrainExemption(exemption);
     }
 
     private static NbtList identifiers(Collection<Identifier> identifiers) {
