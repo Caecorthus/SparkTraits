@@ -544,8 +544,8 @@ public final class EffectiveTraitService {
         return false;
     }
 
-    /** Uses client-synced public alignment flags without exposing hidden trait text.
-     *  使用客户端已同步的公开阵营标记，不暴露隐藏天赋文本。 */
+    /** Uses client-synced alignment flags without exposing hidden trait text; non-killer viewers receive them as false.
+     *  使用客户端已同步的阵营标记，不暴露隐藏天赋文本；非杀手观察者收到的值恒为 false。 */
     private static Collection<Identifier> publicEffectiveTraitIds(PlayerEntity player) {
         boolean conscience = isConscienceVisibleToInstinct(player);
         boolean impostor = isImpostorVisibleToInstinct(player);

@@ -118,7 +118,9 @@ public abstract class WatheClientMixin {
         MorphlingPlayerComponent morphling = playerTarget == null ? null : MorphlingPlayerComponent.KEY.get(playerTarget);
 
         // Phantom invisibility must beat SparkTraits' effective-alignment instinct overlays.
+        // Only effective-killer viewers receive the Conscience flag; others treat the target like any Phantom.
         // 幽灵隐身优先于 SparkTraits 的有效阵营本能高亮覆盖。
+        // 只有有效杀手观察者能收到善良标记；其他观察者把目标当作普通幽灵处理。
         if (targetTraits != null && EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(
                 playerTarget.isInvisible(),
                 EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget),
@@ -129,8 +131,9 @@ public abstract class WatheClientMixin {
             return;
         }
 
-        // Corpse mode has priority over every non-spectator instinct overlay.
-        // 尸体模式优先于所有非旁观者本能描边。
+        // Corpse mode has priority over every effective-killer instinct overlay; other viewers never receive the
+        // Conscience flag, so they treat the target like any Morphling.
+        // 尸体模式优先于所有有效杀手本能描边；其他观察者收不到善良标记，因此把目标当作普通变形者处理。
         if (playerTarget != null && EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(
                 EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget),
                 game.isRole(playerTarget, Noellesroles.MORPHLING),
