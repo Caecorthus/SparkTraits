@@ -483,6 +483,17 @@ tasks.named("check") {
     setDependsOn([])
 }
 
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+    from("THIRD_PARTY_NOTICES.md") {
+        into "META-INF"
+    }
+    from("licenses/StarRailExpress-GPL-3.0-only.txt") {
+        into "META-INF/licenses"
+    }
+}
 
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
