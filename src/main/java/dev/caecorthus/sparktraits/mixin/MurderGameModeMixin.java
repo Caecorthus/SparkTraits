@@ -12,10 +12,12 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.game.gamemode.MurderGameMode;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
@@ -79,6 +81,25 @@ public abstract class MurderGameModeMixin {
         // Run after other win-condition hooks so neutral blockers can keep the round alive first.
         // 在其他胜利判定钩子之后运行，让中立阻塞者先正常阻止回合结束。
         EffectiveTraitService.killUnsupportedImpostorsIfNoRealKillers(serverWorld, gameWorldComponent);
+    }
+
+    @ModifyVariable(
+            method = "tickServerGameLoop",
+            at = @At(
+                    value = "FIELD",
+                    target = "Ldev/doctor4t/wathe/api/event/CheckWinCondition;EVENT:Lnet/fabricmc/fabric/api/event/Event;",
+                    opcode = Opcodes.GETSTATIC
+            ),
+            ordinal = 0
+    )
+    private GameFunctions.WinStatus sparktraits$resolveFinalMomentTimeout(
+            GameFunctions.WinStatus winStatus,
+            ServerWorld serverWorld,
+            GameWorldComponent gameWorldComponent
+    ) {
+        // Rewrite Wathe's TIME before any listener sees it, and before the null-result fallback reuses it.
+        // 在任何监听器看到之前改写 wathe 的 TIME，也覆盖监听器全返回 null 时沿用的本地状态。
+        return LastStandFinalMomentService.resolveFinalMomentTimeout(serverWorld, gameWorldComponent, winStatus);
     }
 
     @Inject(
