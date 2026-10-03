@@ -5,6 +5,8 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalM
 import dev.caecorthus.sparktraits.impl.command.admin.SparkTraitsCommands;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.impl.registry.SparkTraitsBuiltInTraits;
+import dev.caecorthus.sparktraits.impl.replay.SparkTraitsReplayEvents;
+import dev.caecorthus.sparktraits.impl.replay.SparkTraitsReplayTooltips;
 import dev.caecorthus.sparktraits.impl.resource.SparkTraitsParticles;
 import dev.caecorthus.sparktraits.impl.resource.SparkTraitsSounds;
 import dev.caecorthus.sparktraits.impl.lifecycle.TraitGameHooks;
@@ -34,6 +36,8 @@ public class SparkTraits implements ModInitializer {
         LastStandService.register();
         LastStandFinalMomentService.register();
         TraitGameHooks.register();
+        SparkTraitsReplayTooltips.register();
+        SparkTraitsReplayEvents.registerFormatters();
         SparkTraitsCommands.register();
     }
 }

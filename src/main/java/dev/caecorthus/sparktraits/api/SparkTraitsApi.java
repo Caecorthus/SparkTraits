@@ -5,6 +5,7 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.presentation.OwnerInventoryPresentation;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.lifecycle.RoundEndTraitResolver;
 import dev.caecorthus.sparktraits.impl.traits.civilian.chameleon.ChameleonRules;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
@@ -364,6 +365,22 @@ public final class SparkTraitsApi {
         return world != null
                 && playerUuid != null
                 && LastStandService.hasTriggeredThisRound(world, playerUuid);
+    }
+
+    /**
+     * Returns the ordered trait ids the player ended the round with, including traits hidden from their owner:
+     * online active traits, else the latest death snapshot, else the assignment-time round snapshot.
+     * Server-only; meaningful until Wathe's finalize resets players (e.g. inside its replay generation). Never null.
+     * 返回玩家本局结束时持有的有序词条 id（包含对本人隐藏的词条）：在线时取当前词条，否则取最近死亡快照，再否则取分配时快照。
+     * 仅限服务端；在 Wathe 结算重置玩家之前（如回放生成期间）有效。永不返回 null。
+     */
+    public static List<Identifier> getRoundEndTraitIds(ServerWorld world, UUID playerUuid) {
+        if (world == null || playerUuid == null) {
+            return List.of();
+        }
+        return TraitWorldComponent.KEY.maybeGet(world)
+                .map(traitWorld -> List.copyOf(RoundEndTraitResolver.resolve(world, traitWorld, playerUuid)))
+                .orElseGet(List::of);
     }
 
     /**
