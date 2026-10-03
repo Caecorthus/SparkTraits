@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl.replay;
 
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.doctor4t.wathe.record.GameRecordManager;
+import dev.doctor4t.wathe.record.replay.ReplayRegistry;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -16,6 +17,15 @@ public final class SparkTraitsReplayEvents {
     static final Identifier LOOSE_END_CONVERSION = SparkTraits.id("loose_end_conversion");
 
     private SparkTraitsReplayEvents() {
+    }
+
+    /**
+     * Keeps recording the Loose End event but hides its global line: SparkFactionAPI's cause-tagged
+     * role-change line already shows the same conversion, and a null formatter result is skipped by Wathe.
+     * 继续记录亡命徒转换事件但隐藏其全局行：SparkFactionAPI 带原因的身份转变行已展示同一转换，Wathe 会跳过返回 null 的格式化结果。
+     */
+    public static void registerFormatters() {
+        ReplayRegistry.registerGlobalEventFormatter(LOOSE_END_CONVERSION, (event, match, world) -> null);
     }
 
     public static void recordLastStandTriggered(ServerPlayerEntity player) {

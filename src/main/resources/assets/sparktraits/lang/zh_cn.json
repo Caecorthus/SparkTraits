@@ -109,5 +109,9 @@
   "replay.death.sparktraits.self_realization.died": "%s 在失去所有真实杀手支援后§c自我了结§r",
   "replay.global.sparktraits.last_stand_triggered": "%s 触发了§a背水一战§r，进入假死状态",
   "replay.global.sparktraits.final_moment_start": "§4终局时刻§r开始",
-  "replay.global.sparktraits.loose_end_conversion": "%s 的身份转换为§e亡命徒§r"
+  "replay.global.sparktraits.loose_end_conversion": "%s 的身份转换为§e亡命徒§r",
+  "replay.sparktraits.tooltip.traits": "词条：",
+  "replay.sparktraits.tooltip.none": "无",
+  "replay.sparktraits.tooltip.hidden_at_start": "（开局隐藏）",
+  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": "（终局时刻）"
 }

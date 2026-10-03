@@ -109,5 +109,9 @@
   "replay.death.sparktraits.self_realization.died": "%s ended their own life after losing all real killer support",
   "replay.global.sparktraits.last_stand_triggered": "%s triggered §aLast Stand§r and entered a false-death state",
   "replay.global.sparktraits.final_moment_start": "§4Final Moment§r began",
-  "replay.global.sparktraits.loose_end_conversion": "%s became a §eLoose End§r"
+  "replay.global.sparktraits.loose_end_conversion": "%s became a §eLoose End§r",
+  "replay.sparktraits.tooltip.traits": "Traits:",
+  "replay.sparktraits.tooltip.none": " None",
+  "replay.sparktraits.tooltip.hidden_at_start": " (hidden at start)",
+  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": " (final moment)"
 }
