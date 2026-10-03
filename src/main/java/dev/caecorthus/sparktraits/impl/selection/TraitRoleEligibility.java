@@ -18,6 +18,7 @@ public final class TraitRoleEligibility {
             // SparkWitch special accomplices share every Accomplice rule. / SparkWitch 特殊共犯沿用共犯的全部规则。
             Identifier.of(SPARKWITCH_MOD_ID, "abyss_listener"),
             Identifier.of(SPARKWITCH_MOD_ID, "potion_gunner"),
+            Identifier.of(SPARKWITCH_MOD_ID, "riftwalker"),
             Identifier.of(SPARKWITCH_MOD_ID, "apprentice_witch"),
             Identifier.of(SPARKWITCH_MOD_ID, "murderous_witch"),
             Identifier.of(SPARKWITCH_MOD_ID, "fiend")

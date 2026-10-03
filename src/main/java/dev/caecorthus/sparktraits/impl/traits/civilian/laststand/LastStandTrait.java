@@ -28,7 +28,8 @@ public final class LastStandTrait implements Trait {
             Identifier.of("sparkwitch", "accomplice"),
             // SparkWitch special accomplices share every Accomplice rule. / SparkWitch 特殊共犯沿用共犯的全部规则。
             Identifier.of("sparkwitch", "abyss_listener"),
-            Identifier.of("sparkwitch", "potion_gunner")
+            Identifier.of("sparkwitch", "potion_gunner"),
+            Identifier.of("sparkwitch", "riftwalker")
     );
 
     @Override

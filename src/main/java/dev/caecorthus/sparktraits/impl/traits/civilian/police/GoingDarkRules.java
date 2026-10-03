@@ -19,6 +19,7 @@ public final class GoingDarkRules {
             // SparkWitch special accomplices share every Accomplice rule. / SparkWitch 特殊共犯沿用共犯的全部规则。
             Identifier.of("sparkwitch", "abyss_listener"),
             Identifier.of("sparkwitch", "potion_gunner"),
+            Identifier.of("sparkwitch", "riftwalker"),
             Identifier.of("noellesroles", "corrupt_cop"),
             Identifier.of("sparkwitch", "insider")
     );
