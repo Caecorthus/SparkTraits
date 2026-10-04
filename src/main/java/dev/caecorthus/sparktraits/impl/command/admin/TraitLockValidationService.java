@@ -66,7 +66,7 @@ public final class TraitLockValidationService {
         if (isUnknownRole(role)) {
             return true;
         }
-        if (!TraitRoleEligibility.canReceiveTraits(role)) {
+        if (!TraitRoleEligibility.canReceiveTrait(role, trait)) {
             return false;
         }
         Faction faction = role.getFaction();

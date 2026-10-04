@@ -166,17 +166,23 @@ public final class TraitAssignmentService {
             ServerPlayerEntity player,
             List<Identifier> pendingTraits
     ) {
+        return applyPendingLocks(world, gameComponent, player, gameComponent.getRole(player), pendingTraits);
+    }
+
+    static List<Identifier> applyPendingLocks(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            ServerPlayerEntity player,
+            Role role,
+            List<Identifier> pendingTraits
+    ) {
         LinkedHashSet<Identifier> accepted = new LinkedHashSet<>();
-        Role role = gameComponent.getRole(player);
-        if (!TraitRoleEligibility.canReceiveTraits(role)) {
-            return List.of();
-        }
         for (Identifier traitId : pendingTraits) {
             if (accepted.size() >= TraitPlayerComponent.MAX_TRAITS) {
                 break;
             }
             Trait trait = TraitRegistry.get(traitId);
-            if (trait == null) {
+            if (trait == null || !TraitRoleEligibility.canReceiveTrait(role, trait)) {
                 continue;
             }
             if (!TraitRules.isCompatibleWithAll(trait, accepted)) {
