@@ -5,7 +5,6 @@ import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.economy.EffectiveEconomyRules;
 import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.DoorInteraction;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.api.event.PsychoType;
@@ -58,6 +57,7 @@ import dev.caecorthus.sparktraits.impl.resource.SparkTraitsSounds;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 
 /**
  * Runtime and pure rules for the Depression civilian-side trait.
@@ -131,9 +131,10 @@ public final class DepressionTraitService {
         if (enforceStartingPlayerCount && startingPlayerCount < MIN_RANDOM_PLAYERS) {
             return false;
         }
+        // Police = PoliceRoleCategory, so registered police variants inherit Vigilante/Veteran's exclusion.
+        // 警职按 PoliceRoleCategory 判定，下游注册的警职沿用义警与老兵的排除。
         return CivilianTraitService.canSelectNonUndercoverCivilianTrait(role, selectedTraits)
-                && role != WatheRoles.VIGILANTE
-                && role != WatheRoles.VETERAN
+                && !PoliceRoleCategory.isPolice(role)
                 && !roleIdentifierEquals(role, Noellesroles.SURVIVAL_MASTER_ID)
                 && !roleIdentifierEquals(role, APPRENTICE_WITCH_ID)
                 && !roleIdentifierEquals(role, SPARKWITCH_BLIND_ID);
