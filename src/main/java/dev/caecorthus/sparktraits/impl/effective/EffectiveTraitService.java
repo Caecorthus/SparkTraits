@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl.effective;
 
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.compat.SparkStrengthCoronerBridge;
 import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.impl.effective.alignment.EffectiveAlignment;
@@ -101,7 +102,9 @@ public final class EffectiveTraitService {
                 return null;
             }
             GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
-            Collection<Identifier> viewerTraits = TraitPlayerComponent.KEY.get(viewer).getActiveTraitIds();
+            // A dead Conscience killer must not see the killer team as cohorts once death clears its traits.
+            // 死亡会清空天赋，善良杀手死后仍不能把杀手队伍看成同伙。
+            Collection<Identifier> viewerTraits = effectiveTraitIds(viewer, game);
             Boolean morphlingOverride = conscienceMorphlingCohortOverride(viewer, target, game, viewerTraits);
             if (morphlingOverride != null) {
                 return morphlingOverride
@@ -118,7 +121,7 @@ public final class EffectiveTraitService {
                     game.getRole(viewer),
                     viewerTraits,
                     game.getRole(target),
-                    publicEffectiveTraitIds(target),
+                    publicEffectiveTraitIds(target, game),
                     SparkStrengthCoronerBridge.appearsAsKillerCohort(target)
             );
             if (override == null) {
@@ -156,6 +159,24 @@ public final class EffectiveTraitService {
 
     public static boolean hasImpostor(PlayerEntity player) {
         return player != null && hasImpostor(TraitPlayerComponent.KEY.get(player).getActiveTraitIds());
+    }
+
+    /** Keeps effective alignment stable after death listeners clear a dead player's active traits.
+     *  死亡监听清空当前天赋后，回退到死亡快照以保持有效阵营判定稳定。 */
+    public static Collection<Identifier> effectiveTraitIds(PlayerEntity player, GameWorldComponent game) {
+        return effectiveTraitIds(
+                TraitPlayerComponent.KEY.get(player).getActiveTraitIds(),
+                game.isPlayerDead(player.getUuid()),
+                TraitWorldComponent.KEY.get(player.getWorld()).getDeathTraitSnapshot(player.getUuid())
+        );
+    }
+
+    public static Collection<Identifier> effectiveTraitIds(
+            Collection<Identifier> activeTraits,
+            boolean dead,
+            Collection<Identifier> deathTraits
+    ) {
+        return activeTraits.isEmpty() && dead ? deathTraits : activeTraits;
     }
 
     public static boolean isConscienceVisibleToInstinct(PlayerEntity player) {
@@ -521,7 +542,7 @@ public final class EffectiveTraitService {
                 game.getRole(viewer),
                 viewerTraits,
                 game.getRole(target),
-                publicEffectiveTraitIds(target),
+                publicEffectiveTraitIds(target, game),
                 isDisguiseTargetForConscienceMorphling(target, game)
         );
     }
@@ -545,10 +566,15 @@ public final class EffectiveTraitService {
     }
 
     /** Uses client-synced alignment flags without exposing hidden trait text; non-killer viewers receive them as false.
-     *  使用客户端已同步的阵营标记，不暴露隐藏天赋文本；非杀手观察者收到的值恒为 false。 */
-    private static Collection<Identifier> publicEffectiveTraitIds(PlayerEntity player) {
-        boolean conscience = isConscienceVisibleToInstinct(player);
-        boolean impostor = isImpostorVisibleToInstinct(player);
+     *  Dead players fall back to their death snapshot, which the server and spectator or body-inspector clients hold.
+     *  使用客户端已同步的阵营标记，不暴露隐藏天赋文本；非杀手观察者收到的值恒为 false。
+     *  死亡玩家回退到死亡快照，服务端与旁观者、验尸官客户端持有该快照。 */
+    private static Collection<Identifier> publicEffectiveTraitIds(PlayerEntity player, GameWorldComponent game) {
+        Collection<Identifier> deathTraits = game.isPlayerDead(player.getUuid())
+                ? TraitWorldComponent.KEY.get(player.getWorld()).getDeathTraitSnapshot(player.getUuid())
+                : List.of();
+        boolean conscience = isConscienceVisibleToInstinct(player) || hasConscience(deathTraits);
+        boolean impostor = isImpostorVisibleToInstinct(player) || hasImpostor(deathTraits);
         if (conscience && impostor) {
             return List.of(ConscienceTrait.ID, ImpostorTrait.ID);
         }
