@@ -973,10 +973,6 @@ public final class EffectiveTraitService {
     }
 
     public static void handleAfterKill(ServerPlayerEntity victim, ServerPlayerEntity killer, Identifier deathReason) {
-        handleAfterKill(victim, killer, deathReason, false);
-    }
-
-    public static void handleAfterKill(ServerPlayerEntity victim, ServerPlayerEntity killer, Identifier deathReason, boolean bombManiacGrenade) {
         if (victim == null || killer == null || victim.getUuid().equals(killer.getUuid())) {
             return;
         }
@@ -988,7 +984,7 @@ public final class EffectiveTraitService {
         Collection<Identifier> killerTraits = TraitPlayerComponent.KEY.get(killer).getActiveTraitIds();
         boolean conscience = hasConscience(killerTraits);
         boolean punish = (conscience && EffectiveDeathConsequenceRules.shouldPunishConscienceKill(
-                victimIsEffectiveCivilian, deathReason, poisonSource, bombManiacGrenade
+                victimIsEffectiveCivilian, deathReason, poisonSource
         )) || EffectiveDeathConsequenceRules.shouldPunishVeteranKnifeKill(
                 game.getRole(killer), killerTraits, victimRole, victimTraits, deathReason
         );

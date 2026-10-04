@@ -31,24 +31,14 @@ public final class EffectiveDeathConsequenceRules {
         return shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, null);
     }
 
-    /** Ordinary grenades punish Conscience; only launch-marked Bomb Maniac grenades are exempt.
-     *  普通手雷误杀会惩罚善良，仅发射时标记的炸弹狂手雷豁免。 */
+    /** Grenade kills punish Conscience; only gas-bomb poison deaths are exempt.
+     *  手雷误杀会惩罚善良，仅毒气弹中毒死亡豁免。 */
     public static boolean shouldPunishConscienceKill(
             boolean victimIsEffectiveCivilian,
             Identifier deathReason,
             Identifier poisonSource
     ) {
-        return shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, poisonSource, false);
-    }
-
-    public static boolean shouldPunishConscienceKill(
-            boolean victimIsEffectiveCivilian,
-            Identifier deathReason,
-            Identifier poisonSource,
-            boolean bombManiacGrenade
-    ) {
         return victimIsEffectiveCivilian
-                && !(bombManiacGrenade && GameConstants.DeathReasons.GRENADE.equals(deathReason))
                 && !(GameConstants.DeathReasons.POISON.equals(deathReason)
                 && Noellesroles.POISON_SOURCE_GAS_BOMB.equals(poisonSource));
     }
