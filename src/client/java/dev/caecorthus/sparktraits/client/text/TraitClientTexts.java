@@ -24,12 +24,6 @@ public final class TraitClientTexts {
         return trait == null ? Text.literal(traitId.toString()) : trait.name().copy();
     }
 
-    public static MutableText tag(Identifier traitId) {
-        return Text.literal("[")
-                .append(name(traitId))
-                .append(Text.literal("]"));
-    }
-
     public static List<Text> tooltip(Identifier traitId) {
         Trait trait = TraitRegistry.get(traitId);
         if (trait == null) {
