@@ -106,9 +106,6 @@ public final class TraitSelector {
     ) {
         LinkedHashSet<Identifier> selected = new LinkedHashSet<>(retainedTraits == null ? List.of() : retainedTraits);
         Role role = gameComponent.getRole(player);
-        if (!TraitRoleEligibility.canReceiveTraits(role)) {
-            return List.of();
-        }
         float slotChance = traitWorld.getTraitSlotRollChance();
         Collection<Identifier> uniqueTraitReservations = reservedUniqueTraits == null ? List.of() : reservedUniqueTraits;
         Collection<Identifier> rerollExclusions = excludedTraits == null ? Set.of() : excludedTraits;
@@ -235,6 +232,9 @@ public final class TraitSelector {
                 continue;
             }
             if (!TraitRules.isCompatibleWithAll(trait, selected)) {
+                continue;
+            }
+            if (!TraitRoleEligibility.canReceiveTrait(context.role(), trait)) {
                 continue;
             }
             if (!trait.canApply(context)) {
