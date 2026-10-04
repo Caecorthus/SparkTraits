@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.client.gui;
 
+import dev.caecorthus.sparktraits.client.compat.SparkStrengthHudBridge;
 import dev.doctor4t.wathe.client.gui.screen.ingame.LimitedInventoryScreen;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -221,17 +222,17 @@ public final class InventoryInfoCard {
     /**
      * The last prepared snapshot and its key: the language instance (a new one after every language change or resource
      * reload), the glyph fingerprint ({@link #glyphFingerprint()}), the font, the screen size, the widget signature, the
-     * sections (identity first, then value equality) and the placement flags. A hit returns the same immutable
-     * snapshot, so draw's plan and tooltip caches hit too.
-     * 上次的快照及其键：语言实例（切换语言或重载资源后会变化）、字形指纹、字体、界面尺寸、控件签名、分节（先比同一性再比值）与放置标志；
+     * HUD band bottom ({@link #hudBandBottom()}), the sections (identity first, then value equality) and the placement
+     * flags. A hit returns the same immutable snapshot, so draw's plan and tooltip caches hit too.
+     * 上次的快照及其键：语言实例（切换语言或重载资源后会变化）、字形指纹、字体、界面尺寸、控件签名、HUD 顶带底边、分节（先比同一性再比值）与放置标志；
      * 命中时返回同一个不可变快照，绘制计划与提示缓存随之命中。
      */
-    record Prepared(Language language, int glyphs, TextRenderer font, int width, int height, int[] controls, List<Section> sections,
-                    boolean fillSlot, boolean traitsPresent, boolean ownsTraits, Snapshot snapshot) {
-        boolean matches(Language language, int glyphs, TextRenderer font, int width, int height, int[] controls, List<Section> sections,
-                        boolean fillSlot, boolean traitsPresent, boolean ownsTraits) {
+    record Prepared(Language language, int glyphs, TextRenderer font, int width, int height, int[] controls, int hudBottom,
+                    List<Section> sections, boolean fillSlot, boolean traitsPresent, boolean ownsTraits, Snapshot snapshot) {
+        boolean matches(Language language, int glyphs, TextRenderer font, int width, int height, int[] controls, int hudBottom,
+                        List<Section> sections, boolean fillSlot, boolean traitsPresent, boolean ownsTraits) {
             return this.language == language && this.glyphs == glyphs && this.font == font && this.width == width
-                    && this.height == height && this.fillSlot == fillSlot && this.traitsPresent == traitsPresent
+                    && this.height == height && this.hudBottom == hudBottom && this.fillSlot == fillSlot && this.traitsPresent == traitsPresent
                     && this.ownsTraits == ownsTraits && Arrays.equals(this.controls, controls) && this.sections.equals(sections);
         }
     }
@@ -250,14 +251,24 @@ public final class InventoryInfoCard {
         return (client.options.getForceUnicodeFont().getValue() ? 1 : 0) | (client.options.getJapaneseGlyphVariants().getValue() ? 2 : 0);
     }
 
+    /**
+     * Bottom of the top HUD band: Wathe's money, timer and first task line end at y = 15, and SparkStrength may stack
+     * its killer team-wallet row directly under the money while it is showing.
+     * 顶部 HUD 带的底边：Wathe 金币、计时与首行任务止于 y = 15；SparkStrength 显示杀手团队余额时会把该行紧贴在金币下方。
+     */
+    static int hudBandBottom() {
+        return Math.max(16, SparkStrengthHudBridge.topRightHudBottom());
+    }
+
     private static Snapshot prepare(Screen screen, TextRenderer font, List<Section> sections, boolean fillSlot,
                                     boolean traitsPresent, boolean ownsTraits) {
         int[] signature = controlSignature(screen);
+        int hudBottom = hudBandBottom();
         Language language = Language.getInstance();
         int glyphs = glyphFingerprint();
         Prepared cached = prepared;
-        if (cached != null && cached.matches(language, glyphs, font, screen.width, screen.height, signature, sections,
-                fillSlot, traitsPresent, ownsTraits)) return cached.snapshot();
+        if (cached != null && cached.matches(language, glyphs, font, screen.width, screen.height, signature, hudBottom,
+                sections, fillSlot, traitsPresent, ownsTraits)) return cached.snapshot();
         List<InventoryCardLayout.Rect> controls = new ArrayList<>();
         List<InventoryCardLayout.Rect> priceTags = new ArrayList<>();
         List<InventoryCardLayout.Rect> storeFrames = new ArrayList<>();
@@ -290,10 +301,10 @@ public final class InventoryInfoCard {
                 }
             }
         }
-        // Mirrors Wathe 1.5.6: the HUD band (money, timer, first task line end at y = 15), LimitedHandledScreen's
-        // 176x32 hotbar strip, and LimitedInventoryScreen.drawBackground's logo transform (0.28 scale).
-        // 对应 Wathe 1.5.6：HUD 顶带、LimitedHandledScreen 的 176x32 热栏框、drawBackground 的标志变换。
-        controls.add(new InventoryCardLayout.Rect(0, 0, screen.width, 16));
+        // Mirrors Wathe 1.5.6: the HUD band (see hudBandBottom), LimitedHandledScreen's 176x32 hotbar strip, and
+        // LimitedInventoryScreen.drawBackground's logo transform (0.28 scale).
+        // 对应 Wathe 1.5.6：HUD 顶带（见 hudBandBottom）、LimitedHandledScreen 的 176x32 热栏框、drawBackground 的标志变换。
+        controls.add(new InventoryCardLayout.Rect(0, 0, screen.width, hudBottom));
         controls.add(new InventoryCardLayout.Rect((screen.width - 176) / 2, (screen.height - 32) / 2, 176, 32));
         controls.add(new InventoryCardLayout.Rect((int) Math.floor(screen.width / 2.0 - 69.4),
                 (int) Math.floor(screen.height - 99.96), 140, 72));
@@ -302,7 +313,7 @@ public final class InventoryInfoCard {
                 screen.width - 8 - ((screen.width + 176) / 2 + 4), fillSlot);
         Snapshot snapshot = new Snapshot(nonempty, InventoryCardLayout.arrange(screen.width, screen.height, font.fontHeight,
                 lineCounts(nonempty), metrics, controls, traitsPresent, ownsTraits), priceTags, storeFrames);
-        prepared = new Prepared(language, glyphs, font, screen.width, screen.height, signature, List.copyOf(sections),
+        prepared = new Prepared(language, glyphs, font, screen.width, screen.height, signature, hudBottom, List.copyOf(sections),
                 fillSlot, traitsPresent, ownsTraits, snapshot);
         return snapshot;
     }

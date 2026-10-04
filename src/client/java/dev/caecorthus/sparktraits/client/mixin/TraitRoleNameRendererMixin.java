@@ -1,7 +1,7 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.client.hud.ConscienceSerialKillerHud;
-import dev.caecorthus.sparktraits.client.text.TraitClientTexts;
+import dev.caecorthus.sparktraits.client.hud.TraitNameplateTags;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.traits.TraitDisplayService;
@@ -9,6 +9,7 @@ import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.CanSeeBodyRole;
 import dev.doctor4t.wathe.api.event.CanTargetBody;
+import dev.doctor4t.wathe.api.event.ShouldShowCohort;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.client.gui.RoleNameRenderer;
@@ -20,7 +21,6 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ProjectileUtil;
-import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.BlockPos;
@@ -38,8 +38,7 @@ import java.util.UUID;
 public abstract class TraitRoleNameRendererMixin {
     private static float sparktraits$playerTraitAlpha;
     private static float sparktraits$bodyTraitAlpha;
-    private static Text sparktraits$lastPlayerRoleName = Text.empty();
-    private static Text sparktraits$lastBodyRoleName = Text.empty();
+    private static boolean sparktraits$playerCohortLine;
     private static List<Identifier> sparktraits$lastPlayerTraits = List.of();
     private static List<Identifier> sparktraits$lastBodyTraits = List.of();
 
@@ -61,10 +60,10 @@ public abstract class TraitRoleNameRendererMixin {
         updateBodyTraitLine(player, range, delta);
 
         if (sparktraits$playerTraitAlpha > 0.05f && !sparktraits$lastPlayerTraits.isEmpty()) {
-            drawTagsAfterRole(renderer, context, sparktraits$lastPlayerRoleName, sparktraits$lastPlayerTraits, 0, sparktraits$playerTraitAlpha);
+            TraitNameplateTags.renderUnderPlayer(context, renderer, sparktraits$lastPlayerTraits, sparktraits$playerCohortLine, sparktraits$playerTraitAlpha);
         }
         if (sparktraits$bodyTraitAlpha > 0.05f && !sparktraits$lastBodyTraits.isEmpty()) {
-            drawTagsAfterRole(renderer, context, sparktraits$lastBodyRoleName, sparktraits$lastBodyTraits, 16, sparktraits$bodyTraitAlpha);
+            TraitNameplateTags.renderUnderBody(context, renderer, sparktraits$lastBodyTraits, sparktraits$bodyTraitAlpha);
         }
     }
 
@@ -86,8 +85,8 @@ public abstract class TraitRoleNameRendererMixin {
                     traitWorld.getDeathTraitSnapshot(target.getUuid())
             );
             if (role != null && !traits.isEmpty()) {
-                sparktraits$lastPlayerRoleName = Text.translatable("announcement.role." + role.identifier().getPath());
                 sparktraits$lastPlayerTraits = traits;
+                sparktraits$playerCohortLine = game.isRunning() && showsCohort(game, player, target);
                 sparktraits$playerTraitAlpha = MathHelper.lerp(delta, sparktraits$playerTraitAlpha, 1.0f);
                 return;
             }
@@ -104,7 +103,6 @@ public abstract class TraitRoleNameRendererMixin {
                 Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(deadPlayerUuid);
                 List<Identifier> traits = TraitWorldComponent.KEY.get(player.getWorld()).getDeathTraitSnapshot(deadPlayerUuid);
                 if (role != null && !traits.isEmpty()) {
-                    sparktraits$lastBodyRoleName = Text.translatable("announcement.role." + role.identifier().getPath());
                     sparktraits$lastBodyTraits = traits;
                     sparktraits$bodyTraitAlpha = MathHelper.lerp(delta, sparktraits$bodyTraitAlpha, 1.0f);
                     return;
@@ -115,20 +113,12 @@ public abstract class TraitRoleNameRendererMixin {
         sparktraits$bodyTraitAlpha = MathHelper.lerp(delta, sparktraits$bodyTraitAlpha, 0.0f);
     }
 
-    private static void drawTagsAfterRole(TextRenderer renderer, DrawContext context, Text roleName, List<Identifier> traits, int y, float alpha) {
-        context.getMatrices().push();
-        context.getMatrices().translate(context.getScaledWindowWidth() / 2.0f, context.getScaledWindowHeight() / 2.0f + 6.0f, 0.0f);
-        context.getMatrices().scale(0.6f, 0.6f, 1.0f);
-
-        int x = renderer.getWidth(roleName) / 2;
-        int a = ((int) (alpha * 255.0f)) << 24;
-        for (Identifier traitId : traits) {
-            Text tag = TraitClientTexts.tag(traitId);
-            int color = (TraitClientTexts.color(traitId) & 0xFFFFFF) | a;
-            context.drawTextWithShadow(renderer, tag, x, y, color);
-            x += renderer.getWidth(tag);
-        }
-
-        context.getMatrices().pop();
+    /**
+     * Mirrors Wathe 1.5.6 RoleNameRenderer's cohort tip, so the tags start below it when it shows.
+     * 与 Wathe 1.5.6 RoleNameRenderer 的同伙提示判定一致；提示显示时标签排在其下方。
+     */
+    private static boolean showsCohort(GameWorldComponent game, ClientPlayerEntity player, PlayerEntity target) {
+        ShouldShowCohort.CohortResult result = ShouldShowCohort.EVENT.invoker().getCohortResult(player, target);
+        return result != null ? result.shouldShow() : game.canUseKillerFeatures(player) && game.canUseKillerFeatures(target);
     }
 }
