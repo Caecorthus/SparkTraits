@@ -20,6 +20,8 @@ public final class GoingDarkRules {
             Identifier.of("sparkwitch", "abyss_listener"),
             Identifier.of("sparkwitch", "potion_gunner"),
             Identifier.of("sparkwitch", "riftwalker"),
+            // SparkWitch's Bewitched (魔化使) is an accomplice before promotion. / SparkWitch 魔化使是晋升前的共犯。
+            Identifier.of("sparkwitch", "bewitched"),
             Identifier.of("noellesroles", "corrupt_cop"),
             Identifier.of("sparkwitch", "insider")
     );

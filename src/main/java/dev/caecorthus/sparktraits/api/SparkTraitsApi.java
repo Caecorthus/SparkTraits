@@ -335,7 +335,8 @@ public final class SparkTraitsApi {
     }
 
     /**
-     * Server only; called by SparkWitch after Grand Witch recruitment, once the recruit's new balance is written.
+     * Server only; call after a mid-round role change, once the player's new balance is written. Built for the former
+     * SparkWitch Grand Witch recruitment (removed 2026-10-05); kept as a public role-change seam.
      * Removes every active trait the current role could not have rolled at round start (no slot cap; unique-trait
      * memory kept), then draws one replacement per removed trait, hidden ones included, from that role's pool, never
      * Pig, Childish or a removed trait; a free trait (Well Supplied) earns no draw. If the player then holds Well
@@ -344,7 +345,8 @@ public final class SparkTraitsApi {
      * drawn names, each in order; hidden traits are left out. Nothing happens outside a running game, for a null
      * visitor, for a dead, role-less or active-Wraith player, during a pending Last Stand or Depression fake death, or
      * while Depression psycho is active.
-     * 仅服务端；由 SparkWitch 在大魔女招募、写入新余额后调用。移除当前身份在开局时无法获得的全部生效天赋（不设槽位上限，
+     * 仅服务端；在局中换身份、写入新余额后调用。原为 SparkWitch 大魔女招募（已于 2026-10-05 移除）而建，作为公共换身份
+     * 接口保留。移除当前身份在开局时无法获得的全部生效天赋（不设槽位上限，
      * 保留每局唯一记录），再按移除数量（隐藏天赋同样计入）从该身份候选池中逐个补抽，不会抽到猪、幼稚或被移除的天赋；
      * 免费天赋（物资充沛）不补抽。之后若玩家持有物资充沛（从任何原身份保留或补抽到），当前余额会按起始金币再加成一次。仅在有天赋被移除时调用 {@code visitor} 一次，依次传入本人可见的被移除
      * 天赋名称与可见的补抽天赋名称；隐藏天赋不列出。对局未运行、visitor 为空、玩家已死亡、无身份、为激活冤魂、处于
@@ -362,10 +364,12 @@ public final class SparkTraitsApi {
 
     /**
      * Server-authoritative: whether the player is in a Depression psycho (the trait's own psycho, not plain Wathe psycho),
-     * whose stash holds their real inventory. SparkWitch's Grand Witch recruitment refuses such targets (owner decision
-     * 2026-10-04). Null-safe; always false on a remote client.
-     * 服务端权威：玩家是否处于抑郁疯魔（该天赋自身的疯魔，而非普通 Wathe 疯魔），其暂存保存着真实物品。SparkWitch
-     * 大魔女招募会拒绝此类目标（所有者 2026-10-04 决定）。支持空值；远端客户端始终返回 false。
+     * whose stash holds their real inventory. Built for the former SparkWitch Grand Witch recruitment (removed
+     * 2026-10-05), which refused such targets (owner decision 2026-10-04); kept as a public role-change seam. Null-safe;
+     * always false on a remote client.
+     * 服务端权威：玩家是否处于抑郁疯魔（该天赋自身的疯魔，而非普通 Wathe 疯魔），其暂存保存着真实物品。原为 SparkWitch
+     * 大魔女招募（已于 2026-10-05 移除）而建，该招募会拒绝此类目标（所有者 2026-10-04 决定）；作为公共换身份接口保留。
+     * 支持空值；远端客户端始终返回 false。
      */
     public static boolean isDepressionPsychoActive(PlayerEntity player) {
         return player != null && DepressionTraitService.isPsychoActive(player);

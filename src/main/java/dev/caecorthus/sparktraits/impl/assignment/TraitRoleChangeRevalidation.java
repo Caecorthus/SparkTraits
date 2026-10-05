@@ -36,10 +36,10 @@ import java.util.function.Predicate;
 
 /**
  * Replaces the traits a living player could not have rolled for the role they now hold with as many fresh draws from
- * that role's pool. Only SparkWitch's Grand Witch recruitment calls this (through the public facade); no role-change
- * listener runs it.
- * 将存活玩家在当前身份下无法于开局获得的天赋，替换为从该身份候选池重新抽取的同等数量天赋。仅由 SparkWitch 大魔女招募
- * 经公共门面调用，不挂接任何换身份监听。
+ * that role's pool. Reached only through the public facade; built for the former SparkWitch Grand Witch recruitment
+ * (removed 2026-10-05) and kept as a public role-change seam. No role-change listener runs it.
+ * 将存活玩家在当前身份下无法于开局获得的天赋，替换为从该身份候选池重新抽取的同等数量天赋。仅经公共门面调用；原为
+ * SparkWitch 大魔女招募（已于 2026-10-05 移除）而建，作为公共换身份接口保留。不挂接任何换身份监听。
  */
 public final class TraitRoleChangeRevalidation {
     /**
@@ -183,9 +183,10 @@ public final class TraitRoleChangeRevalidation {
     /**
      * Last Stand and Depression own a pending death transition, or an active Depression psycho whose stash holds the
      * real inventory; their cleanup assumes death or reset (a fake death would stay stuck in spectator, a psycho would
-     * end without its stash), so the whole call waits. Recruitment never targets spectators or Depression psychos.
+     * end without its stash), so the whole call waits. The former Grand Witch recruitment never targeted spectators or
+     * Depression psychos.
      * 背水一战与抑郁持有待决死亡转换，或抑郁疯魔（其暂存保存真实物品）；这些清理假定玩家已死亡或重置（假死者会卡在
-     * 旁观模式，疯魔会在未归还暂存时结束），因此整次调用跳过。招募本就不会选中旁观者或抑郁疯魔玩家。
+     * 旁观模式，疯魔会在未归还暂存时结束），因此整次调用跳过。原大魔女招募本就不会选中旁观者或抑郁疯魔玩家。
      */
     private static boolean ownsLiveTraitTransition(ServerPlayerEntity player, TraitPlayerComponent traits) {
         return LastStandService.isDeathIntercepted(player) || traits.isLastStandPending()

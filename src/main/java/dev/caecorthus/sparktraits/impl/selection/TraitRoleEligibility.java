@@ -22,6 +22,8 @@ public final class TraitRoleEligibility {
             Identifier.of(SPARKWITCH_MOD_ID, "abyss_listener"),
             Identifier.of(SPARKWITCH_MOD_ID, "potion_gunner"),
             Identifier.of(SPARKWITCH_MOD_ID, "riftwalker"),
+            // SparkWitch's Bewitched (魔化使) is an accomplice before promotion. / SparkWitch 魔化使是晋升前的共犯。
+            Identifier.of(SPARKWITCH_MOD_ID, "bewitched"),
             Identifier.of(SPARKWITCH_MOD_ID, "apprentice_witch"),
             Identifier.of(SPARKWITCH_MOD_ID, "murderous_witch"),
             // The Fiend follows the same rule by owner decision. / 魔人按所有者决定沿用同一规则。
