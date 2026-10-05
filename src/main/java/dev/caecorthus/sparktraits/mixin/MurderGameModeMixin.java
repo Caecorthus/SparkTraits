@@ -1,6 +1,8 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import com.llamalad7.mixinextras.sugar.Local;
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
@@ -14,12 +16,11 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.LinkedHashSet;
@@ -29,47 +30,63 @@ import java.util.UUID;
 
 @Mixin(value = MurderGameMode.class, remap = false)
 public abstract class MurderGameModeMixin {
-    @Redirect(
-            method = "initializeGame",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Ldev/doctor4t/wathe/game/gamemode/MurderGameMode;assignRolesAndGetKillerCount(Lnet/minecraft/server/world/ServerWorld;Ljava/util/List;Ldev/doctor4t/wathe/cca/GameWorldComponent;)I"
-            )
-    )
-    private int sparktraits$assignTraitsBeforeWelcome(
+    @Inject(method = "assignRolesAndGetKillerCount", at = @At("HEAD"))
+    private static void sparktraits$snapshotLockedRolePlayers(
             ServerWorld world,
             List<ServerPlayerEntity> players,
-            GameWorldComponent gameComponent
+            GameWorldComponent gameComponent,
+            CallbackInfoReturnable<Integer> cir,
+            @Share("lockedRolePlayers") LocalRef<Set<UUID>> lockedRolePlayers
     ) {
-        Set<UUID> lockedRolePlayers = sparktraits$snapshotLockedRolePlayers(world);
-        int publicKillerCount = sparktraits$assignRolesAndGetKillerCount(world, players, gameComponent);
+        // Forced roles are consumed during selection, so record /forcerole targets first.
+        // 强制身份会在抽选中被消耗，因此先记录 /forcerole 目标。
+        ScoreboardRoleSelectorComponent selector = ScoreboardRoleSelectorComponent.KEY.get(world.getScoreboard());
+        Set<UUID> forced = new LinkedHashSet<>();
+        for (List<UUID> forcedPlayers : selector.forcedRoles.values()) {
+            forced.addAll(forcedPlayers);
+        }
+        lockedRolePlayers.set(forced);
+    }
+
+    @Inject(
+            method = "assignRolesAndGetKillerCount",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/doctor4t/wathe/cca/ScoreboardRoleSelectorComponent;assignCivilians(Lnet/minecraft/server/world/ServerWorld;Ldev/doctor4t/wathe/cca/GameWorldComponent;Ljava/util/List;)I",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private static void sparktraits$planTraitsBeforeRoleAssigned(
+            ServerWorld world,
+            List<ServerPlayerEntity> players,
+            GameWorldComponent gameComponent,
+            CallbackInfoReturnable<Integer> cir,
+            @Local(ordinal = 0) int killerCount,
+            @Share("lockedRolePlayers") LocalRef<Set<UUID>> lockedRolePlayers,
+            @Share("traitPlan") LocalRef<TraitAssignmentService.RoundPlan> traitPlan
+    ) {
+        // Every role is picked but none announced: Conscience compensation must convert its civilian here, before
+        // RoleAssigned hands out kits and Wathe records role history.
+        // 身份已全部选定但尚未公布：善良补偿必须在此转换好人，早于 RoleAssigned 发放道具与 Wathe 记录身份历史。
         LastStandService.clearRoundState(world);
-        TraitWorldComponent.KEY.get(world).clearRoundState();
-        return TraitAssignmentService.assignForMurderGameBeforeWelcome(
+        traitPlan.set(TraitAssignmentService.planBeforeRoleAssigned(
                 world,
                 gameComponent,
                 players,
-                publicKillerCount,
-                lockedRolePlayers
-        );
+                killerCount,
+                lockedRolePlayers.get()
+        ));
     }
 
-    private Set<UUID> sparktraits$snapshotLockedRolePlayers(ServerWorld world) {
-        ScoreboardRoleSelectorComponent selector = ScoreboardRoleSelectorComponent.KEY.get(world.getScoreboard());
-        Set<UUID> lockedRolePlayers = new LinkedHashSet<>();
-        for (List<UUID> forcedPlayers : selector.forcedRoles.values()) {
-            lockedRolePlayers.addAll(forcedPlayers);
-        }
-        return lockedRolePlayers;
-    }
-
-    @Invoker("assignRolesAndGetKillerCount")
-    static int sparktraits$assignRolesAndGetKillerCount(
+    @Inject(method = "assignRolesAndGetKillerCount", at = @At("RETURN"), cancellable = true)
+    private static void sparktraits$applyTraitsBeforeWelcome(
             ServerWorld world,
             List<ServerPlayerEntity> players,
-            GameWorldComponent gameComponent
+            GameWorldComponent gameComponent,
+            CallbackInfoReturnable<Integer> cir,
+            @Share("traitPlan") LocalRef<TraitAssignmentService.RoundPlan> traitPlan
     ) {
-        throw new AssertionError();
+        cir.setReturnValue(TraitAssignmentService.applyAfterRoleAssigned(world, gameComponent, players, traitPlan.get()));
     }
 
     @Inject(method = "tickServerGameLoop", at = @At("RETURN"))
