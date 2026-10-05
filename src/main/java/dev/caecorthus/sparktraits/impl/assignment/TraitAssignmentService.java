@@ -52,6 +52,8 @@ import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTraitService;
 public final class TraitAssignmentService {
     private static final Set<Identifier> CONSCIENCE_COMPENSATION_REROLL_EXCLUSIONS =
             Set.of(ConscienceTrait.ID, ImpostorTrait.ID);
+    /** Slot limit for re-filtering traits a player already owns. / 复核玩家已拥有天赋时不设槽位上限。 */
+    static final int UNCAPPED = Integer.MAX_VALUE;
 
     private TraitAssignmentService() {
     }
@@ -164,10 +166,29 @@ public final class TraitAssignmentService {
             Role role,
             List<Identifier> pendingTraits
     ) {
+        return retainTraitsEligibleForRole(world, gameComponent, player, role, pendingTraits, TraitPlayerComponent.MAX_TRAITS);
+    }
+
+    /**
+     * Shared per-trait rule of pending locks and role-change revalidation: keeps, in order, every trait that is
+     * registered, allowed for {@code role}, compatible with the traits kept before it, passes its own selection gate,
+     * and keeps the tentative set valid. Keeps at most {@code maxTraits} slot-occupying traits (free traits such as Well
+     * Supplied are not counted); unique-per-game limits are never applied here.
+     * 待应用锁定与换身份复核共用的逐天赋规则：按原顺序保留已注册、{@code role} 可获得、与先前保留天赋兼容、
+     * 通过自身选择条件且整组仍有效的天赋；最多保留 {@code maxTraits} 个占用槽位的天赋（物资充沛等免费天赋不计入），
+     * 此处从不套用每局唯一限制。
+     */
+    static List<Identifier> retainTraitsEligibleForRole(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            ServerPlayerEntity player,
+            Role role,
+            List<Identifier> candidateTraits,
+            int maxTraits
+    ) {
         LinkedHashSet<Identifier> accepted = new LinkedHashSet<>();
-        for (Identifier traitId : pendingTraits) {
-            if (TraitRules.occupiesTraitSlot(traitId)
-                    && TraitRules.occupiedTraitSlots(accepted) >= TraitPlayerComponent.MAX_TRAITS) {
+        for (Identifier traitId : candidateTraits) {
+            if (TraitRules.occupiesTraitSlot(traitId) && TraitRules.occupiedTraitSlots(accepted) >= maxTraits) {
                 continue;
             }
             Trait trait = TraitRegistry.get(traitId);
@@ -563,7 +584,7 @@ public final class TraitAssignmentService {
         return ordered;
     }
 
-    private static void markUniqueTraits(TraitWorldComponent traitWorld, Collection<Identifier> traits) {
+    static void markUniqueTraits(TraitWorldComponent traitWorld, Collection<Identifier> traits) {
         for (Identifier traitId : traits) {
             Trait trait = TraitRegistry.get(traitId);
             if (trait != null && trait.uniquePerGame()) {
