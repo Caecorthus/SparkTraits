@@ -10,6 +10,7 @@
     "CloseQuartersPlayerAttackMixin",
     "CloseQuartersPlayerDamageMixin",
     "ExactItemCooldownMixin",
+    "SparkFactionClearCooldownMixin",
     "LastEscapeAttackMixin",
     "LastEscapeDamageMixin",
     "LastEscapeDoorMixin",

@@ -114,6 +114,18 @@ public final class ForcedMeleeCooldownService {
         sync(player);
     }
 
+    /**
+     * Admin clear of one item (SparkFactionAPI {@code /sparkfactionapi:clearCooldown}): drops only its forced floor, so
+     * the command's {@code remove} is no longer cancelled and the floor is not restored next tick. The vanilla cooldown
+     * is left to the caller.
+     */
+    public static void clearItem(ServerPlayerEntity player, Item item) {
+        Penalties state = SERVER.get(player.getUuid());
+        if (state == null || state.deadlines.remove(item) == null) return;
+        if (state.deadlines.isEmpty()) SERVER.remove(player.getUuid());
+        sync(player);
+    }
+
     public static void clearRound(ServerWorld world) {
         for (ServerPlayerEntity player : world.getPlayers()) clearPlayer(player);
         SERVER.values().removeIf(state -> state.world.equals(world.getRegistryKey()));
