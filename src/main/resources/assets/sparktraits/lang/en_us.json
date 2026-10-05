@@ -34,7 +34,7 @@
   "trait.sparktraits.snowball.name": "Snowball",
   "trait.sparktraits.snowball.description": "Gain 15 money each time your money reaches a multiple of 100.",
   "trait.sparktraits.well_supplied.name": "Well Supplied",
-  "trait.sparktraits.well_supplied.description": "Start the game with 1.2 times your starting money.",
+  "trait.sparktraits.well_supplied.description": "Start the game with 1.2 times your starting money. Does not take a trait slot.",
   "trait.sparktraits.extroverted.name": "Extroverted",
   "trait.sparktraits.extroverted.description": "Your sanity does not drain while at least two other living players are within eight blocks.",
   "trait.sparktraits.introverted.name": "Introverted",

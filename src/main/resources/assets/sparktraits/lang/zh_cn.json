@@ -34,7 +34,7 @@
   "trait.sparktraits.snowball.name": "滚雪球",
   "trait.sparktraits.snowball.description": "金钱每达到 100 的整数倍时，获得 15 金币。",
   "trait.sparktraits.well_supplied.name": "物资充沛",
-  "trait.sparktraits.well_supplied.description": "游戏开始时，初始金币变为 1.2 倍。",
+  "trait.sparktraits.well_supplied.description": "游戏开始时，初始金币变为 1.2 倍。不占用词条上限。",
   "trait.sparktraits.extroverted.name": "外向",
   "trait.sparktraits.extroverted.description": "8格内至少有另外两名存活玩家时，你的理智不会自然流失。",
   "trait.sparktraits.introverted.name": "内向",
