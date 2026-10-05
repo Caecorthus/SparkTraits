@@ -215,7 +215,7 @@ public final class SparkTraitsCommands {
         if (pending.contains(trait.id())) {
             return AddResult.failure("trait is already pending");
         }
-        if (pending.size() >= TraitPlayerComponent.MAX_TRAITS) {
+        if (trait.occupiesTraitSlot() && TraitRules.occupiedTraitSlots(pending) >= TraitPlayerComponent.MAX_TRAITS) {
             return AddResult.failure("pending trait slots are full");
         }
         if (!TraitRules.isCompatibleWithAll(trait, pending)) {

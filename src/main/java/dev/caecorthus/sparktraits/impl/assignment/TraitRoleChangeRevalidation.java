@@ -5,6 +5,7 @@ import dev.caecorthus.sparktraits.api.TraitAssignmentReason;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.impl.selection.TraitRules;
 import dev.caecorthus.sparktraits.impl.selection.TraitSelector;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
@@ -80,11 +81,13 @@ public final class TraitRoleChangeRevalidation {
         }
 
         // One draw per dropped trait, hidden ones included (owner decision 2026-10-05); a dropped trait never returns.
+        // A dropped free trait (Well Supplied) never held a slot, so it earns no draw.
         // 每移除一个天赋补抽一次，隐藏天赋同样计入（所有者 2026-10-05 决定）；被移除的天赋不会被重新抽回。
+        // 被移除的免费天赋（物资充沛）本就不占槽位，因此不补抽。
         TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(world);
         List<Identifier> rolled = TraitSelector.selectReplacementTraits(
                 world, game, traitWorld, player, new Random(world.getRandom().nextLong()), game.getAllPlayers().size(),
-                outcome.kept(), outcome.dropped().size(), replacementExclusions(outcome.dropped()));
+                outcome.kept(), TraitRules.occupiedTraitSlots(outcome.dropped()), replacementExclusions(outcome.dropped()));
         List<Identifier> rolledVisible = visibleAtStart(rolled);
 
         // Kept traits stay untouched; dropped ones get onRemoved, rolled ones onAssigned.

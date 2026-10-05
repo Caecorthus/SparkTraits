@@ -15,8 +15,6 @@
     "BeveragePlateBluePoisonParticleMixin",
     "CautiousClientWorldSoundMixin",
     "CautiousPresenceFootstepsVolumeMixin",
-    "ChameleonEntityRenderDispatcherMixin",
-    "ChameleonLivingEntityRendererMixin",
     "DepressionGameRendererMixin",
     "DepressionPsychoArmSkinMixin",
     "DepressionInGameHudMixin",

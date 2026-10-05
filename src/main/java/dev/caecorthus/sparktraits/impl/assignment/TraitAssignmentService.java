@@ -172,9 +172,11 @@ public final class TraitAssignmentService {
     /**
      * Shared per-trait rule of pending locks and role-change revalidation: keeps, in order, every trait that is
      * registered, allowed for {@code role}, compatible with the traits kept before it, passes its own selection gate,
-     * and keeps the tentative set valid. Stops at {@code maxTraits}; unique-per-game limits are never applied here.
+     * and keeps the tentative set valid. Keeps at most {@code maxTraits} slot-occupying traits (free traits such as Well
+     * Supplied are not counted); unique-per-game limits are never applied here.
      * 待应用锁定与换身份复核共用的逐天赋规则：按原顺序保留已注册、{@code role} 可获得、与先前保留天赋兼容、
-     * 通过自身选择条件且整组仍有效的天赋；达到 {@code maxTraits} 即停止，此处从不套用每局唯一限制。
+     * 通过自身选择条件且整组仍有效的天赋；最多保留 {@code maxTraits} 个占用槽位的天赋（物资充沛等免费天赋不计入），
+     * 此处从不套用每局唯一限制。
      */
     static List<Identifier> retainTraitsEligibleForRole(
             ServerWorld world,
@@ -186,8 +188,8 @@ public final class TraitAssignmentService {
     ) {
         LinkedHashSet<Identifier> accepted = new LinkedHashSet<>();
         for (Identifier traitId : candidateTraits) {
-            if (accepted.size() >= maxTraits) {
-                break;
+            if (TraitRules.occupiesTraitSlot(traitId) && TraitRules.occupiedTraitSlots(accepted) >= maxTraits) {
+                continue;
             }
             Trait trait = TraitRegistry.get(traitId);
             if (trait == null || !TraitRoleEligibility.canReceiveTrait(role, trait)) {
@@ -530,19 +532,31 @@ public final class TraitAssignmentService {
         if (locked.contains(requiredTrait) || random.contains(requiredTrait)) {
             return new ForcedTraitPlan(List.copyOf(locked), List.copyOf(random));
         }
-        while (locked.size() + random.size() >= TraitPlayerComponent.MAX_TRAITS) {
-            if (!random.isEmpty()) {
-                random.removeLast();
-                continue;
-            }
-            if (!locked.isEmpty()) {
-                locked.removeLast();
+        while (TraitRules.occupiesTraitSlot(requiredTrait)
+                && occupiedTraitSlots(locked, random) >= TraitPlayerComponent.MAX_TRAITS) {
+            if (removeLastSlotTrait(random) || removeLastSlotTrait(locked)) {
                 continue;
             }
             break;
         }
         random.add(requiredTrait);
         return new ForcedTraitPlan(List.copyOf(locked), List.copyOf(random));
+    }
+
+    private static int occupiedTraitSlots(Collection<Identifier> lockedTraits, Collection<Identifier> randomTraits) {
+        return TraitRules.occupiedTraitSlots(lockedTraits) + TraitRules.occupiedTraitSlots(randomTraits);
+    }
+
+    /** Dropping a free trait frees no slot, so only the last slot-occupying trait is removed.
+     *  移除免费天赋腾不出槽位，因此只移除最后一个占用槽位的天赋。 */
+    private static boolean removeLastSlotTrait(List<Identifier> traits) {
+        for (int i = traits.size() - 1; i >= 0; i--) {
+            if (TraitRules.occupiesTraitSlot(traits.get(i))) {
+                traits.remove(i);
+                return true;
+            }
+        }
+        return false;
     }
 
     record ForcedTraitPlan(List<Identifier> lockedTraits, List<Identifier> randomTraits) {
@@ -709,11 +723,13 @@ public final class TraitAssignmentService {
                 Trait randomTrait = TraitRegistry.get(randomTraitId);
                 return randomTrait != null && TraitRules.areIncompatible(trait, randomTrait);
             });
-            if (lockedTraits.size() >= TraitPlayerComponent.MAX_TRAITS) {
-                return false;
-            }
-            if (lockedTraits.size() + randomTraits.size() >= TraitPlayerComponent.MAX_TRAITS && !randomTraits.isEmpty()) {
-                randomTraits.removeLast();
+            if (trait.occupiesTraitSlot()) {
+                if (TraitRules.occupiedTraitSlots(lockedTraits) >= TraitPlayerComponent.MAX_TRAITS) {
+                    return false;
+                }
+                if (occupiedTraitSlots(lockedTraits, randomTraits) >= TraitPlayerComponent.MAX_TRAITS) {
+                    removeLastSlotTrait(randomTraits);
+                }
             }
             randomTraits.add(traitId);
             return true;
@@ -724,7 +740,10 @@ public final class TraitAssignmentService {
                 return true;
             }
             Trait trait = TraitRegistry.get(traitId);
-            return trait != null && lockedTraits.size() < TraitPlayerComponent.MAX_TRAITS && isCompatibleWithLockedTraits(trait);
+            return trait != null
+                    && (!trait.occupiesTraitSlot()
+                            || TraitRules.occupiedTraitSlots(lockedTraits) < TraitPlayerComponent.MAX_TRAITS)
+                    && isCompatibleWithLockedTraits(trait);
         }
 
         void clearRandomTraits() {
@@ -737,8 +756,9 @@ public final class TraitAssignmentService {
                 return;
             }
             for (Identifier traitId : replacementTraits) {
-                if (lockedTraits.size() + randomTraits.size() >= TraitPlayerComponent.MAX_TRAITS) {
-                    break;
+                if (TraitRules.occupiesTraitSlot(traitId)
+                        && occupiedTraitSlots(lockedTraits, randomTraits) >= TraitPlayerComponent.MAX_TRAITS) {
+                    continue;
                 }
                 if (!lockedTraits.contains(traitId) && !randomTraits.contains(traitId)) {
                     randomTraits.add(traitId);

@@ -11,12 +11,13 @@ import java.util.List;
 final class RetiredTraitIds {
     static final Identifier ARROGANT_ASF = SparkTraits.id("arrogant_asf");
     static final Identifier WRAITH = Identifier.of("sparktraits", "wraith");
+    static final Identifier CHAMELEON = SparkTraits.id("chameleon");
 
     private RetiredTraitIds() {
     }
 
     static boolean isRetired(Identifier id) {
-        return ARROGANT_ASF.equals(id) || WRAITH.equals(id);
+        return ARROGANT_ASF.equals(id) || WRAITH.equals(id) || CHAMELEON.equals(id);
     }
 
     static List<Identifier> filter(Collection<Identifier> ids) {

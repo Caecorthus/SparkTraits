@@ -33,9 +33,13 @@ final class TraitTagLayout {
             return new Metrics(px, unit, glyphs, 4 * unit + glyphs);
         }
 
-        /** A tag's width for text {@code advance} units wide (the font's trailing 1-unit spacing is dropped). */
+        /**
+         * A tag's width for text {@code advance} units wide (the font's trailing 1-unit spacing is dropped):
+         * rim, band (pad, gem, pad), gap, text, pad, rim.
+         * 文字宽 advance 单位时的标签宽度（去掉字体末尾 1 单位间距）：描边、色条（留白、宝石、留白）、间隙、文字、留白、描边。
+         */
         int tagWidth(int advance) {
-            return 13 * unit + textWidth(advance);
+            return 14 * unit + textWidth(advance);
         }
 
         int textWidth(int advance) {
@@ -48,8 +52,12 @@ final class TraitTagLayout {
         }
     }
 
-    /** One tag: outer box, the 5-unit gem's top-left and the text origin. 单个标签：外框、宝石左上角与文字起点。 */
-    record Tag(int x, int y, int width, int height, int gemX, int gemY, int textX, int textY) {
+    /**
+     * One tag: outer box, the right edge of the trait-colour band (it starts inside the left rim), the 5-unit gem's
+     * top-left (centred in the band) and the text origin.
+     * 单个标签：外框、天赋色色条右缘（色条起于左描边内侧）、宝石左上角（在色条内居中）与文字起点。
+     */
+    record Tag(int x, int y, int width, int height, int bandRight, int gemX, int gemY, int textX, int textY) {
         int right() {
             return x + width;
         }
@@ -81,8 +89,9 @@ final class TraitTagLayout {
             for (int i = start; i < end; i++) {
                 int width = metrics.tagWidth(advances[i]);
                 tags.add(new Tag(x, y, width, height,
+                        x + 10 * unit,
                         x + 3 * unit, y + (height - 5 * unit) / 2,
-                        x + 10 * unit, y + 2 * unit));
+                        x + 11 * unit, y + 2 * unit));
                 x += width + gap;
             }
             y += height + gap;

@@ -10,9 +10,11 @@ import net.minecraft.util.Identifier;
 import java.util.List;
 
 /**
- * Trait tags under Wathe's crosshair name plate: centred rows of small Harpy Express price tags (brass hairline,
- * identity gem in the trait colour, name in TEXT), the same language as the inventory trait card.
- * 准星名牌下方的天赋标签：居中排列的哈比特快小价签（黄铜描边、天赋色身份宝石、TEXT 色名称），与背包天赋卡同一套视觉语言。
+ * Trait tags under Wathe's crosshair name plate: centred rows of small Harpy Express price tags (brass hairline, a
+ * band in the trait colour holding a gem in the colour of the faction the trait belongs to, name in TEXT). The
+ * inventory trait card keeps its trait-colour gem.
+ * 准星名牌下方的天赋标签：居中排列的哈比特快小价签（黄铜描边、天赋色色条内嵌所属阵营色宝石、TEXT 色名称）。
+ * 背包天赋卡仍使用天赋色宝石。
  */
 public final class TraitNameplateTags {
     /**
@@ -43,13 +45,15 @@ public final class TraitNameplateTags {
         TraitTagLayout.Metrics metrics = TraitTagLayout.Metrics.of(guiScale);
         String[] names = new String[traits.size()];
         int[] colors = new int[traits.size()];
+        int[] factionColors = new int[traits.size()];
         int[] advances = new int[traits.size()];
         for (int i = 0; i < names.length; i++) {
             Identifier id = traits.get(i);
-            // Names draw from their plain string in TEXT; the trait colour is only the gem (as on the inventory card).
-            // 名称以纯文本 TEXT 色绘制，天赋色仅用于宝石（与背包卡一致）。
+            // Names draw from their plain string in TEXT; the trait colour fills the band and the gem shows the faction.
+            // 名称以纯文本 TEXT 色绘制；天赋色填充色条，宝石显示所属阵营。
             names[i] = TraitClientTexts.name(id).getString();
             colors[i] = TraitClientTexts.color(id);
+            factionColors[i] = TraitClientTexts.factionColor(id);
             advances[i] = font.getWidth(names[i]);
         }
         int centerX = (int) Math.floor(context.getScaledWindowWidth() * guiScale / 2.0);
@@ -63,8 +67,8 @@ public final class TraitNameplateTags {
         InventoryCardPaint.batch(context, () -> {
             for (int i = 0; i < tags.size(); i++) {
                 TraitTagLayout.Tag tag = tags.get(i);
-                tag(context, tag, metrics.unit(), alpha);
-                gem(context, tag.gemX(), tag.gemY(), metrics.unit(), colors[i], alpha);
+                tag(context, tag, metrics.unit(), colors[i], alpha);
+                gem(context, tag.gemX(), tag.gemY(), metrics.unit(), factionColors[i], alpha);
             }
         });
         context.getMatrices().pop();
@@ -82,17 +86,19 @@ public final class TraitNameplateTags {
 
     /**
      * Raised price tag (InventoryCardPaint.pill's READY chrome) at chrome unit {@code u}: L-shaped drop shadow, cut
-     * corners, brass rim lit on top. Each pixel is painted once, so the fade never double-blends.
-     * 凸起价签（同 InventoryCardPaint.pill 的可用态外观），按装饰单位 u 绘制：L 形投影、切角、上亮下暗的黄铜边。
-     * 每个像素只绘制一次，淡入淡出时不会叠色。
+     * corners, brass rim lit on top, and a band in the trait colour {@code rgb} along the inside of the left rim.
+     * Each pixel is painted once, so the fade never double-blends.
+     * 凸起价签（同 InventoryCardPaint.pill 的可用态外观），按装饰单位 u 绘制：L 形投影、切角、上亮下暗的黄铜边，
+     * 左描边内侧为天赋色 rgb 的色条。每个像素只绘制一次，淡入淡出时不会叠色。
      */
-    private static void tag(DrawContext c, TraitTagLayout.Tag t, int u, float alpha) {
+    private static void tag(DrawContext c, TraitTagLayout.Tag t, int u, int rgb, float alpha) {
         int x = t.x(), y = t.y(), r = t.right(), b = t.bottom();
         int shadow = fade(InventoryCardPaint.SHADOW, alpha);
         int top = fade(InventoryCardPaint.BRASS_HI, alpha), bottom = fade(InventoryCardPaint.BRASS_LO, alpha);
         c.fill(r, y + 2 * u, r + u, b, shadow);
         c.fill(x + 2 * u, b, r, b + u, shadow);
-        c.fill(x + u, y + u, r - u, b - u, fade(InventoryCardPaint.TIP_BG, alpha));
+        c.fill(x + u, y + u, t.bandRight(), b - u, fade(0xFF000000 | rgb, alpha));
+        c.fill(t.bandRight(), y + u, r - u, b - u, fade(InventoryCardPaint.TIP_BG, alpha));
         c.fill(x + u, y, r - u, y + u, top);
         c.fill(x + u, b - u, r - u, b, bottom);
         c.fillGradient(x, y + u, x + u, b - u, top, bottom);
@@ -100,8 +106,9 @@ public final class TraitNameplateTags {
     }
 
     /**
-     * InventoryCardPaint.gem at chrome unit {@code u}: bezel with cut corners, 3x3 identity, glint and shade.
-     * 按装饰单位 u 放大的身份宝石：切角宝石托、3x3 身份色、左上高光与右下暗部。
+     * InventoryCardPaint.gem at chrome unit {@code u}: bezel with cut corners, 3x3 colour {@code rgb} (the trait's
+     * faction here), glint and shade.
+     * 按装饰单位 u 放大的身份宝石：切角宝石托、3x3 颜色 rgb（此处为天赋所属阵营色）、左上高光与右下暗部。
      */
     private static void gem(DrawContext c, int x, int y, int u, int rgb, float alpha) {
         int id = 0xFF000000 | rgb;

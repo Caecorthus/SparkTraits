@@ -47,8 +47,7 @@ public final class PigPlayerRenderer {
             MatrixStack matrices,
             VertexConsumerProvider vertexConsumers,
             int light,
-            Identifier headTexture,
-            float alpha
+            Identifier headTexture
     ) {
         Models models = models(player);
         forceAdultModels(models);
@@ -69,13 +68,9 @@ public final class PigPlayerRenderer {
         matrices.scale(-1.0f, -1.0f, 1.0f);
         matrices.translate(0.0f, -1.501f, 0.0f);
 
-        renderPigBody(player, models.pig(), limbPos, limbSpeed, animationProgress, relativeHeadYaw, pitch, matrices, vertexConsumers, light, alpha);
-        renderPlayerHead(player, models.head(), models.pigHead(), headTexture, relativeHeadYaw, pitch, matrices, vertexConsumers, light, alpha);
-        // Armor ignores vertex alpha, so a fading Chameleon pig drops its helmet like other player layers.
-        // 盔甲不支持顶点透明度，因此淡化中的变色龙猪与其他玩家图层一样隐藏头盔。
-        if (!ChameleonRenderAlpha.hidesLayers(alpha)) {
-            renderHelmet(player, models.armorRenderer(), models.outerArmor(), matrices, vertexConsumers, light);
-        }
+        renderPigBody(player, models.pig(), limbPos, limbSpeed, animationProgress, relativeHeadYaw, pitch, matrices, vertexConsumers, light);
+        renderPlayerHead(player, models.head(), models.pigHead(), headTexture, relativeHeadYaw, pitch, matrices, vertexConsumers, light);
+        renderHelmet(player, models.armorRenderer(), models.outerArmor(), matrices, vertexConsumers, light);
 
         matrices.pop();
     }
@@ -90,18 +85,14 @@ public final class PigPlayerRenderer {
             float pitch,
             MatrixStack matrices,
             VertexConsumerProvider vertexConsumers,
-            int light,
-            float alpha
+            int light
     ) {
         model.animateModel(player, limbPos, limbSpeed, 0.0f);
         model.setAngles(player, limbPos, limbSpeed, animationProgress, relativeHeadYaw, pitch);
         boolean previousHeadVisible = pigHead.visible;
         pigHead.visible = false;
-        RenderLayer layer = alpha < ChameleonRenderAlpha.OPAQUE
-                ? RenderLayer.getItemEntityTranslucentCull(PIG_TEXTURE)
-                : RenderLayer.getEntityCutout(PIG_TEXTURE);
-        VertexConsumer consumer = vertexConsumers.getBuffer(layer);
-        model.render(matrices, consumer, light, OverlayTexture.DEFAULT_UV, ChameleonRenderAlpha.applyAlpha(-1, alpha));
+        VertexConsumer consumer = vertexConsumers.getBuffer(RenderLayer.getEntityCutout(PIG_TEXTURE));
+        model.render(matrices, consumer, light, OverlayTexture.DEFAULT_UV);
         pigHead.visible = previousHeadVisible;
     }
 
@@ -114,19 +105,15 @@ public final class PigPlayerRenderer {
             float pitch,
             MatrixStack matrices,
             VertexConsumerProvider vertexConsumers,
-            int light,
-            float alpha
+            int light
     ) {
         model.setVisible(false);
         model.head.visible = true;
         model.hat.visible = player.isPartVisible(PlayerModelPart.HAT);
         copyPigHeadTransform(model.head, sourceHead, relativeHeadYaw, pitch);
         model.hat.copyTransform(model.head);
-        RenderLayer layer = alpha < ChameleonRenderAlpha.OPAQUE
-                ? RenderLayer.getItemEntityTranslucentCull(headTexture)
-                : model.getLayer(headTexture);
-        VertexConsumer consumer = vertexConsumers.getBuffer(layer);
-        model.render(matrices, consumer, light, OverlayTexture.DEFAULT_UV, ChameleonRenderAlpha.applyAlpha(-1, alpha));
+        VertexConsumer consumer = vertexConsumers.getBuffer(model.getLayer(headTexture));
+        model.render(matrices, consumer, light, OverlayTexture.DEFAULT_UV);
     }
 
     private static void renderHelmet(
