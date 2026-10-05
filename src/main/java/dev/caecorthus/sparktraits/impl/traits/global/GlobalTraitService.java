@@ -168,12 +168,20 @@ public final class GlobalTraitService {
      */
     public static void applyWellSuppliedStartingMoney(ServerWorld world) {
         for (ServerPlayerEntity player : world.getPlayers()) {
-            if (!hasTrait(player, WellSuppliedTrait.ID)) {
-                continue;
+            if (hasTrait(player, WellSuppliedTrait.ID)) {
+                applyWellSuppliedStartingMoney(player);
             }
-            PlayerShopComponent shop = PlayerShopComponent.KEY.get(player);
-            shop.setBalance(wellSuppliedStartingMoney(shop.getBalance()));
         }
+    }
+
+    /**
+     * One player's Well Supplied bonus on their current balance; also used when the trait is rolled mid-round, after
+     * the caller has written the new role's starting balance.
+     * 按单个玩家的当前余额发放物资充沛加成；局中抽到该天赋时同样使用，调用方须先写入新身份的起始余额。
+     */
+    public static void applyWellSuppliedStartingMoney(ServerPlayerEntity player) {
+        PlayerShopComponent shop = PlayerShopComponent.KEY.get(player);
+        shop.setBalance(wellSuppliedStartingMoney(shop.getBalance()));
     }
 
     static int wellSuppliedStartingMoney(int startingMoney) {
