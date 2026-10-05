@@ -6,7 +6,6 @@ import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.presentation.OwnerInventoryPresentation;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.lifecycle.RoundEndTraitResolver;
-import dev.caecorthus.sparktraits.impl.traits.civilian.chameleon.ChameleonRules;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.GoingDarkRules;
@@ -456,7 +455,6 @@ public final class SparkTraitsApi {
         TraitPlayerComponent viewerTraits = TraitPlayerComponent.KEY.maybeGet(viewer).orElse(null);
         GameWorldComponent game = GameWorldComponent.KEY.maybeGet(viewer.getWorld()).orElse(null);
         boolean goingDarkSuppressed = false;
-        boolean chameleonSuppressed = false;
         if (targetTraits != null && viewerTraits != null && game != null) {
             boolean viewerPlayingAndAlive = GameFunctions.isPlayerPlayingAndAlive(viewer);
             boolean viewerCanSeeSpectatorInformation = GameFunctions.isPlayerSpectatingOrCreative(viewer)
@@ -469,12 +467,6 @@ public final class SparkTraitsApi {
                     game.getRole(viewer),
                     viewerTraits.getActiveTraitIds()
             );
-            chameleonSuppressed = ChameleonRules.shouldSuppressInstinct(
-                    ChameleonRules.isFullyTransparent(targetTraits.getChameleonStillSinceTick(), target.getWorld().getTime()),
-                    viewerPlayingAndAlive,
-                    viewerCanSeeSpectatorInformation,
-                    finalMomentActive
-            );
         }
 
         return EffectiveTraitService.shouldHideFromInstinct(
@@ -484,7 +476,7 @@ public final class SparkTraitsApi {
                 // Spirit projection leaves a defenseless body; downstream instinct sources must still outline it.
                 // 灵魂出窍留下的肉身毫无防备，下游本能来源仍须为其描边。
                 false,
-                goingDarkSuppressed || chameleonSuppressed
+                goingDarkSuppressed
         );
     }
 
@@ -627,6 +619,7 @@ public final class SparkTraitsApi {
 
     private static boolean isRetiredTrait(Identifier identifier) {
         return Identifier.of("sparktraits", "arrogant_asf").equals(identifier)
-                || Identifier.of("sparktraits", "wraith").equals(identifier);
+                || Identifier.of("sparktraits", "wraith").equals(identifier)
+                || Identifier.of("sparktraits", "chameleon").equals(identifier);
     }
 }

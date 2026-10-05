@@ -5,7 +5,6 @@ import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitDefinition;
 import dev.caecorthus.sparktraits.api.TraitRegistry;
 import net.minecraft.util.Identifier;
-import dev.caecorthus.sparktraits.impl.traits.civilian.chameleon.ChameleonService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
@@ -20,7 +19,6 @@ public final class CivilianTraits {
     public static final Identifier MONEY_TREE = SparkTraits.id("money_tree");
     public static final Identifier FOCUS = SparkTraits.id("focus");
     public static final Identifier DEPRESSION = SparkTraits.id("depression");
-    public static final Identifier CHAMELEON = SparkTraits.id("chameleon");
 
     private CivilianTraits() {
     }
@@ -60,10 +58,6 @@ public final class CivilianTraits {
                 ))
                 .build());
         TraitRegistry.register(new DepressionTrait());
-        TraitRegistry.register(base(CHAMELEON, ChameleonService.COLOR)
-                .incompatibleWith(INTROVERTED)
-                .incompatibleWith(EXTROVERTED)
-                .build());
     }
 
     private static TraitDefinition.Builder base(Identifier id, int color) {
