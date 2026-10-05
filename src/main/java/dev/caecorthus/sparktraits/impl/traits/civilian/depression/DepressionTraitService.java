@@ -583,6 +583,22 @@ public final class DepressionTraitService {
         TraitPlayerComponent.KEY.get(player).setDepressionCounterTarget(null);
     }
 
+    /**
+     * Mid-round Depression removal from a living player: resets only state owned by this player's Depression. No-op
+     * during a fake death or psycho, which own their own exit. The counter target stays: it marks another player's
+     * psycho hunting this one.
+     * 存活玩家在局中被移除抑郁时，只重置其自身抑郁拥有的状态；假死或疯魔期间不做任何事（由其自身流程收尾）。
+     * 反制目标保留：它标记的是正在追杀本玩家的他人疯魔。
+     */
+    public static void clearOwnerStateForTraitRemoval(ServerPlayerEntity player) {
+        if (isPending(player) || isPsychoActive(player)) {
+            return;
+        }
+        TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
+        traits.setDepressionSuicideTicks(-1);
+        traits.setDepressionPsychoState(false, null);
+    }
+
     public static void clearRoundState(ServerWorld world) {
         for (UUID uuid : Set.copyOf(pendingPlayers.keySet())) {
             ServerPlayerEntity player = world.getServer().getPlayerManager().getPlayer(uuid);

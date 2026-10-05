@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.api;
 import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.impl.assignment.TraitRoleChangeRevalidation;
 import dev.caecorthus.sparktraits.impl.presentation.OwnerInventoryPresentation;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.lifecycle.RoundEndTraitResolver;
@@ -281,6 +282,42 @@ public final class SparkTraitsApi {
                 List.copyOf(revealedTraitIds),
                 TraitAssignmentReason.INTERNAL
         ));
+    }
+
+    /**
+     * Server only; called by SparkWitch after Grand Witch recruitment, once the recruit's new balance is written.
+     * Removes every active trait the current role could not have rolled at round start (no slot cap; unique-trait
+     * memory kept), then draws one replacement per removed trait, hidden ones included, from that role's pool, never
+     * Pig, Childish or a removed trait. A drawn Well Supplied multiplies the current balance like starting money.
+     * Calls {@code visitor} once, only when something was removed, with the owner-visible removed names and the visible
+     * drawn names, each in order; hidden traits are left out. Nothing happens outside a running game, for a null
+     * visitor, for a dead, role-less or active-Wraith player, during a pending Last Stand or Depression fake death, or
+     * while Depression psycho is active.
+     * 仅服务端；由 SparkWitch 在大魔女招募、写入新余额后调用。移除当前身份在开局时无法获得的全部生效天赋（不设槽位上限，
+     * 保留每局唯一记录），再按移除数量（隐藏天赋同样计入）从该身份候选池中逐个补抽，不会抽到猪、幼稚或被移除的天赋；
+     * 补抽到物资充沛时，当前余额按起始金币加成。仅在有天赋被移除时调用 {@code visitor} 一次，依次传入本人可见的被移除
+     * 天赋名称与可见的补抽天赋名称；隐藏天赋不列出。对局未运行、visitor 为空、玩家已死亡、无身份、为激活冤魂、处于
+     * 背水一战/抑郁假死待决或抑郁疯魔中时不做任何事。
+     */
+    public static void replaceTraitsIneligibleForCurrentRole(
+            ServerPlayerEntity player,
+            BiConsumer<List<Text>, List<Text>> visitor
+    ) {
+        // An active Wraith's trait snapshot belongs to the Wraith API. / 激活冤魂的天赋快照归冤魂 API 管理。
+        if (visitor != null && !isWraithActive(player)) {
+            TraitRoleChangeRevalidation.replaceTraitsIneligibleForCurrentRole(player, visitor);
+        }
+    }
+
+    /**
+     * Server-authoritative: whether the player is in a Depression psycho (the trait's own psycho, not plain Wathe psycho),
+     * whose stash holds their real inventory. SparkWitch's Grand Witch recruitment refuses such targets (owner decision
+     * 2026-10-04). Null-safe; always false on a remote client.
+     * 服务端权威：玩家是否处于抑郁疯魔（该天赋自身的疯魔，而非普通 Wathe 疯魔），其暂存保存着真实物品。SparkWitch
+     * 大魔女招募会拒绝此类目标（所有者 2026-10-04 决定）。支持空值；远端客户端始终返回 false。
+     */
+    public static boolean isDepressionPsychoActive(PlayerEntity player) {
+        return player != null && DepressionTraitService.isPsychoActive(player);
     }
 
     /**
