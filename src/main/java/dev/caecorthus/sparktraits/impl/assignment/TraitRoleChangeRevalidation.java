@@ -76,10 +76,32 @@ public final class TraitRoleChangeRevalidation {
         List<Identifier> kept = TraitAssignmentService.retainTraitsEligibleForRole(
                 world, game, player, role, active, TraitAssignmentService.UNCAPPED);
         Outcome outcome = plan(active, traits.getRevealedTraitIds(), kept, traits::isVisibleToOwner);
-        if (outcome.dropped().isEmpty()) {
-            return;
+        List<Identifier> rolledVisible = outcome.dropped().isEmpty()
+                ? List.of()
+                : swapDroppedTraits(world, game, player, traits, outcome);
+        if (traits.hasActiveTrait(WellSuppliedTrait.ID)) {
+            // Kept from any former role or drawn just now, Well Supplied pays again on the balance the caller has just
+            // written, which stands in for starting money (owner decisions 2026-10-05).
+            // 无论是从任何原身份保留还是刚刚补抽到，物资充沛都会对调用方刚写入的余额再生效一次，该余额视作起始金币
+            // （所有者 2026-10-05 决定）。
+            GlobalTraitService.applyWellSuppliedStartingMoney(player);
         }
+        if (!outcome.dropped().isEmpty()) {
+            visitor.accept(names(outcome.namedDropped()), names(rolledVisible));
+        }
+    }
 
+    /**
+     * Applies a non-empty drop and its replacement draws; returns the drawn traits the owner can see.
+     * 执行非空的移除及其补抽；返回本人可见的补抽天赋。
+     */
+    private static List<Identifier> swapDroppedTraits(
+            ServerWorld world,
+            GameWorldComponent game,
+            ServerPlayerEntity player,
+            TraitPlayerComponent traits,
+            Outcome outcome
+    ) {
         // One draw per dropped trait, hidden ones included (owner decision 2026-10-05); a dropped trait never returns.
         // A dropped free trait (Well Supplied) never held a slot, so it earns no draw.
         // 每移除一个天赋补抽一次，隐藏天赋同样计入（所有者 2026-10-05 决定）；被移除的天赋不会被重新抽回。
@@ -96,15 +118,10 @@ public final class TraitRoleChangeRevalidation {
                 concat(outcome.kept(), rolled), concat(outcome.keptRevealed(), rolledVisible), TraitAssignmentReason.RANDOM);
         clearDroppedTraitState(player, outcome.dropped());
         TraitAssignmentService.markUniqueTraits(traitWorld, rolled);
-        if (rolled.contains(WellSuppliedTrait.ID)) {
-            // The caller has written the new role's balance first; it stands in for starting money (owner decision
-            // 2026-10-05). / 调用方已先写入新身份余额，视作起始金币（所有者 2026-10-05 决定）。
-            GlobalTraitService.applyWellSuppliedStartingMoney(player);
-        }
         // Round-end winners and replay tooltips read this snapshot after the player leaves; death snapshots stay.
         // 玩家离线后回合结算与回放提示读取此快照；死亡快照保持不变。
         traitWorld.snapshotRoundTraits(player.getUuid(), traits.getActiveTraitIds());
-        visitor.accept(names(outcome.namedDropped()), names(rolledVisible));
+        return rolledVisible;
     }
 
     static Set<Identifier> replacementExclusions(List<Identifier> dropped) {
