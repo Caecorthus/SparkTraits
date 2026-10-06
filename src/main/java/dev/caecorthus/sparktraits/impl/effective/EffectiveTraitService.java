@@ -64,6 +64,9 @@ public final class EffectiveTraitService {
     private static final Identifier SPARKWITCH_ABYSS_LISTENER_ID = Identifier.of("sparkwitch", "abyss_listener");
     private static final Identifier SPARKWITCH_POTION_GUNNER_ID = Identifier.of("sparkwitch", "potion_gunner");
     private static final Identifier SPARKWITCH_RIFTWALKER_ID = Identifier.of("sparkwitch", "riftwalker");
+    // SparkWitch's Bewitched (魔化使) is an accomplice before promotion.
+    // SparkWitch 魔化使是晋升前的共犯。
+    private static final Identifier SPARKWITCH_BEWITCHED_ID = Identifier.of("sparkwitch", "bewitched");
     private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
     // SparkWitch's Insider shares the Corrupt Cop's team and keeps its win rule after the Corrupt Cop dies.
     // SparkWitch 内应与黑警同属一个阵营，黑警死后由内应继续承担该阵营的胜利规则。
@@ -881,6 +884,7 @@ public final class EffectiveTraitService {
                 || SPARKWITCH_ABYSS_LISTENER_ID.equals(role.identifier())
                 || SPARKWITCH_POTION_GUNNER_ID.equals(role.identifier())
                 || SPARKWITCH_RIFTWALKER_ID.equals(role.identifier())
+                || SPARKWITCH_BEWITCHED_ID.equals(role.identifier())
                 || SPARKWITCH_MURDEROUS_WITCH_ID.equals(role.identifier())
                 || Noellesroles.CORRUPT_COP_ID.equals(role.identifier())
                 || SPARKWITCH_INSIDER_ID.equals(role.identifier())

@@ -29,7 +29,9 @@ public final class LastStandTrait implements Trait {
             // SparkWitch special accomplices share every Accomplice rule. / SparkWitch 特殊共犯沿用共犯的全部规则。
             Identifier.of("sparkwitch", "abyss_listener"),
             Identifier.of("sparkwitch", "potion_gunner"),
-            Identifier.of("sparkwitch", "riftwalker")
+            Identifier.of("sparkwitch", "riftwalker"),
+            // SparkWitch's Bewitched (魔化使) is an accomplice before promotion. / SparkWitch 魔化使是晋升前的共犯。
+            Identifier.of("sparkwitch", "bewitched")
     );
 
     @Override
