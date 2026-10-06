@@ -55,7 +55,8 @@ public abstract class TraitRoleNameRendererMixin {
         }
 
         float delta = tickCounter.getTickDelta(true) / 4.0f;
-        float range = WatheClient.canSeeSpectatorInformation() ? 8.0f : 2.0f;
+        boolean canSeeTraitInformation = sparktraits$canSeeTraitInformation(player);
+        float range = canSeeTraitInformation ? 8.0f : 2.0f;
         updatePlayerTraitLine(player, range, delta);
         updateBodyTraitLine(player, range, delta);
 
@@ -68,7 +69,7 @@ public abstract class TraitRoleNameRendererMixin {
     }
 
     private static void updatePlayerTraitLine(ClientPlayerEntity player, float range, float delta) {
-        if (!WatheClient.canSeeSpectatorInformation()) {
+        if (!sparktraits$canSeeTraitInformation(player)) {
             sparktraits$playerTraitAlpha = MathHelper.lerp(delta, sparktraits$playerTraitAlpha, 0.0f);
             return;
         }
@@ -99,7 +100,7 @@ public abstract class TraitRoleNameRendererMixin {
         if (ProjectileUtil.getCollision(player, entity -> entity instanceof PlayerBodyEntity body && CanTargetBody.EVENT.invoker().canTarget(player, body), range) instanceof EntityHitResult hit
                 && hit.getEntity() instanceof PlayerBodyEntity body) {
             UUID deadPlayerUuid = body.getPlayerUuid();
-            if (deadPlayerUuid != null && (WatheClient.canSeeSpectatorInformation() || CanSeeBodyRole.EVENT.invoker().canSee(MinecraftClient.getInstance().player))) {
+            if (deadPlayerUuid != null && (sparktraits$canSeeTraitInformation(player) || CanSeeBodyRole.EVENT.invoker().canSee(MinecraftClient.getInstance().player))) {
                 Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(deadPlayerUuid);
                 List<Identifier> traits = TraitWorldComponent.KEY.get(player.getWorld()).getDeathTraitSnapshot(deadPlayerUuid);
                 if (role != null && !traits.isEmpty()) {
@@ -120,5 +121,19 @@ public abstract class TraitRoleNameRendererMixin {
     private static boolean showsCohort(GameWorldComponent game, ClientPlayerEntity player, PlayerEntity target) {
         ShouldShowCohort.CohortResult result = ShouldShowCohort.EVENT.invoker().getCohortResult(player, target);
         return result != null ? result.shouldShow() : game.canUseKillerFeatures(player) && game.canUseKillerFeatures(target);
+    }
+
+    /**
+     * 判断当前查看者是否拥有 SparkTraits 的旁观词条查看权限。
+     *
+     * <p>正常情况下沿用 Wathe 的旁观/创造模式判断；当玩家只是通过调试命令被
+     * 加入 deadPlayers 时，补充 Wathe 的逻辑死亡标记，使其不必真正执行一次死亡
+     * 流程就能看到自身和目标的词条准心显示。</p>
+     */
+    private static boolean sparktraits$canSeeTraitInformation(ClientPlayerEntity player) {
+        if (WatheClient.canSeeSpectatorInformation()) {
+            return true;
+        }
+        return GameWorldComponent.KEY.get(player.getWorld()).isPlayerDead(player.getUuid());
     }
 }

@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
+import dev.caecorthus.sparktraits.client.compat.SparkStrengthCoronerClientBridge;
 import dev.caecorthus.sparktraits.client.compat.SparkWitchBlackRavenBridge;
 import dev.caecorthus.sparktraits.client.instinct.GoingDarkInstinctClientHooks;
 import dev.caecorthus.sparktraits.compat.SparkStrengthCoronerBridge;
@@ -78,10 +79,14 @@ public abstract class WatheClientMixin {
                     && GameFunctions.isPlayerPlayingAndAlive(playerTarget)) {
                 // Final Moment must beat Last Stand's normal killer-instinct hiding.
                 // 终局时刻必须优先于背水一战的普通杀手本能隐藏。
-                cir.setReturnValue(LastStandFinalMomentService.finalMomentHighlightColor(
+                cir.setReturnValue(LastStandFinalMomentService.finalMomentHighlightColorForViewer(
+                        viewer,
                         playerTarget,
                         game,
-                        traitWorld.isFinalMomentLooseEnd(playerTarget.getUuid())
+                        traitWorld.isFinalMomentLooseEnd(playerTarget.getUuid()),
+                        // Answering here skips SparkStrength's Coroner disguise event, so ask it for the disguise color.
+                        // 这里提前返回会跳过 SparkStrength 的验尸官伪装事件，因此直接查询其伪装色。
+                        SparkStrengthCoronerClientBridge.resolveKillerDisguiseInstinctColor(playerTarget)
                 ));
                 return;
             }
@@ -253,18 +258,25 @@ public abstract class WatheClientMixin {
             cir.setReturnValue(EffectiveTraitService.IMPOSTOR_INSTINCT_COLOR);
         } else if (EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget)) {
             cir.setReturnValue(EffectiveTraitService.CIVILIAN_INSTINCT_COLOR);
-        } else if (EffectiveTraitService.hasImpostor(viewer)) {
-            cir.setReturnValue(EffectiveTraitService.effectiveKillerInstinctColor(
-                    EffectiveTraitService.appearsAsKillerToKillerInstinct(
-                            game.getRole(playerTarget),
-                            game.canUseKillerFeatures(playerTarget),
-                            // Answering here skips SparkStrength's Coroner disguise event, so mirror it.
-                            // 这里提前返回会跳过 SparkStrength 的验尸官伪装事件，因此同步其判定。
-                            SparkStrengthCoronerBridge.appearsAsKillerCohort(playerTarget)
-                    ),
-                    false,
-                    false
-            ));
+        } else {
+            // Answering here skips SparkStrength's Coroner disguise event, so mirror it.
+            // 这里提前返回会跳过 SparkStrength 的验尸官伪装事件，因此同步其判定。
+            Integer coronerDisguiseColor = SparkStrengthCoronerClientBridge.resolveKillerDisguiseInstinctColor(playerTarget);
+            if (coronerDisguiseColor != null) {
+                cir.setReturnValue(coronerDisguiseColor);
+                return;
+            }
+            if (EffectiveTraitService.hasImpostor(viewer)) {
+                cir.setReturnValue(EffectiveTraitService.effectiveKillerInstinctColor(
+                        EffectiveTraitService.appearsAsKillerToKillerInstinct(
+                                game.getRole(playerTarget),
+                                game.canUseKillerFeatures(playerTarget),
+                                SparkStrengthCoronerBridge.appearsAsKillerCohort(playerTarget)
+                        ),
+                        false,
+                        false
+                ));
+            }
         }
     }
 

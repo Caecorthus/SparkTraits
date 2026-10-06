@@ -12,6 +12,7 @@ import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.ScoreboardRoleSelectorComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.game.gamemode.MurderGameMode;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import org.objectweb.asm.Opcodes;
@@ -19,6 +20,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
@@ -117,6 +119,26 @@ public abstract class MurderGameModeMixin {
         // Rewrite Wathe's TIME before any listener sees it, and before the null-result fallback reuses it.
         // 在任何监听器看到之前改写 wathe 的 TIME，也覆盖监听器全返回 null 时沿用的本地状态。
         return LastStandFinalMomentService.resolveFinalMomentTimeout(serverWorld, gameWorldComponent, winStatus);
+    }
+
+    @Redirect(
+            method = "tickServerGameLoop",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;isInnocent(Lnet/minecraft/entity/player/PlayerEntity;)Z"
+            )
+    )
+    private boolean sparktraits$useEffectiveCivilianForKillerWin(
+            GameWorldComponent gameWorldComponent,
+            PlayerEntity player
+    ) {
+        // Wathe 原版这里按角色原始 isInnocent() 判断“是否仍有好人存活”。
+        // 内鬼的原始职业虽然是好人，但有效阵营已经翻转为杀手；如果继续使用
+        // 原始判断，最后一名普通好人死亡后仍会被内鬼挡住 KILLERS 状态，
+        // 进而无法触发 NoellesRoles 的双影谢幕入口。
+        // 这里仅替换 MurderGameMode 的杀手胜利计算，不改变 GameWorldComponent
+        // 的全局 isInnocent() 行为，避免影响其他仍依赖原始职业阵营的逻辑。
+        return EffectiveTraitService.isEffectiveCivilian(player, gameWorldComponent);
     }
 
     @Inject(

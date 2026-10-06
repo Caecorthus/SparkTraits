@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.client;
 
+import dev.caecorthus.sparktraits.client.compat.SparkStrengthCoronerClientBridge;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.client.audio.DepressionRageLoopController;
 import dev.caecorthus.sparktraits.client.hud.DepressionHud;
@@ -61,10 +62,12 @@ public class SparkTraitsClient implements ClientModInitializer {
             // Final Moment reveals every living player by faction color until the round ends.
             // 终局时刻会按阵营颜色高亮所有存活玩家，直到本局结束。
             return GetInstinctHighlight.HighlightResult.always(
-                    LastStandFinalMomentService.finalMomentHighlightColor(
+                    LastStandFinalMomentService.finalMomentHighlightColorForViewer(
+                            viewer,
                             targetPlayer,
                             game,
-                            traitWorld.isFinalMomentLooseEnd(targetPlayer.getUuid())
+                            traitWorld.isFinalMomentLooseEnd(targetPlayer.getUuid()),
+                            SparkStrengthCoronerClientBridge.resolveKillerDisguiseInstinctColor(targetPlayer)
                     ),
                     GetInstinctHighlight.HighlightResult.PRIORITY_HIGH + 1
             );

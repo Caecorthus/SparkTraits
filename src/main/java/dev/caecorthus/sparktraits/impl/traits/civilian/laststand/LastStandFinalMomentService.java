@@ -6,6 +6,8 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi.SparkFactionApiEffectiveFactionBridge;
 import dev.caecorthus.sparktraits.impl.replay.SparkTraitsReplayEvents;
+import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.mixin.RoleHistoryComponentAccessor;
 import dev.caecorthus.sparkfactionapi.api.FactionDefinition;
 import dev.caecorthus.sparkfactionapi.api.FactionIds;
@@ -334,12 +336,38 @@ public final class LastStandFinalMomentService {
         return duration;
     }
 
-    public static int finalMomentHighlightColor(
-            PlayerEntity player,
+    /**
+     * Final Moment color of {@code target} as {@code viewer} sees it.
+     * 终局时刻中 {@code viewer} 看到的 {@code target} 高亮颜色。
+     *
+     * <p>Clients get only the public Conscience/Impostor flags for other players, never their full trait list, so
+     * the faction flip reads those flags. {@code killerDisguiseColor} is SparkStrength's Coroner killer disguise,
+     * or null when it is absent.</p>
+     * <p>客户端只会收到其他玩家公开的善良/内鬼标记，不会收到完整天赋列表，因此阵营翻转按这两个标记判断。
+     * {@code killerDisguiseColor} 是 SparkStrength 验尸官的杀手伪装色，缺失时为 null。</p>
+     */
+    public static int finalMomentHighlightColorForViewer(
+            PlayerEntity viewer,
+            PlayerEntity target,
             GameWorldComponent gameComponent,
-            boolean lastStandFinalMomentLooseEnd
+            boolean lastStandFinalMomentLooseEnd,
+            @Nullable Integer killerDisguiseColor
     ) {
-        Role role = gameComponent.getRole(player);
+        Role role = gameComponent.getRole(target);
+        TraitPlayerComponent targetTraits = TraitPlayerComponent.KEY.get(target);
+        boolean targetHasConscience = targetTraits.isConscienceInstinctVisible();
+        boolean targetHasImpostor = targetTraits.isImpostorInstinctVisible();
+        Integer viewerColor = finalMomentViewerColor(
+                role,
+                targetHasConscience,
+                targetHasImpostor,
+                lastStandFinalMomentLooseEnd,
+                EffectiveTraitService.isEffectiveKiller(viewer, gameComponent),
+                killerDisguiseColor
+        );
+        if (viewerColor != null) {
+            return viewerColor;
+        }
         // Base faction, not the full effective chain: SparkWitch maps Murderous Witch to an ability-bridge
         // faction, but it is still a native neutral role.
         // 使用基础阵营而非完整有效阵营链：SparkWitch 把杀意魔女映射到能力桥接阵营，但它仍是原生中立职业。
@@ -347,11 +375,50 @@ public final class LastStandFinalMomentService {
                 role,
                 lastStandFinalMomentLooseEnd,
                 SparkFactionApi.resolveBaseFaction(role),
-                TraitPlayerComponent.KEY.get(player).getActiveTraitIds()
+                publicAlignmentTraits(targetHasConscience, targetHasImpostor)
         );
         return SparkFactionApi.getFaction(faction)
                 .map(FactionDefinition::color)
                 .orElse(UNKNOWN_FACTION_COLOR);
+    }
+
+    /** Viewer-specific colors that replace the faction color, or null to show the faction color.
+     *  替代阵营色的观察者专属颜色；返回 null 时显示阵营色。 */
+    static @Nullable Integer finalMomentViewerColor(
+            @Nullable Role role,
+            boolean targetHasConscience,
+            boolean targetHasImpostor,
+            boolean lastStandFinalMomentLooseEnd,
+            boolean viewerIsEffectiveKiller,
+            @Nullable Integer killerDisguiseColor
+    ) {
+        // A public Conscience/Impostor flag outranks the disguise, so one player never shows two clues at once.
+        // 公开的善良/内鬼标记优先于伪装色，避免同一玩家同时显示两种提示。
+        if (killerDisguiseColor != null && !targetHasConscience && !targetHasImpostor) {
+            return killerDisguiseColor;
+        }
+        if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
+            return null;
+        }
+        // Effective killers keep the Impostor's blue clue instead of a plain killer color.
+        // 有效杀手观察者仍看到内鬼蓝色，而不是普通杀手色。
+        if (viewerIsEffectiveKiller && targetHasImpostor) {
+            return EffectiveTraitService.IMPOSTOR_INSTINCT_COLOR;
+        }
+        return null;
+    }
+
+    /** The alignment-flip traits a client can see on another player, from its public instinct flags.
+     *  客户端能从公开本能标记看到的其他玩家阵营翻转天赋。 */
+    static List<Identifier> publicAlignmentTraits(boolean conscience, boolean impostor) {
+        List<Identifier> traits = new ArrayList<>(2);
+        if (conscience) {
+            traits.add(ConscienceTrait.ID);
+        }
+        if (impostor) {
+            traits.add(ImpostorTrait.ID);
+        }
+        return traits;
     }
 
     /** Picks the faction whose registered SparkFactionAPI color Final Moment shows.
