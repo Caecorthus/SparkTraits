@@ -22,11 +22,17 @@ public final class TraitDisplayService {
         if (!spectator) {
             return List.of();
         }
-        if (activeTraits != null && !activeTraits.isEmpty()) {
-            return List.copyOf(activeTraits);
-        }
+        /*
+         * 死亡玩家的世界级快照是死亡时刻的权威词条集合。近距离实体可能已经
+         * 收到过普通玩家同步，其中 activeTraits 只包含本人可见的部分；如果先
+         * 返回那份非空缓存，就会遮蔽完整死亡快照，造成“近处不显示、远处显示”
+         * 的距离相关问题。调试 deadPlayers 和真实死亡都必须优先使用快照。
+         */
         if (targetDead && deathTraits != null && !deathTraits.isEmpty()) {
             return List.copyOf(deathTraits);
+        }
+        if (activeTraits != null && !activeTraits.isEmpty()) {
+            return List.copyOf(activeTraits);
         }
         return List.of();
     }

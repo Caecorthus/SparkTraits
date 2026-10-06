@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
+import dev.caecorthus.sparktraits.client.compat.SparkStrengthCoronerBridge;
 import dev.caecorthus.sparktraits.client.compat.SparkWitchBlackRavenBridge;
 import dev.caecorthus.sparktraits.client.instinct.GoingDarkInstinctClientHooks;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
@@ -77,10 +78,35 @@ public abstract class WatheClientMixin {
                     && GameFunctions.isPlayerPlayingAndAlive(playerTarget)) {
                 // Final Moment must beat Last Stand's normal killer-instinct hiding.
                 // 终局时刻必须优先于背水一战的普通杀手本能隐藏。
-                cir.setReturnValue(LastStandFinalMomentService.finalMomentHighlightColor(
+                boolean targetHasConscience = targetTraits.isConscienceInstinctVisible();
+                boolean targetHasImpostor = targetTraits.isImpostorInstinctVisible();
+                boolean viewerIsEffectiveKiller = EffectiveTraitService.isEffectiveKiller(viewer, game);
+                boolean finalMomentLooseEnd = traitWorld.isFinalMomentLooseEnd(playerTarget.getUuid());
+
+                /*
+                 * SparkStrength 的验尸官伪装是客户端外观/本能状态，不会改变
+                 * GameWorldComponent 中的原始职业。终局时刻仍需让有效杀手观察者
+                 * 把“伪装成杀手的验尸官”看成杀手；公开内鬼/善良标记则保留自身
+                 * 的优先级，避免一个玩家同时拥有两种可见提示时被伪装色覆盖。
+                 *
+                 * SparkStrength Coroner disguise is presentation-only and does not
+                 * rewrite GameWorldComponent's base role. Final Moment must therefore
+                 * keep its killer disguise visible to effective killer observers.
+                 */
+                Integer coronerDisguiseColor = (!targetHasConscience && !targetHasImpostor)
+                        ? SparkStrengthCoronerBridge.resolveKillerDisguiseInstinctColor(playerTarget)
+                        : null;
+                if (coronerDisguiseColor != null) {
+                    cir.setReturnValue(coronerDisguiseColor);
+                    return;
+                }
+
+                cir.setReturnValue(LastStandFinalMomentService.finalMomentHighlightColorForViewer(
                         game.getRole(playerTarget),
-                        targetTraits.getActiveTraitIds(),
-                        traitWorld.isFinalMomentLooseEnd(playerTarget.getUuid())
+                        targetHasConscience,
+                        targetHasImpostor,
+                        finalMomentLooseEnd,
+                        viewerIsEffectiveKiller
                 ));
                 return;
             }
@@ -242,15 +268,32 @@ public abstract class WatheClientMixin {
             cir.setReturnValue(EffectiveTraitService.IMPOSTOR_INSTINCT_COLOR);
         } else if (EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget)) {
             cir.setReturnValue(EffectiveTraitService.CIVILIAN_INSTINCT_COLOR);
-        } else if (EffectiveTraitService.hasImpostor(viewer)) {
-            cir.setReturnValue(EffectiveTraitService.effectiveKillerInstinctColor(
-                    EffectiveTraitService.appearsAsKillerToKillerInstinct(
-                            game.getRole(playerTarget),
-                            game.canUseKillerFeatures(playerTarget)
-                    ),
-                    false,
-                    false
-            ));
+        } else {
+            /*
+             * Wathe 只看验尸官的原始平民职业，无法知道 SparkStrength 当前选中的
+             * 尸体身份。可选桥返回非 null 时，优先把它显示为杀手；桥缺失则完全
+             * 回退到下面原有的内鬼目标判定，保证单独安装 SparkTraits 时不变。
+             *
+             * Wathe only sees Coroner's original civilian role. A non-null optional
+             * bridge result supplies the active killer disguise; a missing bridge keeps
+             * the original SparkTraits-only fallback intact.
+             */
+            Integer coronerDisguiseColor = SparkStrengthCoronerBridge
+                    .resolveKillerDisguiseInstinctColor(playerTarget);
+            if (coronerDisguiseColor != null) {
+                cir.setReturnValue(coronerDisguiseColor);
+                return;
+            }
+            if (EffectiveTraitService.hasImpostor(viewer)) {
+                cir.setReturnValue(EffectiveTraitService.effectiveKillerInstinctColor(
+                        EffectiveTraitService.appearsAsKillerToKillerInstinct(
+                                game.getRole(playerTarget),
+                                game.canUseKillerFeatures(playerTarget)
+                        ),
+                        false,
+                        false
+                ));
+            }
         }
     }
 

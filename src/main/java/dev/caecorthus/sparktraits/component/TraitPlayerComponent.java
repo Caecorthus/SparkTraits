@@ -573,7 +573,19 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     @Override
     public void writeSyncPacket(RegistryByteBuf buf, ServerPlayerEntity recipient) {
         boolean owner = recipient == player;
-        boolean spectator = GameFunctions.isPlayerSpectatingOrCreative(recipient);
+        /*
+         * Wathe 的“死亡”有两个维度：游戏模式可能已经切到旁观，也可能只是被
+         * GameWorldComponent.deadPlayers 标记为非存活。SparkStrength 的调试命令
+         * 只修改后者，故这里必须把逻辑死亡也视为旁观者同步权限；否则目标玩家
+         * 仍处于生存/冒险模式时，自己的完整词条不会同步到客户端，直到真正死亡
+         * 并切换为旁观模式后才会出现。
+         *
+         * This intentionally depends only on Wathe's public GameWorldComponent API,
+         * so SparkTraits remains soft-compatible with or without SparkStrength.
+         */
+        GameWorldComponent game = GameWorldComponent.KEY.get(recipient.getWorld());
+        boolean spectator = GameFunctions.isPlayerSpectatingOrCreative(recipient)
+                || game.isPlayerDead(recipient.getUuid());
 
         // Owners receive revealed traits, spectators receive full traits, regular players receive only flags.
         // 本人同步已揭示天赋，旁观者同步完整天赋，普通玩家只同步必要标记。

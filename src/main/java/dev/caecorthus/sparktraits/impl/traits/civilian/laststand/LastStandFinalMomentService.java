@@ -305,16 +305,41 @@ public final class LastStandFinalMomentService {
             @Nullable Collection<Identifier> traits,
             boolean lastStandFinalMomentLooseEnd
     ) {
+        Collection<Identifier> activeTraits = traits == null ? List.of() : traits;
+        return finalMomentHighlightColor(
+                role,
+                EffectiveTraitService.hasConscience(activeTraits),
+                EffectiveTraitService.hasImpostor(activeTraits),
+                lastStandFinalMomentLooseEnd
+        );
+    }
+
+    /**
+     * Resolves the final-moment faction color from the public instinct flags.
+     *
+     * <p>普通客户端不会收到其他玩家的完整天赋列表，只会收到本能所需的公开
+     * 善良/内鬼标记。因此终局时刻必须使用这两个布尔值，而不能要求调用方把
+     * {@code getActiveTraitIds()} 当作完整服务端状态。</p>
+     *
+     * <p>Resolve the final-moment faction color from the public instinct flags.
+     * Regular clients intentionally receive no complete trait list for other players;
+     * they only receive the public Conscience/Impostor flags.</p>
+     */
+    public static int finalMomentHighlightColor(
+            @Nullable Role role,
+            boolean targetHasConscience,
+            boolean targetHasImpostor,
+            boolean lastStandFinalMomentLooseEnd
+    ) {
         if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
             return FINAL_MOMENT_CIVILIAN_COLOR;
         }
-        Collection<Identifier> activeTraits = traits == null ? List.of() : traits;
         // Final Moment colors follow effective alignment so flipped traits do not leak base-role colors.
         // 终局时刻按有效阵营染色，避免阵营翻转天赋泄露原职业颜色。
-        if (EffectiveTraitService.hasImpostor(activeTraits)) {
+        if (targetHasImpostor) {
             return FINAL_MOMENT_KILLER_COLOR;
         }
-        if (EffectiveTraitService.hasConscience(activeTraits)) {
+        if (targetHasConscience) {
             return FINAL_MOMENT_CIVILIAN_COLOR;
         }
         // SparkWitch's custom witch faction appears as native neutral here, so keep its current purple.
@@ -329,6 +354,40 @@ public final class LastStandFinalMomentService {
             case NEUTRAL -> FINAL_MOMENT_NEUTRAL_COLOR;
             case NONE -> FINAL_MOMENT_NONE_COLOR;
         };
+    }
+
+    /**
+     * Resolves the final-moment color from the viewer's effective alignment too.
+     *
+     * <p>An Impostor is a killer-team player for a killer observer, but its blue
+     * color is an important special clue. Keep that clue only for effective killer
+     * observers; everyone else continues to receive the regular final-moment faction
+     * color. The loose-end check remains first so the Last Stand outlaw presentation
+     * cannot be accidentally replaced by an alignment overlay.</p>
+     *
+     * <p>带有内鬼词条的玩家对有效杀手观察者必须继续显示内鬼蓝色，避免在亡命徒
+     * 终局时刻被误认成普通终局杀手。蓝色只对有效杀手观察者开放，其他观察者仍按
+     * 终局阵营颜色显示；亡命徒自身的专用颜色优先级最高。</p>
+     */
+    public static int finalMomentHighlightColorForViewer(
+            @Nullable Role role,
+            boolean targetHasConscience,
+            boolean targetHasImpostor,
+            boolean lastStandFinalMomentLooseEnd,
+            boolean viewerIsEffectiveKiller
+    ) {
+        if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
+            return FINAL_MOMENT_CIVILIAN_COLOR;
+        }
+        if (viewerIsEffectiveKiller && targetHasImpostor) {
+            return EffectiveTraitService.IMPOSTOR_INSTINCT_COLOR;
+        }
+        return finalMomentHighlightColor(
+                role,
+                targetHasConscience,
+                targetHasImpostor,
+                lastStandFinalMomentLooseEnd
+        );
     }
 
     public static boolean didFinalMomentPlayerWin(
