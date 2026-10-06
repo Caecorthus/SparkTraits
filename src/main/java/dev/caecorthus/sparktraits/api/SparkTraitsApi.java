@@ -34,6 +34,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
+import org.ladysnake.cca.api.v3.component.ComponentProvider;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -221,6 +222,56 @@ public final class SparkTraitsApi {
     ) {
         return attacker != null && victim != null && weapon != null
                 && CloseQuartersService.shouldCancelMeleeAttack(attacker, victim, weapon);
+    }
+
+    /**
+     * Re-sends the player's trait component using the current Wathe life-state permissions.
+     * 按当前 Wathe 存活状态权限重新同步玩家词条组件。
+     *
+     * <p>This is a small compatibility seam for external debug tools that modify Wathe's
+     * {@code deadPlayers} marker without running the normal death event. It does not alter
+     * any trait state; it only makes the new visibility decision reach the client immediately.</p>
+     */
+    public static void syncTraitVisibility(ServerPlayerEntity player) {
+        if (player != null && !player.getWorld().isClient()) {
+            TraitPlayerComponent.KEY.sync(player);
+        }
+    }
+
+    /**
+     * Creates the spectator-visible death trait snapshot used by the debug life-state command.
+     * 创建调试存活状态命令所需的旁观者可见死亡词条快照。
+     *
+     * <p>This does not kill the player, clear traits, spawn a body, or trigger any death event.
+     * It only mirrors the snapshot step that normally happens in SparkTraits' real-death hook,
+     * so the existing RoleNameRenderer path has data to display immediately.</p>
+     */
+    public static void snapshotDeathTraitsForDebug(ServerPlayerEntity player) {
+        if (player == null || player.getWorld().isClient()) {
+            return;
+        }
+        TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(player.getWorld());
+        Collection<Identifier> traits = TraitPlayerComponent.KEY.get(player).getActiveTraitIds();
+        if (traits.isEmpty()) {
+            // 如果组件同步/生命周期正好处于切换窗口，回退到本局分配时保存的权威快照。
+            traits = traitWorld.getRoundTraitSnapshot(player.getUuid());
+        }
+        traitWorld.snapshotDeathTraits(player.getUuid(), traits);
+
+        /*
+         * CCA 的实体组件 sync(player) 只覆盖目标本人和实体追踪者；多人调试时，远处
+         * 玩家可能因此收不到第一次状态转换。死亡快照属于世界组件，这里显式对同世界
+         * 在线玩家重发一次，确保创造/旁观查看者都立即拿到同一份快照。
+         */
+        if (player.getServer() != null) {
+            for (ServerPlayerEntity recipient : player.getServer().getPlayerManager().getPlayerList()) {
+                if (recipient.getServerWorld() == player.getServerWorld()) {
+                    // World 和 ServerPlayerEntity 由 CCA Mixin 在运行时实现 ComponentProvider。
+                    TraitWorldComponent.KEY.syncWith(recipient, (ComponentProvider) player.getWorld());
+                    TraitPlayerComponent.KEY.syncWith(recipient, (ComponentProvider) player);
+                }
+            }
+        }
     }
 
     /**

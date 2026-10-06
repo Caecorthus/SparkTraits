@@ -38,6 +38,16 @@ final class TraitSyncVisibility {
         return spectatingOrCreative && !playingAndAlive;
     }
 
+    /**
+     * Also counts players Wathe marks dead while they stay in survival, as debug life-state tools do, matching the
+     * client's trait-tag gate. Fake deaths (Depression, Jester, Taotie) never call markPlayerDead, so they still stay out.
+     * 同时把 Wathe 标记为死亡但仍处于生存模式的玩家（调试存活状态工具）算作旁观者，与客户端天赋标签判定一致。
+     * 假死（抑郁、小丑、饕餮）不会调用 markPlayerDead，因此仍不会算入。
+     */
+    static boolean seesSpectatorInformation(boolean spectatingOrCreative, boolean playingAndAlive, boolean markedDead) {
+        return markedDead || seesSpectatorInformation(spectatingOrCreative, playingAndAlive);
+    }
+
     static <T> Collection<T> revealedTraitsFor(
             boolean owner,
             boolean spectator,

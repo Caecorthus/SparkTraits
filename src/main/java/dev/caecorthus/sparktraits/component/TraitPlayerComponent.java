@@ -644,7 +644,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         return new TraitSyncVisibility.Recipient(
                 TraitSyncVisibility.seesSpectatorInformation(
                         spectatingOrCreative,
-                        GameFunctions.isPlayerPlayingAndAlive(recipient)
+                        GameFunctions.isPlayerPlayingAndAlive(recipient),
+                        gameComponent.isPlayerDead(recipient.getUuid())
                 ),
                 // Mirrors the client instinct gate EffectiveTraitService.isEffectiveKiller(viewer, game).
                 // 与客户端本能入口 EffectiveTraitService.isEffectiveKiller(viewer, game) 保持一致。

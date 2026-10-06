@@ -9,6 +9,7 @@ import dev.caecorthus.sparktraits.impl.effective.alignment.EffectiveAlignment;
 import dev.caecorthus.sparktraits.impl.effective.death.EffectiveDeathConsequenceRules;
 import dev.caecorthus.sparktraits.impl.effective.economy.EffectiveEconomyRules;
 import dev.caecorthus.sparktraits.impl.effective.gun.EffectiveGunRules;
+import dev.caecorthus.sparktraits.mixin.GameWorldComponentAccessor;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerialKillerService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
@@ -40,7 +41,9 @@ import org.ladysnake.cca.api.v3.component.ComponentKey;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /** Central effective-team rules for alignment-flipping traits.
@@ -758,6 +761,56 @@ public final class EffectiveTraitService {
 
     public static boolean isEffectiveKiller(Role role, Collection<Identifier> traits) {
         return EffectiveAlignment.isEffectiveKiller(role, traits);
+    }
+
+    /**
+     * Returns the killer-team UUIDs that NoellesRoles should use for Shadow Jester showdown checks.
+     * 返回 NoellesRoles 双影谢幕判定中应使用的有效杀手阵营 UUID 列表。
+     *
+     * <p>Wathe 的 {@code getAllKillerTeamPlayers()} 只读取角色的原始
+     * {@code canUseKiller()} 属性，因此会遗漏“原始好人 + impostor”玩家，
+     * 也会把带有 conscience 的原始杀手继续算入杀手列表。这里按 SparkTraits
+     * 已确定的阵营规则重新构造列表：</p>
+     *
+     * <ul>
+     *     <li>保留原始杀手，但排除已经翻为好人阵营的 conscience；</li>
+     *     <li>加入原始好人且拥有 impostor 的玩家；</li>
+     *     <li>不把普通好人或其他中立角色加入杀手阵营。</li>
+     * </ul>
+     */
+    public static List<UUID> getEffectiveKillerTeamPlayers(GameWorldComponent gameComponent) {
+        if (gameComponent == null) {
+            return List.of();
+        }
+
+        GameWorldComponentAccessor accessor = (GameWorldComponentAccessor) (Object) gameComponent;
+        if (accessor.sparktraits$getWorld() == null) {
+            return List.of();
+        }
+
+        Set<UUID> effectiveKillers = new LinkedHashSet<>();
+
+        // 先处理 Wathe 原本认定的杀手。善良杀手不能在双影谢幕中继续充当杀手对手。
+        for (UUID uuid : gameComponent.getAllKillerTeamPlayers()) {
+            PlayerEntity player = accessor.sparktraits$getWorld().getPlayerByUuid(uuid);
+            if (player == null || !hasConscience(player)) {
+                effectiveKillers.add(uuid);
+            }
+        }
+
+        // 再补入被 impostor 翻转为杀手阵营的原始好人。
+        for (UUID uuid : gameComponent.getAllPlayers()) {
+            Role role = gameComponent.getRole(uuid);
+            PlayerEntity player = accessor.sparktraits$getWorld().getPlayerByUuid(uuid);
+            if (player != null
+                    && isOriginalCivilian(role)
+                    && hasImpostor(player)
+                    && !hasConscience(player)) {
+                effectiveKillers.add(uuid);
+            }
+        }
+
+        return new ArrayList<>(effectiveKillers);
     }
 
     public static boolean isRealOriginalKiller(PlayerEntity player, GameWorldComponent gameComponent) {
