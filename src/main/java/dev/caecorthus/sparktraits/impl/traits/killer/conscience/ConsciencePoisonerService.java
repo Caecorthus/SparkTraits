@@ -47,9 +47,9 @@ public final class ConsciencePoisonerService {
     public static final int BLUE_POISON_COLOR = 0x00BFFF;
     public static final int MIXED_POISON_COLOR = mixColors(NORMAL_POISONER_INSTINCT_COLOR, BLUE_POISON_COLOR);
     public static final int BLUE_GAS_POISON_TICKS = 20 * 20;
-    // Blue poison drains 40 sanity points per second from players it cannot kill.
-    // 蓝毒对不会被毒死的玩家每秒扣 40 点理智。
-    public static final float BLUE_SANITY_DRAIN_PER_SECOND = 0.4f;
+    // Blue poison drains 20 sanity points per second from players it cannot kill.
+    // 蓝毒对不会被毒死的玩家每秒扣 20 点理智。
+    public static final float BLUE_SANITY_DRAIN_PER_SECOND = 0.2f;
     public static final float BLUE_SANITY_DRAIN_PER_TICK = BLUE_SANITY_DRAIN_PER_SECOND / 20.0f;
     public static final int BLUE_TRAP_SANITY_DRAIN_TICKS = 3 * 20;
 
