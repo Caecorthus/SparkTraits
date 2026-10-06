@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.client.gui;
 
+import dev.caecorthus.sparktraits.client.compat.GuideDecorBridge;
 import dev.caecorthus.sparktraits.client.compat.SparkStrengthHudBridge;
 import dev.doctor4t.wathe.client.gui.screen.ingame.LimitedInventoryScreen;
 import net.minecraft.client.MinecraftClient;
@@ -463,6 +464,7 @@ public final class InventoryInfoCard {
         try {
             context.getMatrices().translate(0, 0, 100);
             InventoryCardPaint.panel(context, box.x(), box.y(), box.width(), box.height());
+            GuideDecorBridge.cardChrome(context, box.x(), box.y(), box.width(), box.height());
             int x0 = box.x() + PAD_X, x1 = box.right() - PAD_X;
             context.enableScissor(box.x(), box.y(), box.right(), box.bottom());
             try {
@@ -480,6 +482,7 @@ public final class InventoryInfoCard {
                     else entryRow(context, font, current, row.section(), row.index(), x0, x1, row.y(), hover, now);
                 }
             } finally { context.disableScissor(); }
+            GuideDecorBridge.cardOverlay(context, box.x(), box.y(), box.width(), box.height());
         } finally { context.getMatrices().pop(); }
         if (hovered != null) drawTooltip(context, font, snapshot, hovered, width, height);
     }
