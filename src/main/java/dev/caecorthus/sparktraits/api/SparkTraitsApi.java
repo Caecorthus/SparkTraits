@@ -110,6 +110,16 @@ public final class SparkTraitsApi {
                 : dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService.marksmanRangeMultiplier(player);
     }
 
+    /** Server-only, null-safe: whether a downstream police gun's wathe:gun_shot kill of victim by shooter counts as a Heavy Artillery shot (active trait on a gun-police runtime role, within the trait's 5-block feet-to-feet reach, shooter != victim). Never kills or mutates anything.
+     *  仅服务端、支持空值：下游警用枪械以 wathe:gun_shot 击杀时，是否算作重炮手射击（持有生效词条的警职、在 5 格内、射手不是受害者）。不击杀也不修改任何状态。 */
+    public static boolean isHeavyArtilleryGunShot(ServerPlayerEntity shooter, ServerPlayerEntity victim) {
+        // Eligibility only: the Jester-transition guard belongs to the revolver's second kill call, and the owner
+        // decided downstream guns also pierce Jester-moment armour (2026-10-07).
+        // 仅判定资格：小丑过渡守卫属于左轮的第二次击杀调用，所有者决定下游枪械同样可击穿小丑时刻护甲（2026-10-07）。
+        return dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService.isHeavyArtilleryShot(
+                shooter, victim, dev.doctor4t.wathe.game.GameConstants.DeathReasons.GUN);
+    }
+
     /** Throw charge for downstream throwables that time their own charge instead of vanilla item use:
      * shortened when the player holds an active Herculean Strength, otherwise {@code baseTicks}.
      * Launch speed needs no call; SparkTraits scales every thrown projectile itself. Null-safe, both sides.
