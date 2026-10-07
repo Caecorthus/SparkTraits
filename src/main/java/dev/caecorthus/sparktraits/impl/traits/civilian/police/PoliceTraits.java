@@ -7,8 +7,9 @@ import dev.caecorthus.sparktraits.api.TraitRegistry;
 import net.minecraft.util.Identifier;
 
 /**
- * Registers traits reserved for Wathe's original Vigilante and Veteran roles.
- * 注册仅限 Wathe 原始义警与老兵身份使用的警类天赋。
+ * Registers police traits: gun traits for police-category roles (see {@link PoliceRoleCategory})
+ * and Veteran-only traits for Wathe's Veteran.
+ * 注册警类天赋：枪械天赋归警职类别身份（见 {@link PoliceRoleCategory}），老兵天赋仅限 Wathe 老兵。
  */
 public final class PoliceTraits {
     public static final Identifier MARKSMAN = SparkTraits.id("marksman");

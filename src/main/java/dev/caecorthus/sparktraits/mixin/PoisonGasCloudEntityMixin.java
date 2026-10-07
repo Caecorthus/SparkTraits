@@ -18,6 +18,7 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.World;
+import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.entity.PoisonGasCloudEntity;
 import org.joml.Vector3f;
 import org.spongepowered.asm.mixin.Final;
@@ -215,6 +216,11 @@ public abstract class PoisonGasCloudEntityMixin extends Entity implements Consci
             if (effectiveCivilian) {
                 exposureTicks.put(player.getUuid(), 0);
                 sparktraits$clearGasExhaustion(player);
+                // Effective civilians lose sanity only while standing in the gas; Poisoners are exempt as in NoellesRoles gas.
+                // 有效好人只在待在毒气里时扣理智；与 NoellesRoles 原版毒气一致，毒师本人豁免。
+                if (inGas && !gameWorld.isRole(player, Noellesroles.POISONER)) {
+                    ConsciencePoisonerService.applyBlueSanityDrain(player, 1);
+                }
                 continue;
             }
             if (inGas) {

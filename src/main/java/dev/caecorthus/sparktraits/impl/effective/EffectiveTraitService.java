@@ -2,6 +2,8 @@ package dev.caecorthus.sparktraits.impl.effective;
 
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.compat.SparkStrengthCoronerBridge;
 import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.impl.effective.alignment.EffectiveAlignment;
 import dev.caecorthus.sparktraits.impl.effective.death.EffectiveDeathConsequenceRules;
@@ -12,9 +14,9 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerial
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
 import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.api.event.ShouldPunishGunShooter;
@@ -57,9 +59,24 @@ public final class EffectiveTraitService {
     public static final Identifier SELF_REALIZATION = SparkTraits.id("self_realization");
     private static final Identifier SPARKWITCH_GRAND_WITCH_ID = Identifier.of("sparkwitch", "grand_witch");
     private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
+    // SparkWitch special accomplices block team wins exactly like the Accomplice.
+    // SparkWitch 特殊共犯与共犯一样阻止队伍胜利。
+    private static final Identifier SPARKWITCH_ABYSS_LISTENER_ID = Identifier.of("sparkwitch", "abyss_listener");
+    private static final Identifier SPARKWITCH_POTION_GUNNER_ID = Identifier.of("sparkwitch", "potion_gunner");
+    private static final Identifier SPARKWITCH_RIFTWALKER_ID = Identifier.of("sparkwitch", "riftwalker");
+    // SparkWitch's Bewitched (魔化使) is an accomplice before promotion.
+    // SparkWitch 魔化使是晋升前的共犯。
+    private static final Identifier SPARKWITCH_BEWITCHED_ID = Identifier.of("sparkwitch", "bewitched");
     private static final Identifier SPARKWITCH_MURDEROUS_WITCH_ID = Identifier.of("sparkwitch", "murderous_witch");
+    // SparkWitch's Insider shares the Corrupt Cop's team and keeps its win rule after the Corrupt Cop dies.
+    // SparkWitch 内应与黑警同属一个阵营，黑警死后由内应继续承担该阵营的胜利规则。
+    private static final Identifier SPARKWITCH_INSIDER_ID = Identifier.of("sparkwitch", "insider");
     private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
     private static final Identifier SPARKWITCH_SAINT_ID = Identifier.of("sparkwitch", "saint");
+    // SparkWitch's Blind sees only through sounds, so Impostor instinct and night vision would void the role.
+    // SparkWitch 盲人只能靠声音感知，内鬼的本能透视与夜视会让该职业失效。
+    private static final Identifier SPARKWITCH_BLIND_ID = Identifier.of("sparkwitch", "blind");
+    private static final Identifier SPARKWITCH_BELL_RINGER_ID = Identifier.of("sparkwitch", "bell_ringer");
     private static final Identifier NOELLES_SHADOW_JESTER_ID = Identifier.of("noellesroles", "shadow_jester");
 
     private EffectiveTraitService() {
@@ -91,7 +108,9 @@ public final class EffectiveTraitService {
                 return null;
             }
             GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
-            Collection<Identifier> viewerTraits = TraitPlayerComponent.KEY.get(viewer).getActiveTraitIds();
+            // A dead Conscience killer must not see the killer team as cohorts once death clears its traits.
+            // 死亡会清空天赋，善良杀手死后仍不能把杀手队伍看成同伙。
+            Collection<Identifier> viewerTraits = effectiveTraitIds(viewer, game);
             Boolean morphlingOverride = conscienceMorphlingCohortOverride(viewer, target, game, viewerTraits);
             if (morphlingOverride != null) {
                 return morphlingOverride
@@ -108,7 +127,8 @@ public final class EffectiveTraitService {
                     game.getRole(viewer),
                     viewerTraits,
                     game.getRole(target),
-                    publicEffectiveTraitIds(target)
+                    publicEffectiveTraitIds(target, game),
+                    SparkStrengthCoronerBridge.appearsAsKillerCohort(target)
             );
             if (override == null) {
                 return null;
@@ -147,6 +167,24 @@ public final class EffectiveTraitService {
         return player != null && hasImpostor(TraitPlayerComponent.KEY.get(player).getActiveTraitIds());
     }
 
+    /** Keeps effective alignment stable after death listeners clear a dead player's active traits.
+     *  死亡监听清空当前天赋后，回退到死亡快照以保持有效阵营判定稳定。 */
+    public static Collection<Identifier> effectiveTraitIds(PlayerEntity player, GameWorldComponent game) {
+        return effectiveTraitIds(
+                TraitPlayerComponent.KEY.get(player).getActiveTraitIds(),
+                game.isPlayerDead(player.getUuid()),
+                TraitWorldComponent.KEY.get(player.getWorld()).getDeathTraitSnapshot(player.getUuid())
+        );
+    }
+
+    public static Collection<Identifier> effectiveTraitIds(
+            Collection<Identifier> activeTraits,
+            boolean dead,
+            Collection<Identifier> deathTraits
+    ) {
+        return activeTraits.isEmpty() && dead ? deathTraits : activeTraits;
+    }
+
     public static boolean isConscienceVisibleToInstinct(PlayerEntity player) {
         return player != null && TraitPlayerComponent.KEY.get(player).isConscienceInstinctVisible();
     }
@@ -160,7 +198,9 @@ public final class EffectiveTraitService {
             return false;
         }
         TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
-        return shouldHideFromKillerInstinct(traits.isLastStandPending(), traits.isKillerInstinctHidden(), isSpiritProjecting(player));
+        // Spirit projection leaves a defenseless body; it must stay instinct-visible, so projection is not an input here.
+        // 灵魂出窍留下的肉身毫无防备，必须保持可被本能透视，因此出窍状态不参与此处判断。
+        return shouldHideFromKillerInstinct(traits.isLastStandPending(), traits.isKillerInstinctHidden());
     }
 
     public static boolean shouldHideFromKillerInstinct(boolean lastStandPending, boolean killerInstinctHidden) {
@@ -230,6 +270,8 @@ public final class EffectiveTraitService {
                 && (viewerRole == null || !viewerRole.identifier().equals(Noellesroles.DEMON_HUNTER_ID));
     }
 
+    /** No longer feeds any instinct rule: the projecting body stays instinct-visible. Kept with field 18's relay until an approved cleanup.
+     *  已不再参与任何本能规则：出窍本体保持可被透视。在获批清理前与第 18 号同步字段的转发一同保留。 */
     public static boolean isSpiritProjecting(PlayerEntity player) {
         if (player == null) {
             return false;
@@ -265,6 +307,7 @@ public final class EffectiveTraitService {
                 instinctEnabled,
                 targetPlayingAndAlive,
                 targetSpectatingOrCreative,
+                false,
                 targetDistanceSquared,
                 lastStandPending,
                 killerInstinctHidden,
@@ -273,10 +316,13 @@ public final class EffectiveTraitService {
         );
     }
 
+    /** Invisible targets (Phantom, Phantom backpack, Last Escape) never show, matching NoellesRoles' invisible skip.
+     *  隐身目标（幽灵、幽灵背包隐身、最后逃亡）从不显示，与 NoellesRoles 跳过隐身目标的规则一致。 */
     public static boolean shouldConscienceInstinctHighlightTarget(
             boolean instinctEnabled,
             boolean targetPlayingAndAlive,
             boolean targetSpectatingOrCreative,
+            boolean targetInvisible,
             double targetDistanceSquared,
             boolean lastStandPending,
             boolean killerInstinctHidden,
@@ -285,6 +331,7 @@ public final class EffectiveTraitService {
     ) {
         return instinctEnabled
                 && !targetSpectatingOrCreative
+                && !targetInvisible
                 && !spiritProjecting
                 && (ignoreRangeLimit || targetDistanceSquared <= CONSCIENCE_INSTINCT_RANGE_SQUARED)
                 && (targetPlayingAndAlive || lastStandPending || killerInstinctHidden);
@@ -347,7 +394,17 @@ public final class EffectiveTraitService {
     /** Mirrors NoellesRoles' Undercover deception for SparkTraits' Impostor instinct.
      *  为 SparkTraits 的内鬼本能同步 NoellesRoles 卧底伪装成杀手同伙的规则。 */
     public static boolean appearsAsKillerToKillerInstinct(Role targetRole, boolean targetCanUseKillerFeatures) {
-        return targetCanUseKillerFeatures || isUndercover(targetRole);
+        return appearsAsKillerToKillerInstinct(targetRole, targetCanUseKillerFeatures, false);
+    }
+
+    /** Also mirrors SparkStrength's Coroner killer/Undercover body disguise, which native killers see as a cohort.
+     *  同时同步 SparkStrength 验尸官伪装成杀手/卧底尸体身份时被原生杀手视为同伙的规则。 */
+    public static boolean appearsAsKillerToKillerInstinct(
+            Role targetRole,
+            boolean targetCanUseKillerFeatures,
+            boolean targetHasCoronerKillerDisguise
+    ) {
+        return targetCanUseKillerFeatures || isUndercover(targetRole) || targetHasCoronerKillerDisguise;
     }
 
     public static Boolean conscienceMorphlingCohortOverride(
@@ -489,7 +546,7 @@ public final class EffectiveTraitService {
                 game.getRole(viewer),
                 viewerTraits,
                 game.getRole(target),
-                publicEffectiveTraitIds(target),
+                publicEffectiveTraitIds(target, game),
                 isDisguiseTargetForConscienceMorphling(target, game)
         );
     }
@@ -512,11 +569,16 @@ public final class EffectiveTraitService {
         return false;
     }
 
-    /** Uses client-synced public alignment flags without exposing hidden trait text.
-     *  使用客户端已同步的公开阵营标记，不暴露隐藏天赋文本。 */
-    private static Collection<Identifier> publicEffectiveTraitIds(PlayerEntity player) {
-        boolean conscience = isConscienceVisibleToInstinct(player);
-        boolean impostor = isImpostorVisibleToInstinct(player);
+    /** Uses client-synced alignment flags without exposing hidden trait text; non-killer viewers receive them as false.
+     *  Dead players fall back to their death snapshot, which the server and spectator or body-inspector clients hold.
+     *  使用客户端已同步的阵营标记，不暴露隐藏天赋文本；非杀手观察者收到的值恒为 false。
+     *  死亡玩家回退到死亡快照，服务端与旁观者、验尸官客户端持有该快照。 */
+    private static Collection<Identifier> publicEffectiveTraitIds(PlayerEntity player, GameWorldComponent game) {
+        Collection<Identifier> deathTraits = game.isPlayerDead(player.getUuid())
+                ? TraitWorldComponent.KEY.get(player.getWorld()).getDeathTraitSnapshot(player.getUuid())
+                : List.of();
+        boolean conscience = isConscienceVisibleToInstinct(player) || hasConscience(deathTraits);
+        boolean impostor = isImpostorVisibleToInstinct(player) || hasImpostor(deathTraits);
         if (conscience && impostor) {
             return List.of(ConscienceTrait.ID, ImpostorTrait.ID);
         }
@@ -559,7 +621,14 @@ public final class EffectiveTraitService {
         return originalKillerCount >= 2
                 && roleEnabled
                 && isOriginalKiller(role)
+                && !isConscienceBlockedRole(role)
                 && !hasImpostor(selectedTraits);
+    }
+
+    /** Owner rule: SparkWitch's Bell Ringer never receives Conscience; other killer traits stay eligible.
+     *  所有者规则：SparkWitch 的敲钟人永不获得善良；其他杀手词条不受影响。 */
+    public static boolean isConscienceBlockedRole(Role role) {
+        return role != null && role.identifier().equals(SPARKWITCH_BELL_RINGER_ID);
     }
 
     public static boolean canSelectImpostor(Role role, GameWorldComponent gameComponent, Collection<Identifier> selectedTraits) {
@@ -604,15 +673,18 @@ public final class EffectiveTraitService {
         return role != null && role.identifier().equals(Noellesroles.UNDERCOVER_ID);
     }
 
-    /** Keeps high-agency innocent roles from being converted into Impostor.
-     *  防止强机制无辜者角色被转换成内鬼。 */
+    /** Keeps high-agency innocent roles, including every police-category role, from being converted into Impostor.
+     *  防止强机制无辜者角色（含所有警职类别身份）被转换成内鬼。 */
     private static boolean isImpostorBlockedRole(Role role) {
         return role != null
-                && (role == WatheRoles.VIGILANTE
-                || role == WatheRoles.VETERAN
+                && (PoliceRoleCategory.isPolice(role)
                 || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
+                // Toxicologist owns SparkStrength's blue-poison kit, which must stay on the innocent side.
+                // 毒理学家持有 SparkStrength 的蓝毒道具，必须保持好人身份。
+                || role.identifier().equals(Noellesroles.TOXICOLOGIST_ID)
                 || role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
-                || role.identifier().equals(SPARKWITCH_SAINT_ID));
+                || role.identifier().equals(SPARKWITCH_SAINT_ID)
+                || role.identifier().equals(SPARKWITCH_BLIND_ID));
     }
 
     public static boolean countsAsPublicKiller(Role role, Collection<Identifier> traits) {
@@ -624,6 +696,16 @@ public final class EffectiveTraitService {
             Collection<Identifier> viewerTraits,
             Role targetRole,
             Collection<Identifier> targetTraits
+    ) {
+        return cohortOverride(viewerRole, viewerTraits, targetRole, targetTraits, false);
+    }
+
+    public static Boolean cohortOverride(
+            Role viewerRole,
+            Collection<Identifier> viewerTraits,
+            Role targetRole,
+            Collection<Identifier> targetTraits,
+            boolean targetHasCoronerKillerDisguise
     ) {
         if (hasConscience(viewerTraits)) {
             return Boolean.FALSE;
@@ -637,7 +719,9 @@ public final class EffectiveTraitService {
         if (hasImpostor(targetTraits)) {
             return Boolean.TRUE;
         }
-        if (hasImpostor(viewerTraits) && isUndercover(targetRole)) {
+        // SparkStrength's Coroner cohort hook requires native killer features, so Impostor needs it mirrored here.
+        // SparkStrength 的验尸官同伙提示要求原生杀手功能，内鬼需要在这里同步。
+        if (hasImpostor(viewerTraits) && (isUndercover(targetRole) || targetHasCoronerKillerDisguise)) {
             return Boolean.TRUE;
         }
         return null;
@@ -797,8 +881,13 @@ public final class EffectiveTraitService {
         return role != null
                 && (SPARKWITCH_GRAND_WITCH_ID.equals(role.identifier())
                 || SPARKWITCH_ACCOMPLICE_ID.equals(role.identifier())
+                || SPARKWITCH_ABYSS_LISTENER_ID.equals(role.identifier())
+                || SPARKWITCH_POTION_GUNNER_ID.equals(role.identifier())
+                || SPARKWITCH_RIFTWALKER_ID.equals(role.identifier())
+                || SPARKWITCH_BEWITCHED_ID.equals(role.identifier())
                 || SPARKWITCH_MURDEROUS_WITCH_ID.equals(role.identifier())
                 || Noellesroles.CORRUPT_COP_ID.equals(role.identifier())
+                || SPARKWITCH_INSIDER_ID.equals(role.identifier())
                 || Noellesroles.TAOTIE_ID.equals(role.identifier()));
     }
 
@@ -894,8 +983,8 @@ public final class EffectiveTraitService {
     }
 
     /**
-     * Grants SparkTraits task money only when the base role does not already pay for tasks.
-     * 仅在原职业没有自带任务金币时，由 SparkTraits 给阵营翻转玩家补发任务金币。
+     * Conscience/Impostor +50 task money; stacks on top of role-owned task income (see EffectiveEconomyRules).
+     * 善良/内鬼的 +50 任务金币；与职业自带的任务收入叠加（见 EffectiveEconomyRules）。
      */
     public static boolean shouldRewardTaskMoney(Role role, Collection<Identifier> traits) {
         return EffectiveEconomyRules.shouldRewardTaskMoney(role, traits);
@@ -973,10 +1062,17 @@ public final class EffectiveTraitService {
         Collection<Identifier> victimTraits = TraitPlayerComponent.KEY.get(victim).getActiveTraitIds();
         boolean victimIsEffectiveCivilian = isEffectiveCivilian(victimRole, victimTraits);
         Identifier poisonSource = EffectiveDeathConsequenceRules.consumePoisonSource(victim.getUuid());
-        if (hasConscience(killer)) {
-            if (shouldPunishConscienceKill(victimIsEffectiveCivilian, deathReason, poisonSource) && GameFunctions.isPlayerPlayingAndAlive(killer)) {
-                GameFunctions.killPlayer(killer, true, null, GameConstants.DeathReasons.SHOT_INNOCENT, true);
-            } else if (shouldRewardConscienceKill(victimRole, victimTraits)) {
+        Collection<Identifier> killerTraits = TraitPlayerComponent.KEY.get(killer).getActiveTraitIds();
+        boolean conscience = hasConscience(killerTraits);
+        boolean punish = (conscience && EffectiveDeathConsequenceRules.shouldPunishConscienceKill(
+                victimIsEffectiveCivilian, deathReason, poisonSource
+        )) || EffectiveDeathConsequenceRules.shouldPunishVeteranKnifeKill(
+                game.getRole(killer), killerTraits, victimRole, victimTraits, deathReason
+        );
+        if (punish && GameFunctions.isPlayerPlayingAndAlive(killer)) {
+            GameFunctions.killPlayer(killer, true, null, GameConstants.DeathReasons.SHOT_INNOCENT, true);
+        } else if (conscience) {
+            if (shouldRewardConscienceKill(victimRole, victimTraits)) {
                 int reward = ConscienceSerialKillerService.rewardForConscienceKill(killer, victim, true);
                 if (reward > 0) {
                     PlayerShopComponent.KEY.get(killer).addToBalance(reward);

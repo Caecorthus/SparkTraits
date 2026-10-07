@@ -3,12 +3,20 @@ package dev.caecorthus.sparktraits.api;
 import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.impl.assignment.TraitRoleChangeRevalidation;
+import dev.caecorthus.sparktraits.impl.presentation.OwnerInventoryPresentation;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.lifecycle.RoundEndTraitResolver;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.GoingDarkRules;
 import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
+import dev.caecorthus.sparktraits.impl.traits.killer.combat.CloseQuartersService;
+import dev.caecorthus.sparktraits.impl.traits.killer.combat.ForcedMeleeCooldownService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BluePoisonInteropService;
+import dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeService;
+import net.minecraft.item.ItemStack;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -21,7 +29,9 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.ladysnake.cca.api.v3.component.ComponentProvider;
@@ -31,13 +41,132 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Stable, null-safe queries for optional downstream integrations.
  * 为可选下游集成提供稳定且支持空值的查询接口。
  */
 public final class SparkTraitsApi {
+    /**
+     * Visits an ordered snapshot of effective, owner-visible inventory trait texts.
+     * Client only in effect, common-safe on servers. Mutable texts are detached copies.
+     * An empty visit is successful; collection/visitor exceptions propagate to the presenter.
+     */
+    public static void visitOwnerInventoryTraits(PlayerEntity player, BiConsumer<Text, List<Text>> visitor) {
+        OwnerInventoryPresentation.visit(player, visitor);
+    }
+
+    /**
+     * V1 optional inventory presentation protocol. Registration is retriable until client init.
+     * The supplier must report a complete, frozen decision scoped to the current render call,
+     * remain stable through every TAIL, and return false outside that scope. First registrant wins.
+     * Returning true commits to drawing the complete owner card (including exported traits).
+     */
+    public static boolean registerExternalInventoryPresenterV1(BooleanSupplier presenter) {
+        return OwnerInventoryPresentation.register(presenter);
+    }
+
+    /** One accepted trigger pull, including synthetic repeats; observers never own punishment.
+     * 一次有效扣动扳机（含补射）；观察者不接管误杀惩罚。 */
+    public interface GunShotCycleListener {
+        void cycleStarted(ServerPlayerEntity shooter, UUID cycleId, net.minecraft.item.Item weapon);
+        Object beforeTargetKill(ServerPlayerEntity shooter, UUID cycleId, ServerPlayerEntity target);
+        void afterTargetKill(ServerPlayerEntity shooter, UUID cycleId, ServerPlayerEntity target, Object token);
+        void initialCooldownEstablished(ServerPlayerEntity shooter, UUID cycleId, net.minecraft.item.Item weapon,
+                                        int startTick, int endTick, int currentTick);
+        void cycleClosed(ServerPlayerEntity shooter, UUID cycleId);
+    }
+
+    public static void registerGunShotCycleListener(GunShotCycleListener listener) {
+        dev.caecorthus.sparktraits.impl.traits.civilian.police.GunShotCycles.addListener(listener);
+    }
+
+    /** Updates and syncs exact remaining time without applying cooldown modifiers twice.
+     * 精确修改并同步剩余时间，不重复计算冷却倍率。 */
+    public static void setExactItemCooldownRemaining(ServerPlayerEntity player, net.minecraft.item.Item item, int ticks) {
+        if (player != null && item != null) {
+            dev.caecorthus.sparktraits.impl.traits.killer.combat.ExactItemCooldowns.setExact(player, item, ticks);
+        }
+    }
+
+    public static int getItemCooldownTick(PlayerEntity player) {
+        return player == null ? 0 : ((dev.caecorthus.sparktraits.mixin.ItemCooldownManagerAccessor)
+                player.getItemCooldownManager()).sparktraits$getTick();
+    }
+
+    public static int getItemCooldownRemaining(PlayerEntity player, net.minecraft.item.Item item) {
+        return dev.caecorthus.sparktraits.impl.traits.killer.combat.ExactItemCooldowns.remainingTicks(player, item);
+    }
+
+    /** Marksman range multiplier for downstream police weapons: 1.3 when the player's runtime police role
+     * holds an active Marksman, otherwise 1.0. Never Niko's fixed range. Null-safe, client- and server-safe.
+     * 下游警用武器的精确枪手射程倍率：运行时警职持有生效的精确枪手时为 1.3，否则为 1.0；
+     * 绝不返回 Niko 固定射程。支持空值，客户端与服务端均可调用。 */
+    public static double getMarksmanRangeMultiplier(PlayerEntity player) {
+        return player == null || player.getWorld() == null ? 1.0
+                : dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService.marksmanRangeMultiplier(player);
+    }
+
+    /** Throw charge for downstream throwables that time their own charge instead of vanilla item use:
+     * shortened when the player holds an active Herculean Strength, otherwise {@code baseTicks}.
+     * Launch speed needs no call; SparkTraits scales every thrown projectile itself. Null-safe, both sides.
+     * 供自行计时蓄力（不走原版使用流程）的下游投掷物查询蓄力时长：玩家持有生效的力大无穷时缩短，
+     * 否则返回 {@code baseTicks}。初速无需调用，SparkTraits 会自行放大所有投掷物。支持空值，两端均可调用。 */
+    public static int getThrowChargeTicks(PlayerEntity player, int baseTicks) {
+        return player == null || player.getWorld() == null ? baseTicks
+                : dev.caecorthus.sparktraits.impl.traits.killer.HerculeanStrengthService.throwChargeTicks(player, baseTicks);
+    }
+
+    public static void registerTerminalDeathReason(Identifier reason) {
+        dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules.register(reason);
+    }
+
+    public static boolean isTerminalDeathReason(Identifier reason) {
+        return dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules.contains(reason);
+    }
+
+    public static boolean isRoleSkillBlocked(PlayerEntity player) {
+        return player != null && (isKillerInteractionBlocked(player)
+                || dev.caecorthus.sparktraits.impl.compatibility.noellesroles.SilencedKillerRestrictionService.isRestricted(player));
+    }
+
+    private static java.util.function.Function<PlayerEntity, float[]> lastEscapeVisionProvider;
+
+    /** Installs the client-owned, side-effect-free parameter query; never installed on a server.
+     * 安装客户端无副作用参数查询；服务端不安装。 */
+    public static void installLastEscapeVisionProvider(java.util.function.Function<PlayerEntity, float[]> provider) {
+        lastEscapeVisionProvider = provider;
+    }
+
+    /** Version 1 means this client delegates the sole escape pass to a compatible Witch renderer.
+     * 版本 1 表示客户端会将唯一脱险后处理委托给兼容的 Witch 渲染器；未初始化时为 0。 */
+    public static int getLastEscapeVisionProtocolVersion() {
+        return lastEscapeVisionProvider == null ? 0 : 1;
+    }
+
+    /**
+     * Client visual parameters [desaturation, spread, brightness], including stronger Depression.
+     * Returns a fresh neutral array on a server, before client initialization, or without escape.
+     * This query must never delegate to another compositor or render anything.
+     * 客户端返回含更强抑郁效果的[灰阶、扩散、亮度]；无效果或参数无效时返回独立中性数组。
+     * 此查询不调用其他合成器或执行渲染，避免可选模组间递归。
+     */
+    public static float[] getLastEscapeComposition(PlayerEntity player) {
+        float[] values = player == null || lastEscapeVisionProvider == null
+                ? null : lastEscapeVisionProvider.apply(player);
+        // Never expose a provider-owned or malformed array across the optional facade.
+        // 不向可选调用方暴露提供者持有的数组，也不返回空值或无效参数。
+        if (values == null || values.length != 3 || !Float.isFinite(values[0])
+                || !Float.isFinite(values[1]) || !Float.isFinite(values[2])
+                || values[0] < 0.5f || values[0] > 1.0f || values[1] < 0.0f || values[2] < 0.0f) {
+            return new float[] {0.0f, 0.0f, 1.0f};
+        }
+        return values.clone();
+    }
+
     private SparkTraitsApi() {
     }
 
@@ -51,6 +180,48 @@ public final class SparkTraitsApi {
                 && TraitPlayerComponent.KEY.maybeGet(player)
                         .map(component -> component.hasActiveTrait(traitId))
                         .orElse(false);
+    }
+
+    /**
+     * Active escape is a timed state, not a query for ownership of the hidden trait.
+     * 脱险是已触发的限时状态，不暴露隐藏词条的持有情况。
+     */
+    public static boolean isLastEscapeActive(PlayerEntity player) {
+        return player != null && LastEscapeService.isActive(player);
+    }
+
+    public static boolean isKillerInteractionBlocked(PlayerEntity player) {
+        return isLastEscapeActive(player);
+    }
+
+    public static boolean hasLastEscapeGrayscale(PlayerEntity player) {
+        return player != null && LastEscapeService.hasGrayscale(player);
+    }
+
+    public static float getLastEscapeDesaturation(PlayerEntity player) {
+        return hasLastEscapeGrayscale(player) ? 0.5f : 0.0f;
+    }
+
+    /**
+     * Forced melee lock is independent of ordinary weapon ability/attack cooldowns.
+     * 强制近战禁用独立于武器普通技能和攻击蓄力冷却。
+     */
+    public static int getForcedMeleeCooldownTicks(PlayerEntity player, ItemStack weapon) {
+        return player == null || weapon == null || weapon.isEmpty()
+                ? 0 : ForcedMeleeCooldownService.remainingTicks(player, weapon);
+    }
+
+    /**
+     * Call after normal target validation but before an immediate melee action spends resources.
+     * 在普通目标校验之后、即时近战行动消耗资源之前调用；抵挡会产生一次反制效果。
+     */
+    public static boolean shouldCancelMeleeAttack(
+            ServerPlayerEntity attacker,
+            ServerPlayerEntity victim,
+            ItemStack weapon
+    ) {
+        return attacker != null && victim != null && weapon != null
+                && CloseQuartersService.shouldCancelMeleeAttack(attacker, victim, weapon);
     }
 
     /**
@@ -164,6 +335,47 @@ public final class SparkTraitsApi {
     }
 
     /**
+     * Server only; call after a mid-round role change, once the player's new balance is written. Built for the former
+     * SparkWitch Grand Witch recruitment (removed 2026-10-05); kept as a public role-change seam.
+     * Removes every active trait the current role could not have rolled at round start (no slot cap; unique-trait
+     * memory kept), then draws one replacement per removed trait, hidden ones included, from that role's pool, never
+     * Pig, Childish or a removed trait; a free trait (Well Supplied) earns no draw. If the player then holds Well
+     * Supplied, kept from any former role or drawn, the current balance is multiplied again like starting money.
+     * Calls {@code visitor} once, only when something was removed, with the owner-visible removed names and the visible
+     * drawn names, each in order; hidden traits are left out. Nothing happens outside a running game, for a null
+     * visitor, for a dead, role-less or active-Wraith player, during a pending Last Stand or Depression fake death, or
+     * while Depression psycho is active.
+     * 仅服务端；在局中换身份、写入新余额后调用。原为 SparkWitch 大魔女招募（已于 2026-10-05 移除）而建，作为公共换身份
+     * 接口保留。移除当前身份在开局时无法获得的全部生效天赋（不设槽位上限，
+     * 保留每局唯一记录），再按移除数量（隐藏天赋同样计入）从该身份候选池中逐个补抽，不会抽到猪、幼稚或被移除的天赋；
+     * 免费天赋（物资充沛）不补抽。之后若玩家持有物资充沛（从任何原身份保留或补抽到），当前余额会按起始金币再加成一次。仅在有天赋被移除时调用 {@code visitor} 一次，依次传入本人可见的被移除
+     * 天赋名称与可见的补抽天赋名称；隐藏天赋不列出。对局未运行、visitor 为空、玩家已死亡、无身份、为激活冤魂、处于
+     * 背水一战/抑郁假死待决或抑郁疯魔中时不做任何事。
+     */
+    public static void replaceTraitsIneligibleForCurrentRole(
+            ServerPlayerEntity player,
+            BiConsumer<List<Text>, List<Text>> visitor
+    ) {
+        // An active Wraith's trait snapshot belongs to the Wraith API. / 激活冤魂的天赋快照归冤魂 API 管理。
+        if (visitor != null && !isWraithActive(player)) {
+            TraitRoleChangeRevalidation.replaceTraitsIneligibleForCurrentRole(player, visitor);
+        }
+    }
+
+    /**
+     * Server-authoritative: whether the player is in a Depression psycho (the trait's own psycho, not plain Wathe psycho),
+     * whose stash holds their real inventory. Built for the former SparkWitch Grand Witch recruitment (removed
+     * 2026-10-05), which refused such targets (owner decision 2026-10-04); kept as a public role-change seam. Null-safe;
+     * always false on a remote client.
+     * 服务端权威：玩家是否处于抑郁疯魔（该天赋自身的疯魔，而非普通 Wathe 疯魔），其暂存保存着真实物品。原为 SparkWitch
+     * 大魔女招募（已于 2026-10-05 移除）而建，该招募会拒绝此类目标（所有者 2026-10-04 决定）；作为公共换身份接口保留。
+     * 支持空值；远端客户端始终返回 false。
+     */
+    public static boolean isDepressionPsychoActive(PlayerEntity player) {
+        return player != null && DepressionTraitService.isPsychoActive(player);
+    }
+
+    /**
      * Captures Wraith-preserved trait state as an opaque, ordered NBT payload for SparkWitch.
      * 将冤魂保留的天赋状态保存为供 SparkWitch 使用的不透明有序 NBT 载荷。
      */
@@ -251,6 +463,22 @@ public final class SparkTraitsApi {
     }
 
     /**
+     * Returns the ordered trait ids the player ended the round with, including traits hidden from their owner:
+     * online active traits, else the latest death snapshot, else the assignment-time round snapshot.
+     * Server-only; meaningful until Wathe's finalize resets players (e.g. inside its replay generation). Never null.
+     * 返回玩家本局结束时持有的有序词条 id（包含对本人隐藏的词条）：在线时取当前词条，否则取最近死亡快照，再否则取分配时快照。
+     * 仅限服务端；在 Wathe 结算重置玩家之前（如回放生成期间）有效。永不返回 null。
+     */
+    public static List<Identifier> getRoundEndTraitIds(ServerWorld world, UUID playerUuid) {
+        if (world == null || playerUuid == null) {
+            return List.of();
+        }
+        return TraitWorldComponent.KEY.maybeGet(world)
+                .map(traitWorld -> List.copyOf(RoundEndTraitResolver.resolve(world, traitWorld, playerUuid)))
+                .orElseGet(List::of);
+    }
+
+    /**
      * Returns whether the world is currently in Last Stand's final moment.
      * 返回当前世界是否处于背水一战的终局时刻。
      */
@@ -259,6 +487,39 @@ public final class SparkTraitsApi {
                 && TraitWorldComponent.KEY.maybeGet(world)
                         .map(TraitWorldComponent::isFinalMomentActive)
                         .orElse(false);
+    }
+
+    /**
+     * Returns whether this attacker's hit just turned into a non-final kill (e.g. a Depression fake death):
+     * the victim survives, and the weapon should keep only {@link #getNonFinalKillCooldownTicks(int)}.
+     * 返回该攻击者的这一击是否刚刚成为非最终击杀（如抑郁假死）：受害者未死亡，武器只保留
+     * {@link #getNonFinalKillCooldownTicks(int)} 的冷却。
+     */
+    public static boolean isNonFinalKillPending(ServerPlayerEntity victim, ServerPlayerEntity attacker) {
+        return victim != null && attacker != null && DepressionTraitService.isPendingFrom(victim, attacker);
+    }
+
+    /**
+     * Weapon cooldown to keep after a non-final kill: 20% of the original, rounded up.
+     * SparkTraits already applies it to item cooldowns; weapons with their own cooldown state use this value.
+     * 非最终击杀后武器应保留的冷却：原冷却的 20%，向上取整。物品冷却已由 SparkTraits 处理，
+     * 自带冷却状态的武器使用此值。
+     */
+    public static int getNonFinalKillCooldownTicks(int originalTicks) {
+        return dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionFakeKillCooldowns.discountedTicks(originalTicks);
+    }
+
+    /**
+     * Runs a kill that happens away from the attacker's hands (e.g. a push that later makes the victim fall),
+     * naming the weapon item that keeps the non-final-kill cooldown if the kill turns out non-final.
+     * 执行不在攻击者手中发生的击杀（如推人后受害者坠车），并指明若成为非最终击杀时应缩短冷却的武器物品。
+     */
+    public static void runWithNonFinalKillWeapon(net.minecraft.item.Item weapon, Runnable kill) {
+        if (weapon == null) {
+            kill.run();
+            return;
+        }
+        dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionFakeKillCooldowns.withWeaponHint(weapon, kill);
     }
 
     /**
@@ -280,7 +541,6 @@ public final class SparkTraitsApi {
         }
 
         TraitPlayerComponent targetTraits = TraitPlayerComponent.KEY.maybeGet(target).orElse(null);
-        boolean spiritProjecting = EffectiveTraitService.isSpiritProjecting(target);
         boolean finalMomentActive = TraitWorldComponent.KEY.maybeGet(viewer.getWorld())
                 .map(TraitWorldComponent::isFinalMomentActive)
                 .orElse(false);
@@ -306,9 +566,100 @@ public final class SparkTraitsApi {
                 finalMomentActive,
                 targetTraits != null && targetTraits.isLastStandPending(),
                 targetTraits != null && targetTraits.isKillerInstinctHidden(),
-                spiritProjecting,
+                // Spirit projection leaves a defenseless body; downstream instinct sources must still outline it.
+                // 灵魂出窍留下的肉身毫无防备，下游本能来源仍须为其描边。
+                false,
                 goingDarkSuppressed
         );
+    }
+
+    /**
+     * Server only. Swaps a beverage plate's native Wathe poison for Conscience blue poison. With native poison present,
+     * clears it, adds a blue layer owned by {@code poisoner} unless one already exists (the old owner is kept), and
+     * returns true. Returns false without changes when there is no native poison, on client worlds, for null
+     * arguments, or when {@code pos} holds no plate.
+     * 仅服务端。把餐盘上的 Wathe 原生毒换成善良蓝毒：存在原生毒时清除它，若尚无蓝毒层则添加归属
+     * {@code poisoner} 的蓝毒层（已有蓝毒层保留原归属者），并返回 true。无原生毒、客户端世界、参数为空
+     * 或该位置不是餐盘时不做修改并返回 false。
+     */
+    public static boolean convertPlatePoisonToBlue(World world, BlockPos pos, UUID poisoner) {
+        return BluePoisonInteropService.convertPlatePoisonToBlue(world, pos, poisoner);
+    }
+
+    /**
+     * Server only. Bed variant of {@link #convertPlatePoisonToBlue}: {@code pos} may be either bed half, and both the
+     * native scorpion and the blue scorpion are read from and written to the bed head.
+     * 仅服务端。{@link #convertPlatePoisonToBlue} 的床版本：{@code pos} 可以是床的任一半，原生蝎子与蓝蝎子
+     * 都在床头读写。
+     */
+    public static boolean convertBedPoisonToBlue(World world, BlockPos pos, UUID poisoner) {
+        return BluePoisonInteropService.convertBedPoisonToBlue(world, pos, poisoner);
+    }
+
+    /**
+     * Stack variant of {@link #convertPlatePoisonToBlue}: removes Wathe's poisoner component and adds a blue marker
+     * owned by {@code poisoner} unless one is already present. Returns false when the stack carries no native poison.
+     * {@link #convertPlatePoisonToBlue} 的物品版本：移除 Wathe 投毒者组件，若尚无蓝毒标记则添加归属
+     * {@code poisoner} 的标记。物品没有原生毒时返回 false。
+     */
+    public static boolean convertStackPoisonToBlue(ItemStack stack, UUID poisoner) {
+        return BluePoisonInteropService.convertStackPoisonToBlue(stack, poisoner);
+    }
+
+    /**
+     * Stamps (overwrites) a blue-poison marker owned by {@code poisoner}; eating the stack springs the blue trap.
+     * No-op for null or empty stacks.
+     * 写入（覆盖）归属 {@code poisoner} 的蓝毒标记；食用该物品会触发蓝毒陷阱。空值或空物品时不做任何事。
+     */
+    public static void markStackBluePoison(ItemStack stack, UUID poisoner) {
+        BluePoisonInteropService.markStackBluePoison(stack, poisoner);
+    }
+
+    /**
+     * Returns the blue-poison owner on the stack, or null when absent or malformed. Never throws.
+     * 返回物品上的蓝毒归属者；没有标记或格式错误时返回 null，不会抛异常。
+     */
+    public static @Nullable UUID getStackBluePoisoner(ItemStack stack) {
+        return BluePoisonInteropService.getStackBluePoisoner(stack);
+    }
+
+    /**
+     * Server only. Springs a blue trap with Conscience Poisoner's alignment rules: effective civilians get a short
+     * sanity-drain window, everyone else lethal blue poison. No-op unless the target is playing and alive.
+     * 仅服务端。按善良毒师的阵营规则触发蓝毒陷阱：有效好人获得短暂扣理智窗口，其余玩家中致死蓝毒。
+     * 目标不在局内或已死亡时不做任何事。
+     */
+    public static void applyBlueTrap(ServerPlayerEntity target, UUID poisoner) {
+        BluePoisonInteropService.applyBlueTrap(target, poisoner);
+    }
+
+    /**
+     * Server only. Extends the blue sanity-drain window to at least {@code ticks} (never shortens it).
+     * No-op for {@code ticks <= 0} or targets that are not playing and alive.
+     * 仅服务端。把蓝毒扣理智窗口延长到至少 {@code ticks}（不会缩短）。{@code ticks <= 0} 或目标不在局内存活时不做任何事。
+     */
+    public static void applyBlueSanityDrain(ServerPlayerEntity target, int ticks) {
+        BluePoisonInteropService.applyBlueSanityDrain(target, ticks);
+    }
+
+    /**
+     * Server-authoritative remaining blue sanity-drain ticks. The window is never synced, so this is 0 on clients
+     * and for null players.
+     * 服务端权威的蓝毒扣理智剩余 tick。该窗口不会同步，因此客户端与空玩家始终返回 0。
+     */
+    public static int getBlueSanityDrainTicks(PlayerEntity player) {
+        return BluePoisonInteropService.getBlueSanityDrainTicks(player);
+    }
+
+    /**
+     * Registers a server-thread predicate; while any registered predicate returns true for a player, SparkTraits skips
+     * that player's blue sanity drain but still counts the window down (so the owner can apply its own effect).
+     * A throwing predicate counts as not exempt. Registering the same instance twice has no extra effect.
+     * 注册服务端线程谓词：只要任一谓词对某玩家返回 true，SparkTraits 就跳过该玩家的蓝毒扣理智，但窗口照常倒计时
+     * （便于注册方施加自己的效果）。抛异常的谓词视为不豁免；重复注册同一实例没有额外效果。
+     */
+    public static void registerBlueSanityDrainExemption(Predicate<ServerPlayerEntity> exemption) {
+        BluePoisonInteropService.registerBlueSanityDrainExemption(exemption);
     }
 
     private static NbtList identifiers(Collection<Identifier> identifiers) {
@@ -361,6 +712,7 @@ public final class SparkTraitsApi {
 
     private static boolean isRetiredTrait(Identifier identifier) {
         return Identifier.of("sparktraits", "arrogant_asf").equals(identifier)
-                || Identifier.of("sparktraits", "wraith").equals(identifier);
+                || Identifier.of("sparktraits", "wraith").equals(identifier)
+                || Identifier.of("sparktraits", "chameleon").equals(identifier);
     }
 }

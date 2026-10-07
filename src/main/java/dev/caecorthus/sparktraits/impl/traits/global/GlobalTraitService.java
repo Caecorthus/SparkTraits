@@ -18,6 +18,7 @@ import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import org.agmas.noellesroles.Noellesroles;
@@ -37,6 +38,11 @@ public final class GlobalTraitService {
     public static final int STEADY_COLOR = 0x6AA6FF;
     public static final int EXCELLENT_PHYSIQUE_COLOR = 0x7ED957;
     public static final int SPIRIT_SLEUTH_COLOR = 0xB8A7FF;
+    public static final int SNOWBALL_COLOR = 0xBFE6F5;
+    public static final int WELL_SUPPLIED_COLOR = 0xD9A441;
+    public static final int SNOWBALL_MILESTONE = 100;
+    public static final int SNOWBALL_REWARD = 15;
+    public static final int WELL_SUPPLIED_STARTING_MONEY_PERCENT = 120;
     public static final int TASK_MASTER_MONEY_REWARD = 25;
     public static final float TASK_MASTER_MOOD_GAIN_MULTIPLIER = 0.20f;
     public static final float EXCELLENT_PHYSIQUE_RECOVERY_BONUS = 0.25f;
@@ -108,6 +114,16 @@ public final class GlobalTraitService {
         );
     }
 
+    /**
+     * Gate for money-only traits: the role must visibly run on the shop balance.
+     * 纯金钱天赋的资格门槛：身份必须实际使用可见的商店余额。
+     */
+    public static boolean usesMoneySystem(PlayerEntity player, GameWorldComponent game, Role role) {
+        return player != null
+                && game != null
+                && (canSeeMoneyForTrait(player, game, role) || EffectiveTraitService.hasNativeTaskMoneyReward(role));
+    }
+
     static boolean canSeeMoneyForTrait(boolean eventAllowsMoney, boolean mirrorsNoellesRecallerMoney) {
         return eventAllowsMoney || mirrorsNoellesRecallerMoney;
     }
@@ -122,6 +138,57 @@ public final class GlobalTraitService {
 
     public static float taskMasterExtraMoodGain() {
         return GameConstants.MOOD_GAIN * TASK_MASTER_MOOD_GAIN_MULTIPLIER;
+    }
+
+    public static int snowballBalance(PlayerEntity player, int balance, int newBalance) {
+        return snowballBalance(balance, newBalance, player instanceof ServerPlayerEntity && hasTrait(player, SnowballTrait.ID));
+    }
+
+    /**
+     * Pays once for every multiple of the milestone that income newly reaches, including ones the payout itself reaches.
+     * 收入每新达到一个里程碑倍数就奖励一次，奖励本身达到的倍数同样计入。
+     */
+    static int snowballBalance(int balance, int newBalance, boolean snowball) {
+        if (!snowball || newBalance <= balance) {
+            return newBalance;
+        }
+        long reached = Math.floorDiv(balance, SNOWBALL_MILESTONE);
+        long paid = newBalance;
+        while (Math.floorDiv(paid, (long) SNOWBALL_MILESTONE) > reached) {
+            long milestones = Math.floorDiv(paid, (long) SNOWBALL_MILESTONE) - reached;
+            reached += milestones;
+            paid += milestones * SNOWBALL_REWARD;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, paid);
+    }
+
+    /**
+     * Runs once per round after every starting balance is written; setBalance keeps it out of income tracking.
+     * 每局在所有开局余额写入后执行一次；使用 setBalance 使其不计入收入统计。
+     */
+    public static void applyWellSuppliedStartingMoney(ServerWorld world) {
+        for (ServerPlayerEntity player : world.getPlayers()) {
+            if (hasTrait(player, WellSuppliedTrait.ID)) {
+                applyWellSuppliedStartingMoney(player);
+            }
+        }
+    }
+
+    /**
+     * One player's Well Supplied bonus on their current balance; also used when the trait is rolled mid-round, after
+     * the caller has written the new role's starting balance.
+     * 按单个玩家的当前余额发放物资充沛加成；局中抽到该天赋时同样使用，调用方须先写入新身份的起始余额。
+     */
+    public static void applyWellSuppliedStartingMoney(ServerPlayerEntity player) {
+        PlayerShopComponent shop = PlayerShopComponent.KEY.get(player);
+        shop.setBalance(wellSuppliedStartingMoney(shop.getBalance()));
+    }
+
+    static int wellSuppliedStartingMoney(int startingMoney) {
+        if (startingMoney <= 0) {
+            return startingMoney;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, (long) startingMoney * WELL_SUPPLIED_STARTING_MONEY_PERCENT / 100);
     }
 
     public static int fastHandsCooldown(int duration) {

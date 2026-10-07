@@ -34,7 +34,7 @@ import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 public final class ConsciencePoisonerService {
     public enum BlueTrapResult {
         NO_BLUE_POISON,
-        CONSUME_ONLY,
+        CONSUME_AND_DRAIN_SANITY,
         CONSUME_AND_POISON
     }
 
@@ -47,6 +47,11 @@ public final class ConsciencePoisonerService {
     public static final int BLUE_POISON_COLOR = 0x00BFFF;
     public static final int MIXED_POISON_COLOR = mixColors(NORMAL_POISONER_INSTINCT_COLOR, BLUE_POISON_COLOR);
     public static final int BLUE_GAS_POISON_TICKS = 20 * 20;
+    // Blue poison drains 20 sanity points per second from players it cannot kill.
+    // 蓝毒对不会被毒死的玩家每秒扣 20 点理智。
+    public static final float BLUE_SANITY_DRAIN_PER_SECOND = 0.2f;
+    public static final float BLUE_SANITY_DRAIN_PER_TICK = BLUE_SANITY_DRAIN_PER_SECOND / 20.0f;
+    public static final int BLUE_TRAP_SANITY_DRAIN_TICKS = 3 * 20;
 
     private ConsciencePoisonerService() {
     }
@@ -88,7 +93,11 @@ public final class ConsciencePoisonerService {
         if (!hasBluePoison) {
             return BlueTrapResult.NO_BLUE_POISON;
         }
-        return shouldBlueGasAffect(role, traits) ? BlueTrapResult.CONSUME_AND_POISON : BlueTrapResult.CONSUME_ONLY;
+        return shouldBlueGasAffect(role, traits) ? BlueTrapResult.CONSUME_AND_POISON : BlueTrapResult.CONSUME_AND_DRAIN_SANITY;
+    }
+
+    public static float moodAfterBlueSanityDrain(float mood) {
+        return mood - BLUE_SANITY_DRAIN_PER_TICK;
     }
 
     public static boolean poisonStateIgnoresConscienceRange(boolean normalPoisoned, boolean bluePoisoned) {
@@ -155,18 +164,21 @@ public final class ConsciencePoisonerService {
         TraitPlayerComponent.KEY.get(target).setConsciencePoisonTicks(ticks, poisoner);
     }
 
-    public static void bedPoison(ServerPlayerEntity player) {
-        World world = player.getEntityWorld();
-        TrimmedBedBlockEntity blockEntity = findConscienceScorpionHead(world, player.getBlockPos());
-        if (!(blockEntity instanceof ConscienceScorpionBed conscienceBed)) {
+    public static void applyBlueSanityDrain(ServerPlayerEntity target, int ticks) {
+        TraitPlayerComponent.KEY.get(target).extendBlueSanityDrain(ticks);
+    }
+
+    /** Springs a consumed blue food or bed trap: lethal blue poison for non-civilians, a short sanity drain otherwise.
+     *  触发已消耗的蓝毒食物/床陷阱：非好人中致死蓝毒，其余玩家短暂扣理智。 */
+    public static void triggerBlueTrap(ServerPlayerEntity target, UUID poisoner) {
+        World world = target.getWorld();
+        TraitPlayerComponent targetTraits = TraitPlayerComponent.KEY.get(target);
+        GameWorldComponent gameComponent = GameWorldComponent.KEY.get(world);
+        BlueTrapResult result = blueTrapResult(true, gameComponent.getRole(target), targetTraits.getActiveTraitIds());
+        if (result == BlueTrapResult.CONSUME_AND_DRAIN_SANITY) {
+            applyBlueSanityDrain(target, BLUE_TRAP_SANITY_DRAIN_TICKS);
             return;
         }
-
-        UUID poisoner = conscienceBed.sparktraits$getConscienceScorpionPoisoner();
-        conscienceBed.sparktraits$setConscienceScorpion(false, null);
-        TraitPlayerComponent targetTraits = TraitPlayerComponent.KEY.get(player);
-        GameWorldComponent gameComponent = GameWorldComponent.KEY.get(world);
-        BlueTrapResult result = blueTrapResult(true, gameComponent.getRole(player), targetTraits.getActiveTraitIds());
         if (result != BlueTrapResult.CONSUME_AND_POISON) {
             return;
         }
@@ -176,7 +188,19 @@ public final class ConsciencePoisonerService {
                 world.getRandom().nextBetween(PlayerPoisonComponent.clampTime.getLeft(), PlayerPoisonComponent.clampTime.getRight()),
                 world.getRandom().nextBetween(100, 300)
         );
-        applyBluePoison(player, poisoner, ticks);
+        applyBluePoison(target, poisoner, ticks);
+    }
+
+    public static void bedPoison(ServerPlayerEntity player) {
+        World world = player.getEntityWorld();
+        TrimmedBedBlockEntity blockEntity = findConscienceScorpionHead(world, player.getBlockPos());
+        if (!(blockEntity instanceof ConscienceScorpionBed conscienceBed)) {
+            return;
+        }
+
+        UUID poisoner = conscienceBed.sparktraits$getConscienceScorpionPoisoner();
+        conscienceBed.sparktraits$setConscienceScorpion(false, null);
+        triggerBlueTrap(player, poisoner);
     }
 
     private static void addFineDrink(PlayerEntity player, BuildShopEntries.ShopContext context) {

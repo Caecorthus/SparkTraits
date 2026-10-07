@@ -34,6 +34,24 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     public static final float DEFAULT_TRAIT_SLOT_ROLL_CHANCE = TraitSlotRollChance.DEFAULT;
 
     private final World world;
+    private final dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeRoundState lastEscape =
+            new dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeRoundState();
+    private final Map<UUID, Long> lastEscapeClientDeadlines = new HashMap<>();
+    private UUID lastEscapeGrayscaleOwner;
+
+    public dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeRoundState lastEscape() {
+        return lastEscape;
+    }
+
+    public boolean isLastEscapeActive(UUID player) {
+        return world.isClient
+                ? world.getTime() < lastEscapeClientDeadlines.getOrDefault(player, Long.MIN_VALUE)
+                : lastEscape.isActive(player, world.getTime());
+    }
+
+    public boolean hasLastEscapeGrayscale(UUID player) {
+        return world.isClient ? player.equals(lastEscapeGrayscaleOwner) : lastEscape.hasGrayscale(player);
+    }
     private final LinkedHashSet<Identifier> disabledTraits = new LinkedHashSet<>();
     private final LinkedHashSet<Identifier> usedUniqueTraits = new LinkedHashSet<>();
     // Server-side round snapshot used when round-end data is built after a player leaves.
@@ -101,6 +119,9 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     }
 
     public void clearRoundState() {
+        lastEscape.clear();
+        lastEscapeClientDeadlines.clear();
+        lastEscapeGrayscaleOwner = null;
         usedUniqueTraits.clear();
         roundTraitSnapshots.clear();
         deathTraitSnapshots.clear();
@@ -169,16 +190,27 @@ public class TraitWorldComponent implements AutoSyncedComponent {
 
     @Override
     public void writeSyncPacket(RegistryByteBuf buf, ServerPlayerEntity recipient) {
+        TraitSyncVisibility.Recipient view = TraitPlayerComponent.syncRecipient(recipient);
         writeIdentifierSet(buf, disabledTraits);
-        writeIdentifierSet(buf, usedUniqueTraits);
-        buf.writeVarInt(deathTraitSnapshots.size());
-        for (Map.Entry<UUID, List<Identifier>> entry : deathTraitSnapshots.entrySet()) {
+        // Same layout for everyone; hidden round state is written as empty for recipients outside its audience.
+        // 所有接收者使用同一布局；不在可见范围内的接收者收到空的本局隐藏状态。
+        writeIdentifierSet(buf, TraitSyncVisibility.usedUniqueTraitsFor(view, usedUniqueTraits));
+        Map<UUID, List<Identifier>> visibleDeathTraitSnapshots =
+                TraitSyncVisibility.deathTraitSnapshotsFor(view, deathTraitSnapshots);
+        buf.writeVarInt(visibleDeathTraitSnapshots.size());
+        for (Map.Entry<UUID, List<Identifier>> entry : visibleDeathTraitSnapshots.entrySet()) {
             buf.writeUuid(entry.getKey());
             writeIdentifierSet(buf, entry.getValue());
         }
         buf.writeFloat(traitSlotRollChance);
         buf.writeBoolean(finalMomentActive);
         writeUuidSet(buf, finalMomentLooseEnds);
+        Map<UUID, Long> deadlines = lastEscape.activeDeadlines(world.getTime());
+        buf.writeVarInt(deadlines.size());
+        deadlines.forEach((uuid, deadline) -> { buf.writeUuid(uuid); buf.writeLong(deadline); });
+        // Only the recipient's persistent visual state is disclosed; no hidden trait IDs.
+        buf.writeBoolean(lastEscape.hasGrayscale(recipient.getUuid()));
+        buf.writeUuid(recipient.getUuid());
     }
 
     @Override
@@ -203,6 +235,15 @@ public class TraitWorldComponent implements AutoSyncedComponent {
         if (buf.readableBytes() > 0) {
             readUuidSet(buf, finalMomentLooseEnds);
         }
+        lastEscapeClientDeadlines.clear();
+        lastEscapeGrayscaleOwner = null;
+        if (buf.readableBytes() > 0) {
+            int count = buf.readVarInt();
+            for (int i = 0; i < count; i++) lastEscapeClientDeadlines.put(buf.readUuid(), buf.readLong());
+            boolean grayscale = buf.readBoolean();
+            UUID owner = buf.readUuid();
+            if (grayscale) lastEscapeGrayscaleOwner = owner;
+        }
     }
 
     @Override
@@ -213,6 +254,10 @@ public class TraitWorldComponent implements AutoSyncedComponent {
 
     @Override
     public void readFromNbt(@NotNull NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
+        // Match existing round memory: game rounds themselves are not persisted across restarts.
+        lastEscape.clear();
+        lastEscapeClientDeadlines.clear();
+        lastEscapeGrayscaleOwner = null;
         disabledTraits.clear();
         fromNbt(tag.getList("DisabledTraits", NbtElement.STRING_TYPE), disabledTraits);
         traitSlotRollChance = tag.contains(TraitSlotRollChance.NBT_KEY, NbtElement.NUMBER_TYPE)

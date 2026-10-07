@@ -1,8 +1,9 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
-import dev.caecorthus.sparktraits.client.compat.SparkStrengthCoronerBridge;
+import dev.caecorthus.sparktraits.client.compat.SparkStrengthCoronerClientBridge;
 import dev.caecorthus.sparktraits.client.compat.SparkWitchBlackRavenBridge;
 import dev.caecorthus.sparktraits.client.instinct.GoingDarkInstinctClientHooks;
+import dev.caecorthus.sparktraits.compat.SparkStrengthCoronerBridge;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
@@ -78,35 +79,14 @@ public abstract class WatheClientMixin {
                     && GameFunctions.isPlayerPlayingAndAlive(playerTarget)) {
                 // Final Moment must beat Last Stand's normal killer-instinct hiding.
                 // 终局时刻必须优先于背水一战的普通杀手本能隐藏。
-                boolean targetHasConscience = targetTraits.isConscienceInstinctVisible();
-                boolean targetHasImpostor = targetTraits.isImpostorInstinctVisible();
-                boolean viewerIsEffectiveKiller = EffectiveTraitService.isEffectiveKiller(viewer, game);
-                boolean finalMomentLooseEnd = traitWorld.isFinalMomentLooseEnd(playerTarget.getUuid());
-
-                /*
-                 * SparkStrength 的验尸官伪装是客户端外观/本能状态，不会改变
-                 * GameWorldComponent 中的原始职业。终局时刻仍需让有效杀手观察者
-                 * 把“伪装成杀手的验尸官”看成杀手；公开内鬼/善良标记则保留自身
-                 * 的优先级，避免一个玩家同时拥有两种可见提示时被伪装色覆盖。
-                 *
-                 * SparkStrength Coroner disguise is presentation-only and does not
-                 * rewrite GameWorldComponent's base role. Final Moment must therefore
-                 * keep its killer disguise visible to effective killer observers.
-                 */
-                Integer coronerDisguiseColor = (!targetHasConscience && !targetHasImpostor)
-                        ? SparkStrengthCoronerBridge.resolveKillerDisguiseInstinctColor(playerTarget)
-                        : null;
-                if (coronerDisguiseColor != null) {
-                    cir.setReturnValue(coronerDisguiseColor);
-                    return;
-                }
-
                 cir.setReturnValue(LastStandFinalMomentService.finalMomentHighlightColorForViewer(
-                        game.getRole(playerTarget),
-                        targetHasConscience,
-                        targetHasImpostor,
-                        finalMomentLooseEnd,
-                        viewerIsEffectiveKiller
+                        viewer,
+                        playerTarget,
+                        game,
+                        traitWorld.isFinalMomentLooseEnd(playerTarget.getUuid()),
+                        // Answering here skips SparkStrength's Coroner disguise event, so ask it for the disguise color.
+                        // 这里提前返回会跳过 SparkStrength 的验尸官伪装事件，因此直接查询其伪装色。
+                        SparkStrengthCoronerClientBridge.resolveKillerDisguiseInstinctColor(playerTarget)
                 ));
                 return;
             }
@@ -135,7 +115,9 @@ public abstract class WatheClientMixin {
         MorphlingPlayerComponent morphling = playerTarget == null ? null : MorphlingPlayerComponent.KEY.get(playerTarget);
 
         // Phantom invisibility must beat SparkTraits' effective-alignment instinct overlays.
+        // Only effective-killer viewers receive the Conscience flag; others treat the target like any Phantom.
         // 幽灵隐身优先于 SparkTraits 的有效阵营本能高亮覆盖。
+        // 只有有效杀手观察者能收到善良标记；其他观察者把目标当作普通幽灵处理。
         if (targetTraits != null && EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(
                 playerTarget.isInvisible(),
                 EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget),
@@ -146,8 +128,9 @@ public abstract class WatheClientMixin {
             return;
         }
 
-        // Corpse mode has priority over every non-spectator instinct overlay.
-        // 尸体模式优先于所有非旁观者本能描边。
+        // Corpse mode has priority over every effective-killer instinct overlay; other viewers never receive the
+        // Conscience flag, so they treat the target like any Morphling.
+        // 尸体模式优先于所有有效杀手本能描边；其他观察者收不到善良标记，因此把目标当作普通变形者处理。
         if (playerTarget != null && EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(
                 EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget),
                 game.isRole(playerTarget, Noellesroles.MORPHLING),
@@ -157,11 +140,12 @@ public abstract class WatheClientMixin {
             return;
         }
 
-        // NoellesRoles serial-killer targets are always visible; keep that before Conscience range logic.
-        // NoellesRoles 的连环杀手目标不受善良本能距离限制，先保留原目标高亮。
+        // NoellesRoles serial-killer targets are always visible unless invisible; keep that before Conscience range logic.
+        // NoellesRoles 的连环杀手目标不受善良本能距离限制（隐身时除外），先保留原目标高亮。
         if (playerTarget != null && ConscienceSerialKillerService.shouldUseSerialKillerTargetHighlight(
                 game.isRole(viewer, Noellesroles.SERIAL_KILLER),
-                SerialKillerPlayerComponent.KEY.get(viewer).isCurrentTarget(playerTarget.getUuid())
+                SerialKillerPlayerComponent.KEY.get(viewer).isCurrentTarget(playerTarget.getUuid()),
+                playerTarget.isInvisible()
         )) {
             cir.setReturnValue(Noellesroles.SERIAL_KILLER.color());
             return;
@@ -169,9 +153,12 @@ public abstract class WatheClientMixin {
 
         boolean targetHasBluePoison = targetTraits != null && targetTraits.hasConsciencePoison();
         boolean targetHasNormalPoison = playerTarget != null && PlayerPoisonComponent.KEY.get(playerTarget).poisonTicks > 0;
+        // Like NoellesRoles' Toxicologist outline, blue poison never reveals an invisible target.
+        // 与 NoellesRoles 毒理学家描边一致，蓝毒不会暴露隐身目标。
         if (playerTarget != null
                 && targetHasBluePoison
                 && game.isRole(viewer, Noellesroles.TOXICOLOGIST)
+                && !playerTarget.isInvisible()
                 && viewer.canSee(playerTarget)) {
             cir.setReturnValue(ConsciencePoisonerService.poisonHighlightColor(
                     targetHasNormalPoison,
@@ -213,10 +200,13 @@ public abstract class WatheClientMixin {
                         WatheClient.isInstinctEnabled(),
                         GameFunctions.isPlayerPlayingAndAlive(playerTarget),
                         GameFunctions.isPlayerSpectatingOrCreative(playerTarget),
+                        playerTarget.isInvisible(),
                         viewer.squaredDistanceTo(playerTarget),
                         targetTraits.isLastStandPending(),
                         targetTraits.isKillerInstinctHidden(),
-                        EffectiveTraitService.isSpiritProjecting(playerTarget),
+                        // A projecting Spirit Walker's body stays visible within the normal Conscience range.
+                        // 灵界行者出窍时留下的肉身在善良的正常范围内仍可被透视。
+                        false,
                         bombHolderIgnoresRange || poisonedTargetIgnoresRange
                 );
                 cir.setReturnValue(shouldHighlight
@@ -269,17 +259,9 @@ public abstract class WatheClientMixin {
         } else if (EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget)) {
             cir.setReturnValue(EffectiveTraitService.CIVILIAN_INSTINCT_COLOR);
         } else {
-            /*
-             * Wathe 只看验尸官的原始平民职业，无法知道 SparkStrength 当前选中的
-             * 尸体身份。可选桥返回非 null 时，优先把它显示为杀手；桥缺失则完全
-             * 回退到下面原有的内鬼目标判定，保证单独安装 SparkTraits 时不变。
-             *
-             * Wathe only sees Coroner's original civilian role. A non-null optional
-             * bridge result supplies the active killer disguise; a missing bridge keeps
-             * the original SparkTraits-only fallback intact.
-             */
-            Integer coronerDisguiseColor = SparkStrengthCoronerBridge
-                    .resolveKillerDisguiseInstinctColor(playerTarget);
+            // Answering here skips SparkStrength's Coroner disguise event, so mirror it.
+            // 这里提前返回会跳过 SparkStrength 的验尸官伪装事件，因此同步其判定。
+            Integer coronerDisguiseColor = SparkStrengthCoronerClientBridge.resolveKillerDisguiseInstinctColor(playerTarget);
             if (coronerDisguiseColor != null) {
                 cir.setReturnValue(coronerDisguiseColor);
                 return;
@@ -288,7 +270,8 @@ public abstract class WatheClientMixin {
                 cir.setReturnValue(EffectiveTraitService.effectiveKillerInstinctColor(
                         EffectiveTraitService.appearsAsKillerToKillerInstinct(
                                 game.getRole(playerTarget),
-                                game.canUseKillerFeatures(playerTarget)
+                                game.canUseKillerFeatures(playerTarget),
+                                SparkStrengthCoronerBridge.appearsAsKillerCohort(playerTarget)
                         ),
                         false,
                         false

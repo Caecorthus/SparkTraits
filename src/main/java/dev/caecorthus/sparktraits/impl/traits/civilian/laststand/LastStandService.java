@@ -14,6 +14,7 @@ import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.cca.MapVariablesWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameConstants;
@@ -28,6 +29,7 @@ import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityStatuses;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -582,15 +584,28 @@ public final class LastStandService {
         float targetYaw = state.deathYaw();
         float targetPitch = state.deathPitch();
         ReturnPoint returnPoint = returnPoints.get(state.playerUuid());
+        // The death spot is only the last resort; the round-start return point wins unless it is truly unusable.
+        // 死亡点只是最后兜底；除非开局回归点确实不可用，否则一律回到开局回归点。
+        ReturnPointCheck returnPointCheck = ReturnPointCheck.NO_RETURN_POINT;
         if (server != null && returnPoint != null) {
             ServerWorld returnWorld = server.getWorld(returnPoint.worldKey());
-            if (returnWorld != null && canSafelyStandAt(player, returnWorld, returnPoint.pos())) {
+            returnPointCheck = returnWorld == null
+                    ? ReturnPointCheck.RETURN_WORLD_UNAVAILABLE
+                    : checkReturnPoint(player, returnWorld, returnPoint.pos());
+            if (returnPointCheck == ReturnPointCheck.ACCEPTED) {
                 targetWorld = returnWorld;
                 targetPos = returnPoint.pos();
                 targetYaw = returnPoint.yaw();
                 targetPitch = returnPoint.pitch();
             }
         }
+        SparkTraits.LOGGER.info(
+                "Last Stand revive for {}: destination={}, returnPointCheck={}, pos={}",
+                player.getGameProfile().getName(),
+                returnPointCheck == ReturnPointCheck.ACCEPTED ? "returnPoint" : "deathPos",
+                returnPointCheck,
+                targetPos
+        );
 
         GameWorldComponent game = GameWorldComponent.KEY.get(targetWorld);
         ((GameWorldComponentAccessor) game).sparktraits$getDeadPlayers().remove(player.getUuid());
@@ -747,17 +762,55 @@ public final class LastStandService {
         }
     }
 
-    private static boolean canSafelyStandAt(ServerPlayerEntity player, ServerWorld world, Vec3d pos) {
-        if (pos.y < world.getBottomY() || pos.y >= world.getTopY()) {
-            return false;
-        }
+    /**
+     * The return point is recorded when Last Stand is assigned: normally right after Wathe's own round-start
+     * placement (a room spawn, or the lobby spot plus play-area offset and one block), which Wathe never
+     * safety-checks, so it is trusted the same way; a mid-round re-assignment (a runtime trait restore)
+     * records the player's current, already-occupied position.
+     * Only true suffocation, the world height limits or leaving Wathe's play area reject it. No support-block or
+     * box-overlap test: partial blocks (beds, slabs), block-edge spawns and the one-block legacy lift are fine,
+     * and entities never veto.
+     * 回归点在获得背水一战时记录：通常位于 wathe 开局放置玩家之后（房间出生点，或大厅位置加游玩区偏移再加
+     * 一格），wathe 自身从不做安全检查，因此这里同样信任它；局中重新获得（运行时恢复词条）时记录的是玩家当前
+     * 所在位置。仅在真正窒息、超出世界高度或离开 wathe 游玩区时拒绝；不做脚下支撑或碰撞箱重叠检查：
+     * 床、半砖等非完整方块、方块边缘出生点和旧版抬高一格都可接受，实体也不能否决回归。
+     */
+    private static ReturnPointCheck checkReturnPoint(ServerPlayerEntity player, ServerWorld world, Vec3d pos) {
         BlockPos feet = BlockPos.ofFloored(pos);
-        BlockPos below = feet.down();
-        if (world.getBlockState(below).getCollisionShape(world, below).isEmpty()) {
-            return false;
+        BlockPos head = BlockPos.ofFloored(pos.add(0.0, player.getEyeHeight(EntityPose.STANDING), 0.0));
+        return classifyReturnPoint(
+                pos.y >= world.getBottomY() && pos.y < world.getTopY(),
+                isInsidePlayArea(MapVariablesWorldComponent.KEY.get(world).getPlayArea(), pos),
+                world.getBlockState(feet).shouldSuffocate(world, feet),
+                world.getBlockState(head).shouldSuffocate(world, head)
+        );
+    }
+
+    static ReturnPointCheck classifyReturnPoint(
+            boolean insideWorldHeight,
+            boolean insidePlayArea,
+            boolean feetSuffocates,
+            boolean headSuffocates
+    ) {
+        if (!insideWorldHeight) {
+            return ReturnPointCheck.OUT_OF_WORLD_HEIGHT;
         }
-        Box targetBox = player.getBoundingBox().offset(pos.subtract(player.getPos()));
-        return world.isSpaceEmpty(player, targetBox);
+        if (!insidePlayArea) {
+            return ReturnPointCheck.OUTSIDE_PLAY_AREA;
+        }
+        if (feetSuffocates) {
+            return ReturnPointCheck.FEET_SUFFOCATES;
+        }
+        if (headSuffocates) {
+            return ReturnPointCheck.HEAD_SUFFOCATES;
+        }
+        return ReturnPointCheck.ACCEPTED;
+    }
+
+    static boolean isInsidePlayArea(@Nullable Box playArea, Vec3d pos) {
+        // Wathe skips its own play-area rules when no play area is configured; do the same.
+        // 未配置游玩区时 wathe 自身也跳过游玩区规则，这里保持一致。
+        return playArea == null || playArea.contains(pos);
     }
 
     private static void ensureRevolver(ServerPlayerEntity player) {
@@ -790,6 +843,20 @@ public final class LastStandService {
     }
 
     private record ReturnPoint(RegistryKey<World> worldKey, Vec3d pos, float yaw, float pitch) {
+    }
+
+    /**
+     * Why a revive used the return point or fell back to the death spot; logged for playtest diagnosis.
+     * 复活使用回归点或回退到死亡点的原因；写入日志供试玩排查。
+     */
+    enum ReturnPointCheck {
+        ACCEPTED,
+        NO_RETURN_POINT,
+        RETURN_WORLD_UNAVAILABLE,
+        OUT_OF_WORLD_HEIGHT,
+        OUTSIDE_PLAY_AREA,
+        FEET_SUFFOCATES,
+        HEAD_SUFFOCATES
     }
 
     private record PendingState(

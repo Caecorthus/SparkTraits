@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.mixin;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionFakeKillCooldowns;
 import dev.caecorthus.sparktraits.impl.traits.civilian.fakedeath.FakeDeathDerringerService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -25,17 +26,35 @@ import dev.caecorthus.sparktraits.SparkTraits;
  *  将 SparkTraits 的枪械行为接入 Wathe 枪械发包处理。 */
 @Mixin(value = GunShootPayload.Receiver.class, remap = false)
 public abstract class GunShootPayloadMixin {
-    /** Starts Niko's extra shots before target resolution, so missed first shots still audibly burst.
-     *  在目标结算前启动 Niko 补发，让第一发没命中时也能表现为连续射击。 */
+    @com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod(
+            method = "receive(Ldev/doctor4t/wathe/util/GunShootPayload;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V")
+    private void sparktraits$gunCycleScope(GunShootPayload payload, ServerPlayNetworking.Context context,
+            com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original) {
+        var previous = dev.caecorthus.sparktraits.impl.traits.civilian.police.GunShotCycles.current();
+        dev.caecorthus.sparktraits.impl.traits.civilian.police.GunShotCycles.setCurrent(null);
+        Object pendingFakeKill = DepressionFakeKillCooldowns.pendingFakeKill(context.player());
+        try {
+            original.call(payload, context);
+            // Before finishNative so gun-cycle listeners see the discounted end tick.
+            // 在 finishNative 之前执行，使枪械循环监听者读到缩短后的结束时间。
+            DepressionFakeKillCooldowns.flushStartedSince(context.player(), pendingFakeKill);
+        } finally {
+            dev.caecorthus.sparktraits.impl.traits.civilian.police.GunShotCycles.finishNative(
+                    dev.caecorthus.sparktraits.impl.traits.civilian.police.GunShotCycles.current());
+            dev.caecorthus.sparktraits.impl.traits.civilian.police.GunShotCycles.setCurrent(previous);
+        }
+    }
+
+    /** Begin only after native packet validation; a missed accepted shot still bursts.
+     * 仅在原生发包校验通过后启动；已接受的空枪仍可补射。 */
     @Inject(
             method = "receive(Ldev/doctor4t/wathe/util/GunShootPayload;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V",
-            at = @At("HEAD")
+            at = @At(value = "INVOKE", target = "Ldev/doctor4t/wathe/record/GameRecordManager;recordItemUse(Lnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Lnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/nbt/NbtCompound;)V")
     )
-    private void sparktraits$scheduleNikoRevolverBurst(
-            GunShootPayload payload,
-            ServerPlayNetworking.Context context,
-            CallbackInfo ci
-    ) {
+    private void sparktraits$scheduleNikoRevolverBurst(GunShootPayload payload,
+            ServerPlayNetworking.Context context, CallbackInfo ci) {
+        dev.caecorthus.sparktraits.impl.traits.civilian.police.GunShotCycles.begin(
+                context.player(), context.player().getMainHandStack().getItem());
         VigilanteVeteranTraitService.scheduleNikoRevolverBurstRepeats(context.player());
     }
 

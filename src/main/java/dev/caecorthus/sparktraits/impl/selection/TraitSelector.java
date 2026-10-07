@@ -22,8 +22,8 @@ import java.util.function.Predicate;
 import java.util.random.RandomGenerator;
 
 /**
- * Random trait selector for the three independent configurable slots.
- * 三个独立、概率可配置的随机天赋槽位选择器。
+ * Random trait selector for the three independent configurable slots; free traits do not spend a slot.
+ * 三个独立、概率可配置的随机天赋槽位选择器；免费天赋不消耗槽位。
  */
 public final class TraitSelector {
     public static final int SLOT_COUNT = 3;
@@ -106,9 +106,6 @@ public final class TraitSelector {
     ) {
         LinkedHashSet<Identifier> selected = new LinkedHashSet<>(retainedTraits == null ? List.of() : retainedTraits);
         Role role = gameComponent.getRole(player);
-        if (!TraitRoleEligibility.canReceiveTraits(role)) {
-            return List.of();
-        }
         float slotChance = traitWorld.getTraitSlotRollChance();
         Collection<Identifier> uniqueTraitReservations = reservedUniqueTraits == null ? List.of() : reservedUniqueTraits;
         Collection<Identifier> rerollExclusions = excludedTraits == null ? Set.of() : excludedTraits;
@@ -134,6 +131,66 @@ public final class TraitSelector {
         );
     }
 
+    /**
+     * Mid-round replacement draws: {@code draws} guaranteed picks (no slot roll chance) through the round-start
+     * candidate rules, kept beside {@code retainedTraits}; stops early at the trait cap or an empty pool.
+     * 局中补抽：按开局候选规则必定抽取 {@code draws} 次（不掷槽位概率），与 {@code retainedTraits} 并存；达到天赋上限或
+     * 候选为空时提前停止。
+     */
+    public static List<Identifier> selectReplacementTraits(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            TraitWorldComponent traitWorld,
+            ServerPlayerEntity player,
+            RandomGenerator random,
+            int startingPlayerCount,
+            Collection<Identifier> retainedTraits,
+            int draws,
+            Collection<Identifier> excludedTraits
+    ) {
+        Role role = gameComponent.getRole(player);
+        return drawTraits(
+                new LinkedHashSet<>(retainedTraits),
+                draws,
+                currentSelection -> {
+                    List<Trait> candidates = collectCandidates(
+                            world,
+                            gameComponent,
+                            traitWorld,
+                            player,
+                            role,
+                            currentSelection,
+                            startingPlayerCount,
+                            List.of(),
+                            excludedTraits
+                    );
+                    return candidates.isEmpty() ? null : pickWeighted(candidates, random).id();
+                }
+        );
+    }
+
+    static List<Identifier> drawTraits(
+            LinkedHashSet<Identifier> selected,
+            int draws,
+            Function<LinkedHashSet<Identifier>, Identifier> candidatePicker
+    ) {
+        List<Identifier> drawn = new ArrayList<>();
+        for (int draw = 0; draw < draws && canSelectAnotherTrait(TraitRules.occupiedTraitSlots(selected)); draw++) {
+            Identifier picked = candidatePicker.apply(selected);
+            // As in the slot rolls, a free trait rides along without spending the draw.
+            // 与槽位抽取一致，免费天赋随附获得，不消耗本次补抽。
+            while (picked != null && !TraitRules.occupiesTraitSlot(picked) && selected.add(picked)) {
+                drawn.add(picked);
+                picked = candidatePicker.apply(selected);
+            }
+            if (picked == null || !selected.add(picked)) {
+                break;
+            }
+            drawn.add(picked);
+        }
+        return List.copyOf(drawn);
+    }
+
     static List<Identifier> rollTraits(
             LinkedHashSet<Identifier> selected,
             float slotChance,
@@ -141,11 +198,18 @@ public final class TraitSelector {
             Function<LinkedHashSet<Identifier>, Identifier> candidatePicker
     ) {
         List<Identifier> newlyRolled = new ArrayList<>();
-        for (int slot = selected.size(); slot < SLOT_COUNT; slot++) {
-            if (!canSelectAnotherTrait(selected.size()) || !shouldRollSlot(slotChance, random)) {
+        for (int slot = TraitRules.occupiedTraitSlots(selected); slot < SLOT_COUNT; slot++) {
+            if (!canSelectAnotherTrait(TraitRules.occupiedTraitSlots(selected))
+                    || !shouldRollSlot(slotChance, random)) {
                 continue;
             }
             Identifier picked = candidatePicker.apply(selected);
+            // A free trait rides along without spending the slot, so the same slot picks again.
+            // 免费天赋随附获得、不消耗槽位，因此同一槽位继续抽取。
+            while (picked != null && !TraitRules.occupiesTraitSlot(picked) && selected.add(picked)) {
+                newlyRolled.add(picked);
+                picked = candidatePicker.apply(selected);
+            }
             if (picked != null && selected.add(picked)) {
                 newlyRolled.add(picked);
             }
@@ -235,6 +299,9 @@ public final class TraitSelector {
                 continue;
             }
             if (!TraitRules.isCompatibleWithAll(trait, selected)) {
+                continue;
+            }
+            if (!TraitRoleEligibility.canReceiveTrait(context.role(), trait)) {
                 continue;
             }
             if (!trait.canApply(context)) {

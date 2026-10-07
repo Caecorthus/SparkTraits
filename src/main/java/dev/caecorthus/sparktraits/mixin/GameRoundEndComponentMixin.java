@@ -1,16 +1,15 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import com.mojang.authlib.GameProfile;
-import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.lifecycle.RoundEndTraitResolver;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.cca.GameRoundEndComponent;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
@@ -22,7 +21,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -79,7 +77,7 @@ public abstract class GameRoundEndComponentMixin {
             ) || EffectiveTraitService.didEffectiveTeamWin(
                     winStatus,
                     role,
-                    sparktraits$roundEndTraits(serverWorld, traitWorld, uuid)
+                    RoundEndTraitResolver.resolve(serverWorld, traitWorld, uuid)
             );
 
             this.players.add(new GameRoundEndComponent.RoundEndData(profile, role.identifier(), endStatus, isWinner));
@@ -114,24 +112,5 @@ public abstract class GameRoundEndComponentMixin {
         return isOnline
                 ? GameRoundEndComponent.PlayerEndStatus.ALIVE
                 : GameRoundEndComponent.PlayerEndStatus.LEFT;
-    }
-
-    private static Collection<Identifier> sparktraits$roundEndTraits(
-            ServerWorld serverWorld,
-            TraitWorldComponent traitWorld,
-            UUID uuid
-    ) {
-        PlayerEntity player = serverWorld.getPlayerByUuid(uuid);
-        if (player != null) {
-            List<Identifier> activeTraits = TraitPlayerComponent.KEY.get(player).getActiveTraitIds();
-            if (!activeTraits.isEmpty()) {
-                return activeTraits;
-            }
-        }
-        List<Identifier> deathTraits = traitWorld.getDeathTraitSnapshot(uuid);
-        if (!deathTraits.isEmpty()) {
-            return deathTraits;
-        }
-        return traitWorld.getRoundTraitSnapshot(uuid);
     }
 }

@@ -35,6 +35,14 @@ public interface Trait {
         return false;
     }
 
+    /**
+     * Whether the trait takes one of the normal trait slots; a free trait rides along without counting toward the cap.
+     * 天赋是否占用普通天赋槽位；免费天赋随附获得，不计入上限。
+     */
+    default boolean occupiesTraitSlot() {
+        return true;
+    }
+
     default TraitAudience audience() {
         return TraitAudience.UNIVERSAL;
     }

@@ -7,28 +7,21 @@ import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.caecorthus.sparktraits.api.TraitSelectionContext;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
-import dev.caecorthus.sparktraits.mixin.RoleHistoryComponentAccessor;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.RoleSelectionContext;
 import dev.doctor4t.wathe.api.WatheRoles;
-import dev.doctor4t.wathe.api.event.RoleAssigned;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.RoleHistoryComponent;
-import dev.doctor4t.wathe.game.rotation.GameEntry;
 import dev.doctor4t.wathe.game.rotation.RoleCategory;
 import dev.doctor4t.wathe.game.rotation.RoleRotation;
 import dev.doctor4t.wathe.game.rotation.RotationStrength;
-import net.minecraft.item.Item;
-import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
-import org.agmas.noellesroles.Noellesroles;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Collection;
-import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
@@ -45,48 +38,33 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTraitService;
 
-/** Builds round trait plans before Wathe sends welcome information.
- *  在 Wathe 发送开局信息前构建本局天赋方案。 */
+/**
+ * Plans round traits once Wathe has picked every role but before RoleAssigned announces them, then commits the
+ * plan after RoleAssigned and before the welcome screen. Conscience compensation rewrites a civilian's role inside
+ * the planning step, so RoleAssigned, every role kit and the role history only ever see the final killer role.
+ * 在 Wathe 选定全部身份之后、RoleAssigned 公布之前规划本局天赋，并在 RoleAssigned 之后、开局欢迎信息之前提交方案。
+ * 善良补偿在规划阶段改写好人身份，因此 RoleAssigned、各职业开局道具与身份历史都只会看到最终的杀手身份。
+ */
 public final class TraitAssignmentService {
-    private static final String WATHE_MOD_ID = "wathe";
-    private static final String NOELLESROLES_MOD_ID = "noellesroles";
-    private static final Identifier WATHE_REVOLVER_ID = Identifier.of(WATHE_MOD_ID, "revolver");
-    private static final Identifier WATHE_KNIFE_ID = Identifier.of(WATHE_MOD_ID, "knife");
-    private static final Identifier WATHE_NOTE_ID = Identifier.of(WATHE_MOD_ID, "note");
-    private static final Identifier WATHE_WALKIE_TALKIE_ID = Identifier.of(WATHE_MOD_ID, "walkie_talkie");
-    private static final Identifier NOELLES_MASTER_KEY_ID = Identifier.of(NOELLESROLES_MOD_ID, "master_key");
-    private static final Identifier NOELLES_ANTIDOTE_ID = Identifier.of(NOELLESROLES_MOD_ID, "antidote");
-    private static final Identifier NOELLES_IRON_MAN_VIAL_ID = Identifier.of(NOELLESROLES_MOD_ID, "iron_man_vial");
-    private static final Identifier NOELLES_REPAIR_TOOL_ID = Identifier.of(NOELLESROLES_MOD_ID, "repair_tool");
-    private static final Identifier MINECRAFT_WRITTEN_BOOK_ID = Identifier.ofVanilla("written_book");
     private static final Set<Identifier> CONSCIENCE_COMPENSATION_REROLL_EXCLUSIONS =
             Set.of(ConscienceTrait.ID, ImpostorTrait.ID);
+    /** Slot limit for re-filtering traits a player already owns. / 复核玩家已拥有天赋时不设槽位上限。 */
+    static final int UNCAPPED = Integer.MAX_VALUE;
 
     private TraitAssignmentService() {
     }
 
-    public static void assignForGame(ServerWorld world, GameWorldComponent gameComponent) {
-        List<ServerPlayerEntity> players = gameComponent.getAllPlayers().stream()
-                .map(world::getPlayerByUuid)
-                .filter(ServerPlayerEntity.class::isInstance)
-                .map(ServerPlayerEntity.class::cast)
-                .toList();
-        assignForMurderGameBeforeWelcome(world, gameComponent, players, EffectiveTraitService.originalKillerCount(gameComponent));
-    }
-
-    public static int assignForMurderGameBeforeWelcome(
-            ServerWorld world,
-            GameWorldComponent gameComponent,
-            List<ServerPlayerEntity> players,
-            int publicKillerCount
-    ) {
-        return assignForMurderGameBeforeWelcome(world, gameComponent, players, publicKillerCount, Set.of());
-    }
-
-    public static int assignForMurderGameBeforeWelcome(
+    /**
+     * Must run before Wathe's RoleAssigned loop: the compensation civilian becomes a killer here, so it never
+     * receives the civilian kit (from any mod) and Wathe hands out the killer kit exactly once.
+     * 必须在 Wathe 的 RoleAssigned 循环之前运行：补偿好人在此转为杀手，因此不会领到任何模组的原好人道具，
+     * Wathe 也只发放一次杀手道具。
+     */
+    public static RoundPlan planBeforeRoleAssigned(
             ServerWorld world,
             GameWorldComponent gameComponent,
             List<ServerPlayerEntity> players,
@@ -95,6 +73,7 @@ public final class TraitAssignmentService {
     ) {
         Set<UUID> protectedLockedRolePlayers = lockedRolePlayers == null ? Set.of() : lockedRolePlayers;
         TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(world);
+        traitWorld.clearRoundState();
         Random random = new Random(world.getRandom().nextLong());
         List<PlayerPlan> plans = new ArrayList<>();
         List<ServerPlayerEntity> randomPlayers = new ArrayList<>();
@@ -146,9 +125,21 @@ public final class TraitAssignmentService {
         );
         forcePigOntoPigGod(gameComponent, traitWorld, plans);
         enforceRandomDepressionCap(plans, players.size());
+        return new RoundPlan(plans);
+    }
 
-        traitWorld.clearRoundState();
-        for (PlayerPlan plan : plans) {
+    /**
+     * Commits after RoleAssigned so trait hooks such as Conscience's walkie-talkie strip see the kits it handed out.
+     * 在 RoleAssigned 之后提交，使善良收走对讲机等天赋钩子能处理它发放的道具。
+     */
+    public static int applyAfterRoleAssigned(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            List<ServerPlayerEntity> players,
+            RoundPlan roundPlan
+    ) {
+        TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(world);
+        for (PlayerPlan plan : conscienceFirst(roundPlan.plans())) {
             markUniqueTraits(traitWorld, plan.traits());
             TraitAssignmentReason reason = plan.hasLocks() ? TraitAssignmentReason.PENDING_LOCK : TraitAssignmentReason.RANDOM;
             TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(plan.player());
@@ -165,17 +156,43 @@ public final class TraitAssignmentService {
             ServerPlayerEntity player,
             List<Identifier> pendingTraits
     ) {
+        return applyPendingLocks(world, gameComponent, player, gameComponent.getRole(player), pendingTraits);
+    }
+
+    static List<Identifier> applyPendingLocks(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            ServerPlayerEntity player,
+            Role role,
+            List<Identifier> pendingTraits
+    ) {
+        return retainTraitsEligibleForRole(world, gameComponent, player, role, pendingTraits, TraitPlayerComponent.MAX_TRAITS);
+    }
+
+    /**
+     * Shared per-trait rule of pending locks and role-change revalidation: keeps, in order, every trait that is
+     * registered, allowed for {@code role}, compatible with the traits kept before it, passes its own selection gate,
+     * and keeps the tentative set valid. Keeps at most {@code maxTraits} slot-occupying traits (free traits such as Well
+     * Supplied are not counted); unique-per-game limits are never applied here.
+     * 待应用锁定与换身份复核共用的逐天赋规则：按原顺序保留已注册、{@code role} 可获得、与先前保留天赋兼容、
+     * 通过自身选择条件且整组仍有效的天赋；最多保留 {@code maxTraits} 个占用槽位的天赋（物资充沛等免费天赋不计入），
+     * 此处从不套用每局唯一限制。
+     */
+    static List<Identifier> retainTraitsEligibleForRole(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            ServerPlayerEntity player,
+            Role role,
+            List<Identifier> candidateTraits,
+            int maxTraits
+    ) {
         LinkedHashSet<Identifier> accepted = new LinkedHashSet<>();
-        Role role = gameComponent.getRole(player);
-        if (!TraitRoleEligibility.canReceiveTraits(role)) {
-            return List.of();
-        }
-        for (Identifier traitId : pendingTraits) {
-            if (accepted.size() >= TraitPlayerComponent.MAX_TRAITS) {
-                break;
+        for (Identifier traitId : candidateTraits) {
+            if (TraitRules.occupiesTraitSlot(traitId) && TraitRules.occupiedTraitSlots(accepted) >= maxTraits) {
+                continue;
             }
             Trait trait = TraitRegistry.get(traitId);
-            if (trait == null) {
+            if (trait == null || !TraitRoleEligibility.canReceiveTrait(role, trait)) {
                 continue;
             }
             if (!TraitRules.isCompatibleWithAll(trait, accepted)) {
@@ -256,16 +273,14 @@ public final class TraitAssignmentService {
                 SparkTraits.LOGGER.warn("Could not add an extra killer for Conscience compensation because no enabled killer role is available.");
                 return;
             }
-            Role originalRole = gameComponent.getRole(extraKiller.player());
             replaceRandomTraitsForConscienceCompensation(
                     extraKiller,
                     randomUniqueTraitReservations,
                     List.of()
             );
-            clearInitialRoleItemsForConscienceCompensation(extraKiller.player(), originalRole);
+            // RoleAssigned has not fired yet: Wathe announces, equips and records this player only as the killer.
+            // RoleAssigned 尚未触发：Wathe 只会以杀手身份公布、发放道具并记录该玩家。
             gameComponent.addRole(extraKiller.player(), compensationRole);
-            replaceLatestConscienceCompensationRoleHistoryEntry(roleHistory, extraKiller.player().getUuid(), compensationRole);
-            RoleAssigned.EVENT.invoker().assignRole(extraKiller.player(), compensationRole);
             rebuildUniqueTraitReservations(randomUniqueTraitReservations, plans);
             List<Identifier> rerolledTraits = TraitSelector.selectRandomTraits(
                     world,
@@ -280,8 +295,6 @@ public final class TraitAssignmentService {
             );
             extraKiller.replaceRandomTraits(rerolledTraits);
             rebuildUniqueTraitReservations(randomUniqueTraitReservations, plans);
-            TraitPlayerComponent.KEY.get(extraKiller.player()).sync();
-            gameComponent.sync();
         }
     }
 
@@ -369,6 +382,8 @@ public final class TraitAssignmentService {
         );
     }
 
+    /** Police-category roles are never drafted as compensation killers, so none keeps a police weapon.
+     *  警职类别身份永不被选为补偿杀手，避免其带着警用武器转为杀手。 */
     static boolean canUseAsConscienceCompensationTarget(
             Role role,
             Collection<Identifier> traits,
@@ -379,84 +394,9 @@ public final class TraitAssignmentService {
                 && !roleLocked
                 && !traitLocked
                 && EffectiveTraitService.isOriginalCivilian(role)
-                && role != WatheRoles.VIGILANTE
-                && role != WatheRoles.VETERAN
+                && !PoliceRoleCategory.isPolice(role)
                 && !traits.contains(ImpostorTrait.ID)
                 && !traits.contains(ConscienceTrait.ID);
-    }
-
-    private static void replaceLatestConscienceCompensationRoleHistoryEntry(
-            RoleHistoryComponent roleHistory,
-            UUID playerUuid,
-            Role compensationRole
-    ) {
-        Deque<GameEntry> playerHistory = ((RoleHistoryComponentAccessor) roleHistory).sparktraits$getHistory().get(playerUuid);
-        replaceLatestConscienceCompensationRoleHistoryEntry(playerHistory, compensationRole);
-    }
-
-    /** Rewrites the current-round role entry instead of appending a second round.
-     *  只改写本局最新身份记录，避免额外追加一局历史。 */
-    static boolean replaceLatestConscienceCompensationRoleHistoryEntry(
-            Deque<GameEntry> playerHistory,
-            Role compensationRole
-    ) {
-        if (playerHistory == null || playerHistory.isEmpty() || compensationRole == null) {
-            return false;
-        }
-        GameEntry latestEntry = playerHistory.removeLast();
-        playerHistory.addLast(new GameEntry(
-                latestEntry.killerShare(),
-                latestEntry.vigilanteShare(),
-                latestEntry.neutralShare(),
-                RoleCategory.KILLER,
-                compensationRole.identifier().toString()
-        ));
-        return true;
-    }
-
-    /** Removes old civilian role kit before Conscience compensation assigns a killer role.
-     *  在善良补偿杀手改写身份前，移除原好人身份的开局物品。 */
-    private static void clearInitialRoleItemsForConscienceCompensation(ServerPlayerEntity player, Role originalRole) {
-        for (Identifier itemId : initialRoleItemIdsToClearForConscienceCompensation(originalRole)) {
-            Item item = Registries.ITEM.get(itemId);
-            player.getInventory().remove(
-                    stack -> stack.isOf(item),
-                    Integer.MAX_VALUE,
-                    player.playerScreenHandler.getCraftingInput()
-            );
-            player.getItemCooldownManager().remove(item);
-        }
-    }
-
-    static List<Identifier> initialRoleItemIdsToClearForConscienceCompensation(Role role) {
-        if (role == WatheRoles.VIGILANTE) {
-            return List.of(WATHE_REVOLVER_ID);
-        }
-        if (role == WatheRoles.VETERAN) {
-            return List.of(WATHE_KNIFE_ID);
-        }
-        if (role == Noellesroles.CONDUCTOR) {
-            return List.of(NOELLES_MASTER_KEY_ID);
-        }
-        if (role == Noellesroles.AWESOME_BINGLUS) {
-            return List.of(WATHE_NOTE_ID);
-        }
-        if (role == Noellesroles.TOXICOLOGIST) {
-            return List.of(NOELLES_ANTIDOTE_ID);
-        }
-        if (role == Noellesroles.PROFESSOR) {
-            return List.of(NOELLES_IRON_MAN_VIAL_ID);
-        }
-        if (role == Noellesroles.ENGINEER) {
-            return List.of(NOELLES_REPAIR_TOOL_ID);
-        }
-        if (role == Noellesroles.ATTENDANT) {
-            return List.of(MINECRAFT_WRITTEN_BOOK_ID);
-        }
-        if (role == Noellesroles.UNDERCOVER) {
-            return List.of(WATHE_WALKIE_TALKIE_ID);
-        }
-        return List.of();
     }
 
     private static Role chooseConscienceCompensationKillerRole(
@@ -592,13 +532,9 @@ public final class TraitAssignmentService {
         if (locked.contains(requiredTrait) || random.contains(requiredTrait)) {
             return new ForcedTraitPlan(List.copyOf(locked), List.copyOf(random));
         }
-        while (locked.size() + random.size() >= TraitPlayerComponent.MAX_TRAITS) {
-            if (!random.isEmpty()) {
-                random.removeLast();
-                continue;
-            }
-            if (!locked.isEmpty()) {
-                locked.removeLast();
+        while (TraitRules.occupiesTraitSlot(requiredTrait)
+                && occupiedTraitSlots(locked, random) >= TraitPlayerComponent.MAX_TRAITS) {
+            if (removeLastSlotTrait(random) || removeLastSlotTrait(locked)) {
                 continue;
             }
             break;
@@ -607,10 +543,48 @@ public final class TraitAssignmentService {
         return new ForcedTraitPlan(List.copyOf(locked), List.copyOf(random));
     }
 
+    private static int occupiedTraitSlots(Collection<Identifier> lockedTraits, Collection<Identifier> randomTraits) {
+        return TraitRules.occupiedTraitSlots(lockedTraits) + TraitRules.occupiedTraitSlots(randomTraits);
+    }
+
+    /** Dropping a free trait frees no slot, so only the last slot-occupying trait is removed.
+     *  移除免费天赋腾不出槽位，因此只移除最后一个占用槽位的天赋。 */
+    private static boolean removeLastSlotTrait(List<Identifier> traits) {
+        for (int i = traits.size() - 1; i >= 0; i--) {
+            if (TraitRules.occupiesTraitSlot(traits.get(i))) {
+                traits.remove(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
     record ForcedTraitPlan(List<Identifier> lockedTraits, List<Identifier> randomTraits) {
     }
 
-    private static void markUniqueTraits(TraitWorldComponent traitWorld, Collection<Identifier> traits) {
+    /**
+     * Every setActiveTraits call syncs at once, so Conscience must land before Impostor: otherwise a killer about to
+     * turn civilian would still count as an effective killer and receive the Impostor instinct flag. The per-tick
+     * recipient watcher cannot repair this, because roles and traits land in the same tick.
+     * 每次 setActiveTraits 都会立即同步，因此善良必须先于内鬼落地；否则即将转为好人的杀手仍被视为有效杀手，
+     * 会收到内鬼的本能标记。职业与天赋在同一 tick 内落地，逐 tick 的接收者监视无法事后补救。
+     */
+    static List<PlayerPlan> conscienceFirst(List<PlayerPlan> plans) {
+        List<PlayerPlan> ordered = new ArrayList<>(plans.size());
+        for (PlayerPlan plan : plans) {
+            if (plan.traits().contains(ConscienceTrait.ID)) {
+                ordered.add(plan);
+            }
+        }
+        for (PlayerPlan plan : plans) {
+            if (!plan.traits().contains(ConscienceTrait.ID)) {
+                ordered.add(plan);
+            }
+        }
+        return ordered;
+    }
+
+    static void markUniqueTraits(TraitWorldComponent traitWorld, Collection<Identifier> traits) {
         for (Identifier traitId : traits) {
             Trait trait = TraitRegistry.get(traitId);
             if (trait != null && trait.uniquePerGame()) {
@@ -685,6 +659,20 @@ public final class TraitAssignmentService {
         return trait != null && trait.uniquePerGame();
     }
 
+    /** Opaque hand-off from {@link #planBeforeRoleAssigned} to {@link #applyAfterRoleAssigned}.
+     *  从 {@link #planBeforeRoleAssigned} 交给 {@link #applyAfterRoleAssigned} 的不透明方案。 */
+    public static final class RoundPlan {
+        private final List<PlayerPlan> plans;
+
+        private RoundPlan(List<PlayerPlan> plans) {
+            this.plans = List.copyOf(plans);
+        }
+
+        List<PlayerPlan> plans() {
+            return plans;
+        }
+    }
+
     static final class PlayerPlan {
         private final ServerPlayerEntity player;
         private final List<Identifier> lockedTraits;
@@ -735,11 +723,13 @@ public final class TraitAssignmentService {
                 Trait randomTrait = TraitRegistry.get(randomTraitId);
                 return randomTrait != null && TraitRules.areIncompatible(trait, randomTrait);
             });
-            if (lockedTraits.size() >= TraitPlayerComponent.MAX_TRAITS) {
-                return false;
-            }
-            if (lockedTraits.size() + randomTraits.size() >= TraitPlayerComponent.MAX_TRAITS && !randomTraits.isEmpty()) {
-                randomTraits.removeLast();
+            if (trait.occupiesTraitSlot()) {
+                if (TraitRules.occupiedTraitSlots(lockedTraits) >= TraitPlayerComponent.MAX_TRAITS) {
+                    return false;
+                }
+                if (occupiedTraitSlots(lockedTraits, randomTraits) >= TraitPlayerComponent.MAX_TRAITS) {
+                    removeLastSlotTrait(randomTraits);
+                }
             }
             randomTraits.add(traitId);
             return true;
@@ -750,7 +740,10 @@ public final class TraitAssignmentService {
                 return true;
             }
             Trait trait = TraitRegistry.get(traitId);
-            return trait != null && lockedTraits.size() < TraitPlayerComponent.MAX_TRAITS && isCompatibleWithLockedTraits(trait);
+            return trait != null
+                    && (!trait.occupiesTraitSlot()
+                            || TraitRules.occupiedTraitSlots(lockedTraits) < TraitPlayerComponent.MAX_TRAITS)
+                    && isCompatibleWithLockedTraits(trait);
         }
 
         void clearRandomTraits() {
@@ -763,8 +756,9 @@ public final class TraitAssignmentService {
                 return;
             }
             for (Identifier traitId : replacementTraits) {
-                if (lockedTraits.size() + randomTraits.size() >= TraitPlayerComponent.MAX_TRAITS) {
-                    break;
+                if (TraitRules.occupiesTraitSlot(traitId)
+                        && occupiedTraitSlots(lockedTraits, randomTraits) >= TraitPlayerComponent.MAX_TRAITS) {
+                    continue;
                 }
                 if (!lockedTraits.contains(traitId) && !randomTraits.contains(traitId)) {
                     randomTraits.add(traitId);

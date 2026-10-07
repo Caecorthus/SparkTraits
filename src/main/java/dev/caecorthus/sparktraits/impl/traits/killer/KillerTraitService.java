@@ -14,6 +14,7 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.util.ShopEntry;
 import dev.doctor4t.wathe.util.ShopUtils;
+import net.fabricmc.fabric.api.event.Event;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -32,6 +33,7 @@ import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 /**
  * Shared runtime rules for killer-only traits.
@@ -47,20 +49,38 @@ public final class KillerTraitService {
     public static final float OPPRESSIVE_DRAIN_MULTIPLIER = 1.2f;
     public static final double THRUST_EXTRA_KNOCKBACK = 0.25;
     public static final Identifier THRUST_KNOCKBACK_MODIFIER_ID = SparkTraits.id("thrust_knockback");
+    public static final Identifier CHARISMA_SHOP_PHASE = SparkTraits.id("charisma_discount");
+    public static final int MASTER_SABOTEUR_DURATION_PERCENT = 150;
+    public static final int SEASONED_WINDUP_PERCENT = 80;
+    // Attack cooldown is 20 / attack speed ticks, so a 20% shorter cooldown needs 1 / 0.8 - 1 extra speed.
+    // 攻击冷却为 20 / 攻速 刻，冷却缩短 20% 需要额外 1 / 0.8 - 1 的攻速。
+    public static final double MANIC_ATTACK_SPEED_BONUS = 0.25;
+    public static final Identifier MANIC_ATTACK_SPEED_MODIFIER_ID = SparkTraits.id("manic_attack_speed");
 
     private static final ThreadLocal<Deque<KillAttempt>> KILL_ATTEMPTS = ThreadLocal.withInitial(ArrayDeque::new);
     private static final ThreadLocal<Boolean> SECOND_STRIKE_REPLAYING = ThreadLocal.withInitial(() -> false);
+    private static final ThreadLocal<Boolean> MASTER_SABOTEUR_BLACKOUT = ThreadLocal.withInitial(() -> false);
     private static final EntityAttributeModifier THRUST_KNOCKBACK_MODIFIER = new EntityAttributeModifier(
             THRUST_KNOCKBACK_MODIFIER_ID,
             THRUST_EXTRA_KNOCKBACK,
             EntityAttributeModifier.Operation.ADD_VALUE
+    );
+    private static final EntityAttributeModifier MANIC_ATTACK_SPEED_MODIFIER = new EntityAttributeModifier(
+            MANIC_ATTACK_SPEED_MODIFIER_ID,
+            MANIC_ATTACK_SPEED_BONUS,
+            EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
     );
 
     private KillerTraitService() {
     }
 
     public static void register() {
-        BuildShopEntries.EVENT.register((player, context) -> {
+        // Downstream role shops (e.g. SparkWitch Witch Maiden) clear and rebuild entries in the default phase,
+        // so the discount must wrap the final list; the explicit ordering is required because unlinked phases sort by id.
+        // 下游职业商店（如 SparkWitch 巫女）会在默认阶段清空并重建条目，魅力必须包装最终列表；
+        // 未显式排序的阶段会按 id 排序，因此必须声明排在默认阶段之后。
+        BuildShopEntries.EVENT.addPhaseOrdering(Event.DEFAULT_PHASE, CHARISMA_SHOP_PHASE);
+        BuildShopEntries.EVENT.register(CHARISMA_SHOP_PHASE, (player, context) -> {
             if (!hasEligibleTrait(player, KillerTraits.CHARISMA)) {
                 return;
             }
@@ -97,6 +117,10 @@ public final class KillerTraitService {
 
     public static boolean hasPsychoModeShopEntry(PlayerEntity player) {
         return hasShopEntry(player, List.of("psycho_mode"), List.of(WatheItems.PSYCHO_MODE));
+    }
+
+    public static boolean hasBlackoutShopEntry(PlayerEntity player) {
+        return hasShopEntry(player, List.of("blackout"), List.of(WatheItems.BLACKOUT));
     }
 
     public static boolean hasThrustWeaponAccess(PlayerEntity player) {
@@ -186,6 +210,51 @@ public final class KillerTraitService {
         return discountedShopEntry(entry);
     }
 
+    /**
+     * Scopes one shop blackout to its buyer so only a Master Saboteur's own blackout is extended.
+     * 将一次商店关灯限定到购买者，只延长破坏大师本人发起的关灯。
+     */
+    public static boolean triggerBlackoutFor(PlayerEntity initiator, BooleanSupplier trigger) {
+        boolean previous = MASTER_SABOTEUR_BLACKOUT.get();
+        MASTER_SABOTEUR_BLACKOUT.set(hasEligibleTrait(initiator, KillerTraits.MASTER_SABOTEUR));
+        try {
+            return trigger.getAsBoolean();
+        } finally {
+            if (previous) {
+                MASTER_SABOTEUR_BLACKOUT.set(true);
+            } else {
+                MASTER_SABOTEUR_BLACKOUT.remove();
+            }
+        }
+    }
+
+    public static int masterSaboteurBlackoutDuration(int duration) {
+        return masterSaboteurBlackoutDuration(duration, MASTER_SABOTEUR_BLACKOUT.get());
+    }
+
+    static int masterSaboteurBlackoutDuration(int duration, boolean ownBlackout) {
+        if (!ownBlackout || duration <= 0) {
+            return duration;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, (long) duration * MASTER_SABOTEUR_DURATION_PERCENT / 100);
+    }
+
+    public static int seasonedKnifeReleaseThreshold(PlayerEntity player, int threshold) {
+        return seasonedKnifeReleaseThreshold(threshold, hasEligibleTrait(player, KillerTraits.SEASONED));
+    }
+
+    /**
+     * Wathe accepts a stab once elapsed use ticks exceed the threshold, so the windup is threshold + 1 ticks.
+     * Wathe 在已用刻数超过阈值后才接受出刀，因此前摇为阈值加一刻。
+     */
+    static int seasonedKnifeReleaseThreshold(int threshold, boolean seasoned) {
+        if (!seasoned || threshold <= 0) {
+            return threshold;
+        }
+        int windupTicks = ((threshold + 1) * SEASONED_WINDUP_PERCENT + 99) / 100;
+        return Math.max(0, windupTicks - 1);
+    }
+
     public static int paranoidPsychoTicks(int originalTicks) {
         return originalTicks + PARANOID_EXTRA_TICKS;
     }
@@ -235,7 +304,19 @@ public final class KillerTraitService {
                 && !force
                 && !SECOND_STRIKE_REPLAYING.get()
                 && hasEligibleTrait(killer, KillerTraits.SECOND_STRIKE);
-        KILL_ATTEMPTS.get().push(eligible ? new KillAttempt(ShieldState.capture(victim)) : KillAttempt.EMPTY);
+        KILL_ATTEMPTS.get().push(new KillAttempt(eligible ? ShieldState.capture(victim) : null));
+    }
+
+    public static void terminateKillAttempt() {
+        KillAttempt attempt = KILL_ATTEMPTS.get().peek();
+        if (attempt != null) attempt.terminated = true;
+        else KILL_ATTEMPTS.remove();
+    }
+
+    public static void abortKillAttempt() {
+        Deque<KillAttempt> attempts = KILL_ATTEMPTS.get();
+        if (!attempts.isEmpty()) attempts.pop();
+        if (attempts.isEmpty()) KILL_ATTEMPTS.remove();
     }
 
     public static void finishKillAttempt(
@@ -250,7 +331,7 @@ public final class KillerTraitService {
         if (attempts.isEmpty()) {
             KILL_ATTEMPTS.remove();
         }
-        if (attempt.before == null || killer == null) {
+        if (attempt.before == null || attempt.terminated || killer == null) {
             return;
         }
 
@@ -321,6 +402,19 @@ public final class KillerTraitService {
             knockback.addTemporaryModifier(THRUST_KNOCKBACK_MODIFIER);
         } else if (!active && knockback.hasModifier(THRUST_KNOCKBACK_MODIFIER_ID)) {
             knockback.removeModifier(THRUST_KNOCKBACK_MODIFIER_ID);
+        }
+    }
+
+    public static void updateManicAttackSpeed(PlayerEntity player) {
+        EntityAttributeInstance attackSpeed = player.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_SPEED);
+        if (attackSpeed == null) {
+            return;
+        }
+        boolean active = player.getMainHandStack().isOf(WatheItems.BAT) && hasEligibleTrait(player, KillerTraits.MANIC);
+        if (active && !attackSpeed.hasModifier(MANIC_ATTACK_SPEED_MODIFIER_ID)) {
+            attackSpeed.addTemporaryModifier(MANIC_ATTACK_SPEED_MODIFIER);
+        } else if (!active && attackSpeed.hasModifier(MANIC_ATTACK_SPEED_MODIFIER_ID)) {
+            attackSpeed.removeModifier(MANIC_ATTACK_SPEED_MODIFIER_ID);
         }
     }
 
@@ -411,7 +505,7 @@ public final class KillerTraitService {
         return KillerWeaponTags.isThrustWeapon(player.getMainHandStack());
     }
 
-    private static boolean hasEligibleTrait(PlayerEntity player, Identifier traitId) {
+    static boolean hasEligibleTrait(PlayerEntity player, Identifier traitId) {
         return player != null
                 && TraitPlayerComponent.KEY.get(player).hasActiveTrait(traitId)
                 && hasEligibleKillerTraitOwner(player);
@@ -425,22 +519,26 @@ public final class KillerTraitService {
         return canSelectKillerTrait(game.getRole(player), TraitPlayerComponent.KEY.get(player).getActiveTraitIds());
     }
 
-    private record KillAttempt(@Nullable ShieldState before) {
+    private static final class KillAttempt {
         private static final KillAttempt EMPTY = new KillAttempt(null);
+        private final ShieldState before;
+        private boolean terminated;
+        private KillAttempt(@Nullable ShieldState before) { this.before = before; }
     }
 
-    private record ShieldState(int psychoArmour, boolean ironManBuff, int whiskeyLayers) {
+    private record ShieldState(int psychoArmour, boolean psychoActive, boolean ironManBuff, int whiskeyLayers) {
         private static ShieldState capture(ServerPlayerEntity player) {
             PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
             int armour = psycho.getPsychoTicks() > 0 ? psycho.getArmour() : 0;
             boolean ironMan = IronManPlayerComponent.KEY.get(player).hasBuff();
             StatusEffectInstance whiskey = player.getStatusEffect(ModEffects.WHISKEY_SHIELD);
             int whiskeyLayers = whiskey == null ? 0 : whiskey.getAmplifier() + 1;
-            return new ShieldState(armour, ironMan, whiskeyLayers);
+            return new ShieldState(armour, psycho.getPsychoTicks() > 0, ironMan, whiskeyLayers);
         }
 
         private boolean wasConsumedBy(ShieldState after) {
-            return after.psychoArmour < psychoArmour
+            // stopPsycho clears armour too; only an active psycho losing armour absorbed a hit.
+            return (after.psychoActive && after.psychoArmour < psychoArmour)
                     || (ironManBuff && !after.ironManBuff)
                     || after.whiskeyLayers < whiskeyLayers;
         }

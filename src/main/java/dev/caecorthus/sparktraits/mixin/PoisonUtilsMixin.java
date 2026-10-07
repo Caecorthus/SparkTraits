@@ -1,15 +1,11 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.SparkTraitsDataComponentTypes;
-import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
 import dev.doctor4t.wathe.util.PoisonUtils;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -23,35 +19,18 @@ import java.util.UUID;
 public abstract class PoisonUtilsMixin {
     @Inject(method = "applyFoodPoison", at = @At("HEAD"))
     private static void sparktraits$applyConscienceFoodPoison(PlayerEntity target, ItemStack stack, CallbackInfo ci) {
-        World world = target.getWorld();
-        if (world.isClient()) {
+        if (target.getWorld().isClient()) {
             return;
         }
         String poisoner = stack.getOrDefault(SparkTraitsDataComponentTypes.CONSCIENCE_POISONER, null);
         if (poisoner == null) {
             return;
         }
-        // A blue food trap is single-use even when the effective civilian target is immune.
-        // 蓝毒食物是一次性陷阱，即使命中有效好人并免疫也会消耗。
+        // A blue food trap is single-use; effective civilians only lose sanity instead of being poisoned.
+        // 蓝毒食物是一次性陷阱；命中有效好人时只扣理智，不会中毒。
         stack.remove(SparkTraitsDataComponentTypes.CONSCIENCE_POISONER);
-
-        TraitPlayerComponent targetTraits = TraitPlayerComponent.KEY.get(target);
-        GameWorldComponent gameComponent = GameWorldComponent.KEY.get(world);
-        ConsciencePoisonerService.BlueTrapResult result = ConsciencePoisonerService.blueTrapResult(
-                true,
-                gameComponent.getRole(target),
-                targetTraits.getActiveTraitIds()
-        );
-        if (result != ConsciencePoisonerService.BlueTrapResult.CONSUME_AND_POISON
-                || !(target instanceof ServerPlayerEntity serverTarget)) {
-            return;
+        if (target instanceof ServerPlayerEntity serverTarget) {
+            ConsciencePoisonerService.triggerBlueTrap(serverTarget, UUID.fromString(poisoner));
         }
-
-        int ticks = ConsciencePoisonerService.bluePoisonTicksAfterTrap(
-                targetTraits.getConsciencePoisonTicks(),
-                world.getRandom().nextBetween(PlayerPoisonComponent.clampTime.getLeft(), PlayerPoisonComponent.clampTime.getRight()),
-                world.getRandom().nextBetween(100, 300)
-        );
-        ConsciencePoisonerService.applyBluePoison(serverTarget, UUID.fromString(poisoner), ticks);
     }
 }

@@ -1,16 +1,14 @@
 package dev.caecorthus.sparktraits.client;
 
-import dev.caecorthus.sparktraits.client.compat.SparkStrengthCoronerBridge;
-import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.client.compat.SparkStrengthCoronerClientBridge;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.client.audio.DepressionRageLoopController;
 import dev.caecorthus.sparktraits.client.hud.DepressionHud;
+import dev.caecorthus.sparktraits.client.killer.NewKillerTraitsClient;
 import dev.caecorthus.sparktraits.client.net.version.SparkTraitsClientVersionHandshake;
-import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.resource.SparkTraitsParticles;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
-import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -25,10 +23,15 @@ import net.minecraft.entity.player.PlayerEntity;
 public class SparkTraitsClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        dev.caecorthus.sparktraits.client.gui.OwnerInventoryClientAdapter.install();
         SparkTraitsServerConnection.reset();
         SparkTraitsClientVersionHandshake.registerClient();
+        NewKillerTraitsClient.initialize();
         ParticleFactoryRegistry.getInstance().register(SparkTraitsParticles.BLUE_POISON, PoisonParticle.Factory::new);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SparkTraitsServerConnection.reset());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            SparkTraitsServerConnection.reset();
+            dev.caecorthus.sparktraits.client.gui.OwnerInventoryClientAdapter.resetNativeCard();
+        });
         registerFinalMomentHighlight();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             DepressionRageLoopController.tick(client);
@@ -58,36 +61,14 @@ public class SparkTraitsClient implements ClientModInitializer {
 
             // Final Moment reveals every living player by faction color until the round ends.
             // 终局时刻会按阵营颜色高亮所有存活玩家，直到本局结束。
-            Role role = game.getRole(targetPlayer);
-            TraitPlayerComponent targetTraits = TraitPlayerComponent.KEY.get(targetPlayer);
-            boolean targetHasConscience = targetTraits.isConscienceInstinctVisible();
-            boolean targetHasImpostor = targetTraits.isImpostorInstinctVisible();
-            boolean viewerIsEffectiveKiller = EffectiveTraitService.isEffectiveKiller(viewer, game);
-            boolean finalMomentLooseEnd = traitWorld.isFinalMomentLooseEnd(targetPlayer.getUuid());
-
-            /*
-             * 该事件是 Wathe 默认本能事件链的后备路径。SparkTraits 自己的
-             * WatheClientMixin 通常会更早返回，所以这里必须与 Mixin 使用完全
-             * 相同的公开标记、内鬼蓝色和验尸官可选桥逻辑，避免不同调用入口
-             * 产生不同颜色。
-             *
-             * This listener is the fallback path for callers that still dispatch
-             * Wathe's event directly. Keep it identical to the early mixin path.
-             */
-            Integer coronerDisguiseColor = (!targetHasConscience && !targetHasImpostor)
-                    ? SparkStrengthCoronerBridge.resolveKillerDisguiseInstinctColor(targetPlayer)
-                    : null;
-            int highlightColor = coronerDisguiseColor != null
-                    ? coronerDisguiseColor
-                    : LastStandFinalMomentService.finalMomentHighlightColorForViewer(
-                            role,
-                            targetHasConscience,
-                            targetHasImpostor,
-                            finalMomentLooseEnd,
-                            viewerIsEffectiveKiller
-                    );
             return GetInstinctHighlight.HighlightResult.always(
-                    highlightColor,
+                    LastStandFinalMomentService.finalMomentHighlightColorForViewer(
+                            viewer,
+                            targetPlayer,
+                            game,
+                            traitWorld.isFinalMomentLooseEnd(targetPlayer.getUuid()),
+                            SparkStrengthCoronerClientBridge.resolveKillerDisguiseInstinctColor(targetPlayer)
+                    ),
                     GetInstinctHighlight.HighlightResult.PRIORITY_HIGH + 1
             );
         });

@@ -1,9 +1,10 @@
 package dev.caecorthus.sparktraits.impl.traits.civilian.depression;
 
+import dev.caecorthus.sparkfactionapi.impl.economy.FactionEconomyRules;
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.impl.effective.economy.EffectiveEconomyRules;
 import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.DoorInteraction;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.api.event.PsychoType;
@@ -11,6 +12,7 @@ import dev.doctor4t.wathe.api.event.ShopPurchase;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
+import dev.doctor4t.wathe.cca.PlayerShopComponent;
 import dev.doctor4t.wathe.cca.PlayerStaminaComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameConstants;
@@ -18,6 +20,7 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheEntities;
 import dev.doctor4t.wathe.index.WatheAttributes;
 import dev.doctor4t.wathe.index.WatheItems;
+import dev.doctor4t.wathe.util.ShopUtils;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
@@ -27,6 +30,8 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.s2c.play.StopSoundS2CPacket;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -52,6 +57,7 @@ import dev.caecorthus.sparktraits.impl.resource.SparkTraitsSounds;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 
 /**
  * Runtime and pure rules for the Depression civilian-side trait.
@@ -76,7 +82,13 @@ public final class DepressionTraitService {
     public static final int CHASE_LOOP_INTERVAL_TICKS = 1121;
     public static final int DEPRESSION_PSYCHO_SPEED_DURATION_TICKS = Integer.MAX_VALUE;
     public static final int DEPRESSION_PSYCHO_SPEED_AMPLIFIER = 1;
+    public static final int FAKE_DEATH_REWARD_DIVISOR = 2;
     public static final Identifier APPRENTICE_WITCH_ID = Identifier.of("sparkwitch", "apprentice_witch");
+    /**
+     * SparkWitch's Blind: its bat-only psycho phase, fake death and voice mute fight the black-screen kit.
+     * SparkWitch 盲人：抑郁的只能持棒阶段、假死与语音静音都与黑屏道具冲突。
+     */
+    public static final Identifier SPARKWITCH_BLIND_ID = Identifier.of("sparkwitch", "blind");
     public static final Identifier DEPRESSION_STAMINA_MODIFIER_ID = SparkTraits.id("depression_stamina");
     public static final double DEPRESSION_STAMINA_MODIFIER_VALUE = -0.2;
     public static final float DEPRESSION_RANGE_SOUND_VOLUME = 5.0f;
@@ -104,6 +116,7 @@ public final class DepressionTraitService {
 
     public static void register() {
         ServerTickEvents.END_WORLD_TICK.register(DepressionTraitService::tickWorld);
+        DepressionFakeKillCooldowns.register();
         DoorInteraction.EVENT.register(DepressionTraitService::onDoorInteraction);
         ShopPurchase.BEFORE.register((player, entry, index) ->
                 isPsychoActive(player) ? ShopPurchase.PurchaseResult.deny() : null);
@@ -118,11 +131,13 @@ public final class DepressionTraitService {
         if (enforceStartingPlayerCount && startingPlayerCount < MIN_RANDOM_PLAYERS) {
             return false;
         }
+        // Police = PoliceRoleCategory, so registered police variants inherit Vigilante/Veteran's exclusion.
+        // 警职按 PoliceRoleCategory 判定，下游注册的警职沿用义警与老兵的排除。
         return CivilianTraitService.canSelectNonUndercoverCivilianTrait(role, selectedTraits)
-                && role != WatheRoles.VIGILANTE
-                && role != WatheRoles.VETERAN
+                && !PoliceRoleCategory.isPolice(role)
                 && !roleIdentifierEquals(role, Noellesroles.SURVIVAL_MASTER_ID)
-                && !roleIdentifierEquals(role, APPRENTICE_WITCH_ID);
+                && !roleIdentifierEquals(role, APPRENTICE_WITCH_ID)
+                && !roleIdentifierEquals(role, SPARKWITCH_BLIND_ID);
     }
 
     public static int randomDepressionCap(int startingPlayerCount) {
@@ -380,8 +395,40 @@ public final class DepressionTraitService {
         return secondVariant ? SparkTraitsSounds.DEPRESSION_MELEE_KILL_2 : SparkTraitsSounds.DEPRESSION_MELEE_KILL_1;
     }
 
+    /**
+     * Direct money a real kill would pay the attacker: Wathe killer, SparkFactionAPI custom faction, or Impostor.
+     * 真实击杀会直接付给攻击者的钱：Wathe 杀手、SparkFactionAPI 自定义阵营或内鬼。
+     */
+    public static int normalDirectKillReward(boolean originalKiller, boolean customFactionKiller, int impostorReward) {
+        // SparkFactionAPI pays the same literal 100 as Wathe's MONEY_PER_KILL.
+        // SparkFactionAPI 的自定义阵营击杀奖励与 Wathe 的 MONEY_PER_KILL 同为 100。
+        return (originalKiller ? GameConstants.MONEY_PER_KILL : 0)
+                + (customFactionKiller ? GameConstants.MONEY_PER_KILL : 0)
+                + Math.max(0, impostorReward);
+    }
+
+    /**
+     * A non-final Depression kill pays half of the normal reward, rounded up (100 -> 50, teammate 15 -> 8).
+     * 非最终击杀抑郁只给正常击杀一半的钱，向上取整（100 -> 50，队友 15 -> 8）。
+     */
+    public static int fakeDeathReward(int normalReward) {
+        if (normalReward <= 0) {
+            return 0;
+        }
+        return (normalReward + FAKE_DEATH_REWARD_DIVISOR - 1) / FAKE_DEATH_REWARD_DIVISOR;
+    }
+
     public static boolean isPending(ServerPlayerEntity player) {
         return pendingPlayers.containsKey(player.getUuid());
+    }
+
+    /**
+     * True while the victim is in a Depression fake death started by this attacker.
+     * 受害者正处于由该攻击者触发的抑郁假死中时返回 true。
+     */
+    public static boolean isPendingFrom(ServerPlayerEntity victim, ServerPlayerEntity attacker) {
+        PendingState state = pendingPlayers.get(victim.getUuid());
+        return state != null && state.attackerUuid().equals(attacker.getUuid());
     }
 
     public static boolean isFakeDeathBody(PlayerBodyEntity body) {
@@ -450,7 +497,55 @@ public final class DepressionTraitService {
                 killerRole,
                 JesterPlayerComponent.KEY.get(killer).inPsychoMode
         ));
+        rewardFakeDeathKill(victim, killer, game);
+        DepressionFakeKillCooldowns.onFakeDeathStarted(killer, victim, deathReason);
         return KillPlayer.KillResult.cancel();
+    }
+
+    /**
+     * Pays half of what the same kill would have paid, once per started fake death; AFTER-only bonuses stay real-kill only.
+     * 每次假死只按同一击杀正常收益的一半发一次钱；只在 AFTER 中发放的额外奖励仍只属于真实击杀。
+     */
+    private static void rewardFakeDeathKill(ServerPlayerEntity victim, ServerPlayerEntity killer, GameWorldComponent game) {
+        // Mirrors GameFunctionsMixin.sparktraits$rewardOnlyRealKillers for Wathe's own killer reward.
+        // 与 GameFunctionsMixin.sparktraits$rewardOnlyRealKillers 对 Wathe 杀手奖励的判定保持一致。
+        boolean originalKiller = EffectiveEconomyRules.shouldReceiveOriginalKillerReward(
+                game.canUseKillerFeatures(killer),
+                EffectiveTraitService.hasConscience(killer)
+        );
+        int impostorReward = EffectiveTraitService.hasImpostor(killer)
+                ? EffectiveTraitService.impostorKillReward(
+                        game.getRole(victim),
+                        TraitPlayerComponent.KEY.get(victim).getActiveTraitIds(),
+                        ShopUtils.canAccessShop(killer))
+                : 0;
+        int reward = fakeDeathReward(normalDirectKillReward(
+                originalKiller,
+                FactionEconomyRules.receivesCustomKillReward(killer, game),
+                impostorReward
+        ));
+        if (reward > 0) {
+            PlayerShopComponent.KEY.get(killer).addToBalance(reward);
+        }
+        if (!originalKiller) {
+            return;
+        }
+        // Same teammate filter as Wathe's +15: alive, online, not the attacker, and not Conscience.
+        // 与 Wathe 队友 +15 的筛选一致：存活、在线、不是攻击者本人且没有善良。
+        int teammateReward = fakeDeathReward(GameConstants.MONEY_PER_KILL_TEAMMATE);
+        MinecraftServer server = killer.getServer();
+        if (server == null || teammateReward <= 0) {
+            return;
+        }
+        for (UUID uuid : game.getAllKillerTeamPlayers()) {
+            if (uuid.equals(killer.getUuid()) || game.isPlayerDead(uuid)) {
+                continue;
+            }
+            ServerPlayerEntity teammate = server.getPlayerManager().getPlayer(uuid);
+            if (teammate != null && !EffectiveTraitService.hasConscience(teammate)) {
+                PlayerShopComponent.KEY.get(teammate).addToBalance(teammateReward);
+            }
+        }
     }
 
     public static void handleAfterKill(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer, Identifier deathReason) {
@@ -488,6 +583,22 @@ public final class DepressionTraitService {
         TraitPlayerComponent.KEY.get(player).setDepressionCounterTarget(null);
     }
 
+    /**
+     * Mid-round Depression removal from a living player: resets only state owned by this player's Depression. No-op
+     * during a fake death or psycho, which own their own exit. The counter target stays: it marks another player's
+     * psycho hunting this one.
+     * 存活玩家在局中被移除抑郁时，只重置其自身抑郁拥有的状态；假死或疯魔期间不做任何事（由其自身流程收尾）。
+     * 反制目标保留：它标记的是正在追杀本玩家的他人疯魔。
+     */
+    public static void clearOwnerStateForTraitRemoval(ServerPlayerEntity player) {
+        if (isPending(player) || isPsychoActive(player)) {
+            return;
+        }
+        TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
+        traits.setDepressionSuicideTicks(-1);
+        traits.setDepressionPsychoState(false, null);
+    }
+
     public static void clearRoundState(ServerWorld world) {
         for (UUID uuid : Set.copyOf(pendingPlayers.keySet())) {
             ServerPlayerEntity player = world.getServer().getPlayerManager().getPlayer(uuid);
@@ -503,6 +614,7 @@ public final class DepressionTraitService {
         pendingPlayers.clear();
         activePlayers.clear();
         fakeBodies.clear();
+        DepressionFakeKillCooldowns.clear();
         forceMentalBreakdownDeaths.clear();
     }
 
@@ -523,6 +635,7 @@ public final class DepressionTraitService {
             return;
         }
         tickPending(world);
+        discardStaleFakeBodies(world);
         tickActive(world);
         tickSuicideCountdown(world, game);
     }
@@ -606,6 +719,7 @@ public final class DepressionTraitService {
     private static void startPending(ServerPlayerEntity player, ServerPlayerEntity attacker, Identifier deathReason, int initialArmour) {
         ServerWorld world = player.getServerWorld();
         UUID uuid = player.getUuid();
+        discardFakeBodies(player);
         PlayerBodyEntity body = WatheEntities.PLAYER_BODY.create(world);
         if (body != null) {
             body.setPlayerUuid(uuid);
@@ -673,6 +787,9 @@ public final class DepressionTraitService {
         pendingPlayers.remove(player.getUuid());
         TraitPlayerComponent.KEY.get(player).setTemporaryFakeDeathPending(false);
         player.setCameraEntity(player);
+        // The fake corpse only lasts through the fake-death window; it vanishes as the player gets up.
+        // 假尸只存在于假死期间；玩家站起来时移除。
+        discardFakeBodies(player);
         player.changeGameMode(GameMode.ADVENTURE);
         player.setInvulnerable(state.wasInvulnerable());
         state.effects().restore(player);
@@ -682,9 +799,9 @@ public final class DepressionTraitService {
         InventorySnapshot inventory = InventorySnapshot.capture(player);
         clearInventory(player);
         PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
-        psycho.startPsycho(PsychoType.VISIBLE_QUIET);
-        psycho.setPsychoTicks(Integer.MAX_VALUE);
-        psycho.setArmour(Math.max(0, state.initialArmour()));
+        if (holdDepressionPsycho(psycho)) {
+            psycho.setArmour(Math.max(0, state.initialArmour()));
+        }
         PlayerStaminaComponent stamina = PlayerStaminaComponent.KEY.get(player);
         stamina.setMaxSprintTime(-1);
         stamina.setSprintingTicks(Integer.MAX_VALUE);
@@ -711,15 +828,13 @@ public final class DepressionTraitService {
 
     private static ActiveState maintainPsycho(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state) {
         PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
-        if (psycho.getPsychoTicks() <= 0) {
-            psycho.startPsycho(PsychoType.VISIBLE_QUIET);
-        }
-        psycho.setPsychoTicks(Integer.MAX_VALUE);
-        // English: The Jester bonus is starting armour only; consumed armour stays consumed.
-        // 中文：小丑加成只提供初始护盾；已经消耗的护盾不会被每 tick 补回。
-        int maintainedArmour = maintainedPsychoArmour(psycho.getArmour(), state.maxArmour());
-        if (psycho.getArmour() != maintainedArmour) {
-            psycho.setArmour(maintainedArmour);
+        if (holdDepressionPsycho(psycho)) {
+            // English: The Jester bonus is starting armour only; consumed armour stays consumed.
+            // 中文：小丑加成只提供初始护盾；已经消耗的护盾不会被每 tick 补回。
+            int maintainedArmour = maintainedPsychoArmour(psycho.getArmour(), state.maxArmour());
+            if (psycho.getArmour() != maintainedArmour) {
+                psycho.setArmour(maintainedArmour);
+            }
         }
         applyPsychoSpeed(player);
         enforceBatOnly(player);
@@ -736,6 +851,28 @@ public final class DepressionTraitService {
         return updatedState;
     }
 
+    /**
+     * Keeps the running Wathe psycho, or starts Depression's uncounted VISIBLE_QUIET one; never forces ticks onto a failed start.
+     * A failed start keeps Wathe's default PUBLIC type, so its stopPsycho would take another player's psychosActive count
+     * and silence Wathe's psycho music.
+     * 维持已在运行的 Wathe 疯魔，或启动抑郁自己的、不计数的 VISIBLE_QUIET 疯魔；启动失败时绝不强行写入疯魔时间。
+     * 启动失败会保留 Wathe 默认的 PUBLIC 类型，结束时会扣掉其他玩家的 psychosActive 计数，导致 Wathe 疯魔音乐停止。
+     */
+    private static boolean holdDepressionPsycho(PlayerPsychoComponent psycho) {
+        if (psycho.getPsychoTicks() <= 0 && !psycho.startPsycho(PsychoType.VISIBLE_QUIET)) {
+            return false;
+        }
+        psycho.setPsychoTicks(Integer.MAX_VALUE);
+        return true;
+    }
+
+    /** Survivor exit used by Last Escape; never uses the destructive death cleanup. */
+    public static boolean endPsychoForLastEscape(ServerPlayerEntity player) {
+        if (!activePlayers.containsKey(player.getUuid())) return false;
+        endPsycho(player, true, true);
+        return true;
+    }
+
     private static void endPsycho(ServerPlayerEntity player, boolean restoreInventory, boolean restoreMoodIfSurvived) {
         ActiveState state = activePlayers.remove(player.getUuid());
         if (state == null) {
@@ -747,7 +884,11 @@ public final class DepressionTraitService {
             stopPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE_ID);
             playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);
             PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
-            psycho.stopPsycho();
+            // Wathe's killPlayer (death, or a terminal attempt Last Escape saved) may have stopped psycho already,
+            // resetting its type to PUBLIC; a second stop would take another player's count and silence Wathe's psycho music.
+            // Wathe 的 killPlayer（死亡，或被绝处逢生救下的致命判定）可能已结束疯魔并把类型重置为 PUBLIC；
+            // 再停一次会扣掉其他玩家的疯魔计数，导致 Wathe 疯魔音乐停止。
+            if (psycho.getPsychoTicks() > 0) psycho.stopPsycho();
             psycho.sync();
             if (restoreInventory) {
                 state.inventory().restore(player);
@@ -819,12 +960,51 @@ public final class DepressionTraitService {
             return;
         }
         player.setCameraEntity(player);
+        // Covers deaths during the fake-death window (forced kills ignore the pending cancel) and resets.
+        // AFTER runs once Wathe has spawned the real body, so only the tracked fake body is removed.
+        // 覆盖假死期间的死亡（强制击杀会无视假死取消）和重置；AFTER 时真尸已生成，只移除被追踪的假尸。
+        discardFakeBodies(player);
         player.setInvulnerable(state.wasInvulnerable());
         state.effects().restore(player);
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(false, null);
         ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
         if (attacker != null) {
             TraitPlayerComponent.KEY.get(attacker).setDepressionCounterTarget(null);
+        }
+    }
+
+    private static void discardFakeBodies(ServerPlayerEntity player) {
+        MinecraftServer server = player.getServer();
+        for (DepressionFakeBodyTracker.FakeBody fakeBody : fakeBodies.bodiesOf(player.getUuid())) {
+            discardFakeBody(
+                    server == null ? null : server.getWorld(RegistryKey.of(RegistryKeys.WORLD, fakeBody.worldId())),
+                    fakeBody
+            );
+        }
+    }
+
+    /**
+     * A fake body outlives its fake death only when its chunk was unloaded at the time; remove it once it loads again.
+     * 假尸只会在假死结束时所在区块已卸载的情况下残留；区块重新加载后将其移除。
+     */
+    private static void discardStaleFakeBodies(ServerWorld world) {
+        for (DepressionFakeBodyTracker.FakeBody fakeBody : fakeBodies.bodiesIn(world.getRegistryKey().getValue())) {
+            if (!pendingPlayers.containsKey(fakeBody.playerUuid())) {
+                discardFakeBody(world, fakeBody);
+            }
+        }
+    }
+
+    private static void discardFakeBody(@Nullable ServerWorld world, DepressionFakeBodyTracker.FakeBody fakeBody) {
+        // Untrack only after a discard: a missing entity may just be unloaded and must stay a fake body when it returns.
+        // Bagged or eaten bodies never return; their entries are dropped at round cleanup.
+        // 仅在成功移除后取消追踪：找不到的实体可能只是区块卸载，重新加载后仍需被识别为假尸；
+        // 被尸袋收走或被吃掉的假尸不会再出现，其记录在回合清理时丢弃。
+        if (world != null
+                && world.getEntity(fakeBody.bodyUuid()) instanceof PlayerBodyEntity body
+                && fakeBody.playerUuid().equals(body.getPlayerUuid())) {
+            body.discard();
+            fakeBodies.untrack(fakeBody.bodyUuid());
         }
     }
 

@@ -12,10 +12,14 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import org.agmas.noellesroles.Noellesroles;
 
 import java.util.Collection;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.selection.TraitRoleEligibility;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 
 /**
  * Shared command-time validation for next-round trait and role locks.
@@ -24,6 +28,7 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 public final class TraitLockValidationService {
     private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
     private static final Identifier SPARKWITCH_SAINT_ID = Identifier.of("sparkwitch", "saint");
+    private static final Identifier SPARKWITCH_BLIND_ID = Identifier.of("sparkwitch", "blind");
 
     private TraitLockValidationService() {
     }
@@ -61,7 +66,7 @@ public final class TraitLockValidationService {
         if (isUnknownRole(role)) {
             return true;
         }
-        if (!TraitRoleEligibility.canReceiveTraits(role)) {
+        if (!TraitRoleEligibility.canReceiveTrait(role, trait)) {
             return false;
         }
         Faction faction = role.getFaction();
@@ -81,10 +86,20 @@ public final class TraitLockValidationService {
         if (!isAudienceCompatibleWithRole(trait, role)) {
             return false;
         }
+        // Same permanent exclusion as round assignment, so locks fail loudly instead of being dropped.
+        // 与开局分配相同的永久互斥，让锁定直接报错而不是在开局时被静默丢弃。
+        if (trait.id().equals(ConscienceTrait.ID) && EffectiveTraitService.isConscienceBlockedRole(role)) {
+            return false;
+        }
+        // Police-category roles mirror round assignment's Impostor block.
+        // 警职类别身份与开局分配的内鬼排除保持一致。
         return !trait.id().equals(ImpostorTrait.ID)
                 || isUnknownRole(role)
                 || (!role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
-                && !role.identifier().equals(SPARKWITCH_SAINT_ID));
+                && !role.identifier().equals(Noellesroles.TOXICOLOGIST_ID)
+                && !role.identifier().equals(SPARKWITCH_SAINT_ID)
+                && !role.identifier().equals(SPARKWITCH_BLIND_ID)
+                && !PoliceRoleCategory.isPolice(role));
     }
 
     public static ServerPlayerEntity findOtherPendingUniqueTraitOwner(MinecraftServer server, ServerPlayerEntity target, Trait trait) {

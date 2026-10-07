@@ -2,7 +2,6 @@ package dev.caecorthus.sparktraits.impl.traits.civilian;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerShopComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -16,6 +15,7 @@ import java.util.Collection;
 import java.util.List;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 
 /**
  * Shared rules for civilian-side SparkTraits traits.
@@ -58,8 +58,12 @@ public final class CivilianTraitService {
                 && (canSeeMoney || EffectiveTraitService.hasNativeTaskMoneyReward(role));
     }
 
+    /** Focus never goes to the police category ({@link PoliceRoleCategory}), so registered police variants
+     *  inherit Vigilante's exclusion; selection and the gun mood-penalty skip share this gate.
+     *  专注不给警职类别身份（见 {@link PoliceRoleCategory}），下游注册的警职沿用义警的排除；
+     *  抽取与左轮理智惩罚豁免共用此判定。 */
     public static boolean canSelectFocus(Role role, Collection<Identifier> selectedTraits) {
-        return canSelectNonUndercoverCivilianTrait(role, selectedTraits) && !isWathePoliceRole(role);
+        return canSelectNonUndercoverCivilianTrait(role, selectedTraits) && !PoliceRoleCategory.isPolice(role);
     }
 
     public static boolean shouldPreventSocialMoodDrain(Collection<Identifier> traits, int nearbyOtherPlayers) {
@@ -141,10 +145,6 @@ public final class CivilianTraitService {
             count++;
         }
         return count;
-    }
-
-    private static boolean isWathePoliceRole(Role role) {
-        return role == WatheRoles.VIGILANTE || role == WatheRoles.VETERAN;
     }
 
     private static Collection<Identifier> traitsOf(PlayerEntity player) {

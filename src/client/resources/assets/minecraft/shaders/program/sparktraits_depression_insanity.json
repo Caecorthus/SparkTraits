@@ -56,6 +56,12 @@
       ]
     },
     {
+      "name": "Brightness",
+      "type": "float",
+      "count": 1,
+      "values": [1.2]
+    },
+    {
       "name": "SpreadFactor",
       "type": "float",
       "count": 1,

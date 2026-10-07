@@ -4,9 +4,15 @@ import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.api.TraitAssignmentReason;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
+import dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi.SparkFactionApiEffectiveFactionBridge;
 import dev.caecorthus.sparktraits.impl.replay.SparkTraitsReplayEvents;
+import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.mixin.RoleHistoryComponentAccessor;
-import dev.doctor4t.wathe.api.Faction;
+import dev.caecorthus.sparkfactionapi.api.FactionDefinition;
+import dev.caecorthus.sparkfactionapi.api.FactionIds;
+import dev.caecorthus.sparkfactionapi.api.SparkFactionApi;
+import dev.caecorthus.sparkfactionapi.api.replay.SparkReplayApi;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
@@ -61,13 +67,9 @@ public final class LastStandFinalMomentService {
     private static final int TITLE_FADE_IN_TICKS = 10;
     private static final int TITLE_STAY_TICKS = 100;
     private static final int TITLE_FADE_OUT_TICKS = 10;
-    private static final int FINAL_MOMENT_CIVILIAN_COLOR = 0x36E51B;
-    private static final int FINAL_MOMENT_KILLER_COLOR = 0xC13838;
-    private static final int FINAL_MOMENT_NEUTRAL_COLOR = 0xFFFF00;
-    private static final int FINAL_MOMENT_WITCH_COLOR = 0xB567FF;
-    private static final int FINAL_MOMENT_NONE_COLOR = 0xFFFFFF;
-    private static final Identifier SPARKWITCH_GRAND_WITCH_ID = Identifier.of("sparkwitch", "grand_witch");
-    private static final Identifier SPARKWITCH_ACCOMPLICE_ID = Identifier.of("sparkwitch", "accomplice");
+    private static final int UNKNOWN_FACTION_COLOR = 0xFFFFFF;
+    private static final Identifier SPARKWITCH_FIEND_ID = Identifier.of("sparkwitch", "fiend");
+    static final Identifier FINAL_MOMENT_TIMEOUT = SparkTraits.id("final_moment_timeout");
 
     private LastStandFinalMomentService() {
     }
@@ -100,7 +102,9 @@ public final class LastStandFinalMomentService {
         boolean blockedByOrdinaryCivilian = false;
 
         for (PlayerState player : players) {
-            if (!player.alive()) {
+            // The SparkWitch Fiend never affects a win (its own moment suspends wins in SparkWitch), so it is no opposing faction here.
+            // SparkWitch 魔人从不影响胜负（魔人时刻由 SparkWitch 自行暂停胜利判定），因此这里不算作对立阵营。
+            if (!player.alive() || isSparkWitchFiend(player.role())) {
                 continue;
             }
             boolean effectiveCivilian = EffectiveTraitService.isEffectiveCivilian(player.role(), player.traitIds());
@@ -191,6 +195,44 @@ public final class LastStandFinalMomentService {
         return null;
     }
 
+    /**
+     * Final Moment never ends as a time win: when the clock runs out, every Final Moment Loose End drops dead
+     * and the round resolves for whoever is left.
+     * 终局时刻不会以时间胜利结束：计时归零时所有终局亡命徒当场暴毙，回合按剩余玩家结算。
+     */
+    public static GameFunctions.WinStatus resolveFinalMomentTimeout(
+            ServerWorld world,
+            GameWorldComponent gameComponent,
+            GameFunctions.WinStatus currentStatus
+    ) {
+        if (world == null
+                || gameComponent == null
+                || currentStatus != GameFunctions.WinStatus.TIME
+                || gameComponent.getGameStatus() != GameWorldComponent.GameStatus.ACTIVE
+                || !TraitWorldComponent.KEY.get(world).isFinalMomentActive()) {
+            return currentStatus;
+        }
+        for (ServerPlayerEntity player : livingPlayers(world, gameComponent)) {
+            if (isFinalMomentLooseEnd(player)) {
+                GameFunctions.killPlayer(player, true, null, FINAL_MOMENT_TIMEOUT, true);
+            }
+        }
+        return timedOutFinalMomentStatus(snapshotPlayers(world, gameComponent));
+    }
+
+    static GameFunctions.WinStatus timedOutFinalMomentStatus(Collection<PlayerState> players) {
+        for (PlayerState player : players) {
+            if (player.alive() && EffectiveTraitService.isEffectiveCivilian(player.role(), player.traitIds())) {
+                // A civilian who outlasted the clock keeps the ordinary time win.
+                // 撑过计时的平民仍按普通时间胜利结算。
+                return GameFunctions.WinStatus.TIME;
+            }
+        }
+        // With the civilian side wiped out, KILLERS lets the effective-team and neutral listeners settle the survivors.
+        // 平民阵营已全灭，交给 KILLERS 让有效阵营与中立监听器结算剩余玩家。
+        return GameFunctions.WinStatus.KILLERS;
+    }
+
     public static boolean shouldCancelRoundEndFinalization(
             ServerWorld world,
             GameWorldComponent gameComponent,
@@ -242,7 +284,9 @@ public final class LastStandFinalMomentService {
         PlayerState onlyLivingPlayer = null;
         int livingPlayers = 0;
         for (PlayerState player : players) {
-            if (!player.alive()) {
+            // A living SparkWitch Fiend must not delay the survivor's win (D1).
+            // 存活的 SparkWitch 魔人不得拖延幸存者的胜利（D1）。
+            if (!player.alive() || isSparkWitchFiend(player.role())) {
                 continue;
             }
             livingPlayers++;
@@ -292,102 +336,109 @@ public final class LastStandFinalMomentService {
         return duration;
     }
 
-    public static int finalMomentHighlightColor(@Nullable Role role) {
-        return finalMomentHighlightColor(role, List.of(), false);
-    }
-
-    public static int finalMomentHighlightColor(@Nullable Role role, boolean lastStandFinalMomentLooseEnd) {
-        return finalMomentHighlightColor(role, List.of(), lastStandFinalMomentLooseEnd);
-    }
-
-    public static int finalMomentHighlightColor(
-            @Nullable Role role,
-            @Nullable Collection<Identifier> traits,
-            boolean lastStandFinalMomentLooseEnd
-    ) {
-        Collection<Identifier> activeTraits = traits == null ? List.of() : traits;
-        return finalMomentHighlightColor(
-                role,
-                EffectiveTraitService.hasConscience(activeTraits),
-                EffectiveTraitService.hasImpostor(activeTraits),
-                lastStandFinalMomentLooseEnd
-        );
-    }
-
     /**
-     * Resolves the final-moment faction color from the public instinct flags.
+     * Final Moment color of {@code target} as {@code viewer} sees it.
+     * 终局时刻中 {@code viewer} 看到的 {@code target} 高亮颜色。
      *
-     * <p>普通客户端不会收到其他玩家的完整天赋列表，只会收到本能所需的公开
-     * 善良/内鬼标记。因此终局时刻必须使用这两个布尔值，而不能要求调用方把
-     * {@code getActiveTraitIds()} 当作完整服务端状态。</p>
-     *
-     * <p>Resolve the final-moment faction color from the public instinct flags.
-     * Regular clients intentionally receive no complete trait list for other players;
-     * they only receive the public Conscience/Impostor flags.</p>
-     */
-    public static int finalMomentHighlightColor(
-            @Nullable Role role,
-            boolean targetHasConscience,
-            boolean targetHasImpostor,
-            boolean lastStandFinalMomentLooseEnd
-    ) {
-        if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
-            return FINAL_MOMENT_CIVILIAN_COLOR;
-        }
-        // Final Moment colors follow effective alignment so flipped traits do not leak base-role colors.
-        // 终局时刻按有效阵营染色，避免阵营翻转天赋泄露原职业颜色。
-        if (targetHasImpostor) {
-            return FINAL_MOMENT_KILLER_COLOR;
-        }
-        if (targetHasConscience) {
-            return FINAL_MOMENT_CIVILIAN_COLOR;
-        }
-        // SparkWitch's custom witch faction appears as native neutral here, so keep its current purple.
-        // SparkWitch 自定义魔女阵营在这里会表现为原生中立，因此保留当前淡紫色。
-        if (isSparkWitchFactionRole(role)) {
-            return FINAL_MOMENT_WITCH_COLOR;
-        }
-        Faction faction = role == null ? Faction.NONE : role.getFaction();
-        return switch (faction) {
-            case CIVILIAN -> FINAL_MOMENT_CIVILIAN_COLOR;
-            case KILLER -> FINAL_MOMENT_KILLER_COLOR;
-            case NEUTRAL -> FINAL_MOMENT_NEUTRAL_COLOR;
-            case NONE -> FINAL_MOMENT_NONE_COLOR;
-        };
-    }
-
-    /**
-     * Resolves the final-moment color from the viewer's effective alignment too.
-     *
-     * <p>An Impostor is a killer-team player for a killer observer, but its blue
-     * color is an important special clue. Keep that clue only for effective killer
-     * observers; everyone else continues to receive the regular final-moment faction
-     * color. The loose-end check remains first so the Last Stand outlaw presentation
-     * cannot be accidentally replaced by an alignment overlay.</p>
-     *
-     * <p>带有内鬼词条的玩家对有效杀手观察者必须继续显示内鬼蓝色，避免在亡命徒
-     * 终局时刻被误认成普通终局杀手。蓝色只对有效杀手观察者开放，其他观察者仍按
-     * 终局阵营颜色显示；亡命徒自身的专用颜色优先级最高。</p>
+     * <p>Clients get only the public Conscience/Impostor flags for other players, never their full trait list, so
+     * the faction flip reads those flags. {@code killerDisguiseColor} is SparkStrength's Coroner killer disguise,
+     * or null when it is absent.</p>
+     * <p>客户端只会收到其他玩家公开的善良/内鬼标记，不会收到完整天赋列表，因此阵营翻转按这两个标记判断。
+     * {@code killerDisguiseColor} 是 SparkStrength 验尸官的杀手伪装色，缺失时为 null。</p>
      */
     public static int finalMomentHighlightColorForViewer(
+            PlayerEntity viewer,
+            PlayerEntity target,
+            GameWorldComponent gameComponent,
+            boolean lastStandFinalMomentLooseEnd,
+            @Nullable Integer killerDisguiseColor
+    ) {
+        Role role = gameComponent.getRole(target);
+        TraitPlayerComponent targetTraits = TraitPlayerComponent.KEY.get(target);
+        boolean targetHasConscience = targetTraits.isConscienceInstinctVisible();
+        boolean targetHasImpostor = targetTraits.isImpostorInstinctVisible();
+        Integer viewerColor = finalMomentViewerColor(
+                role,
+                targetHasConscience,
+                targetHasImpostor,
+                lastStandFinalMomentLooseEnd,
+                EffectiveTraitService.isEffectiveKiller(viewer, gameComponent),
+                killerDisguiseColor
+        );
+        if (viewerColor != null) {
+            return viewerColor;
+        }
+        // Base faction, not the full effective chain: SparkWitch maps Murderous Witch to an ability-bridge
+        // faction, but it is still a native neutral role.
+        // 使用基础阵营而非完整有效阵营链：SparkWitch 把杀意魔女映射到能力桥接阵营，但它仍是原生中立职业。
+        Identifier faction = finalMomentHighlightFaction(
+                role,
+                lastStandFinalMomentLooseEnd,
+                SparkFactionApi.resolveBaseFaction(role),
+                publicAlignmentTraits(targetHasConscience, targetHasImpostor)
+        );
+        return SparkFactionApi.getFaction(faction)
+                .map(FactionDefinition::color)
+                .orElse(UNKNOWN_FACTION_COLOR);
+    }
+
+    /** Viewer-specific colors that replace the faction color, or null to show the faction color.
+     *  替代阵营色的观察者专属颜色；返回 null 时显示阵营色。 */
+    static @Nullable Integer finalMomentViewerColor(
             @Nullable Role role,
             boolean targetHasConscience,
             boolean targetHasImpostor,
             boolean lastStandFinalMomentLooseEnd,
-            boolean viewerIsEffectiveKiller
+            boolean viewerIsEffectiveKiller,
+            @Nullable Integer killerDisguiseColor
     ) {
-        if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
-            return FINAL_MOMENT_CIVILIAN_COLOR;
+        // A public Conscience/Impostor flag outranks the disguise, so one player never shows two clues at once.
+        // 公开的善良/内鬼标记优先于伪装色，避免同一玩家同时显示两种提示。
+        if (killerDisguiseColor != null && !targetHasConscience && !targetHasImpostor) {
+            return killerDisguiseColor;
         }
+        if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
+            return null;
+        }
+        // Effective killers keep the Impostor's blue clue instead of a plain killer color.
+        // 有效杀手观察者仍看到内鬼蓝色，而不是普通杀手色。
         if (viewerIsEffectiveKiller && targetHasImpostor) {
             return EffectiveTraitService.IMPOSTOR_INSTINCT_COLOR;
         }
-        return finalMomentHighlightColor(
-                role,
-                targetHasConscience,
-                targetHasImpostor,
-                lastStandFinalMomentLooseEnd
-        );
+        return null;
+    }
+
+    /** The alignment-flip traits a client can see on another player, from its public instinct flags.
+     *  客户端能从公开本能标记看到的其他玩家阵营翻转天赋。 */
+    static List<Identifier> publicAlignmentTraits(boolean conscience, boolean impostor) {
+        List<Identifier> traits = new ArrayList<>(2);
+        if (conscience) {
+            traits.add(ConscienceTrait.ID);
+        }
+        if (impostor) {
+            traits.add(ImpostorTrait.ID);
+        }
+        return traits;
+    }
+
+    /** Picks the faction whose registered SparkFactionAPI color Final Moment shows.
+     *  选出终局时刻高亮所用的阵营，颜色取该阵营在 SparkFactionAPI 中登记的阵营色。 */
+    static Identifier finalMomentHighlightFaction(
+            @Nullable Role role,
+            boolean lastStandFinalMomentLooseEnd,
+            @Nullable Identifier baseFaction,
+            @Nullable Collection<Identifier> traits
+    ) {
+        if (lastStandFinalMomentLooseEnd && isLooseEndRole(role)) {
+            return FactionIds.CIVILIAN;
+        }
+        if (baseFaction == null) {
+            return FactionIds.NONE;
+        }
+        // Impostor/Conscience flips keep flipped players from leaking their base-role faction.
+        // 内鬼/善良的阵营翻转避免泄露原职业阵营。
+        Identifier flipped = SparkFactionApiEffectiveFactionBridge.resolveEffectiveFaction(traits, baseFaction);
+        return flipped == null ? baseFaction : flipped;
     }
 
     public static boolean didFinalMomentPlayerWin(
@@ -395,10 +446,11 @@ public final class LastStandFinalMomentService {
             @Nullable Role role,
             boolean lastStandFinalMomentLooseEnd
     ) {
+        // Running out the clock kills the Loose End, so only a passenger win counts for it.
+        // 拖到计时结束会让亡命徒暴毙，因此只有平民胜利才算它获胜。
         return lastStandFinalMomentLooseEnd
                 && isLooseEndRole(role)
-                && (winStatus == GameFunctions.WinStatus.PASSENGERS
-                || winStatus == GameFunctions.WinStatus.TIME);
+                && winStatus == GameFunctions.WinStatus.PASSENGERS;
     }
 
     static boolean isFinalMomentLooseEndBlackoutImmune(
@@ -495,6 +547,9 @@ public final class LastStandFinalMomentService {
         gameComponent.sync();
 
         for (ServerPlayerEntity player : livingPlayers(world, gameComponent)) {
+            if (isSparkWitchFiend(gameComponent.getRole(player))) {
+                continue;
+            }
             PlayerShopComponent.KEY.get(player).addToBalance(FINAL_MONEY_REWARD);
             SparkWitchManaCompatibility.addMana(player, FINAL_MANA_REWARD);
         }
@@ -508,7 +563,13 @@ public final class LastStandFinalMomentService {
             GameWorldComponent gameComponent,
             ServerPlayerEntity player
     ) {
-        gameComponent.addRole(player, WatheRoles.LOOSE_END);
+        // Tag the role change so SparkFactionAPI's replay line carries the Final Moment cause.
+        // 为身份变化打上原因标记，使 SparkFactionAPI 的回放行附带“终局时刻”原因。
+        SparkReplayApi.withRoleChangeCause(
+                SparkTraits.id("loose_end_conversion"),
+                (UUID) null,
+                () -> gameComponent.addRole(player, WatheRoles.LOOSE_END)
+        );
         replaceLatestRoleHistoryEntry(world, player.getUuid(), WatheRoles.LOOSE_END);
         RoleAssigned.EVENT.invoker().assignRole(player, WatheRoles.LOOSE_END);
         SparkTraitsReplayEvents.recordLooseEndConversion(player);
@@ -553,12 +614,8 @@ public final class LastStandFinalMomentService {
         return role != null && WatheRoles.LOOSE_END.identifier().equals(role.identifier());
     }
 
-    private static boolean isSparkWitchFactionRole(@Nullable Role role) {
-        if (role == null) {
-            return false;
-        }
-        Identifier roleId = role.identifier();
-        return SPARKWITCH_GRAND_WITCH_ID.equals(roleId) || SPARKWITCH_ACCOMPLICE_ID.equals(roleId);
+    static boolean isSparkWitchFiend(@Nullable Role role) {
+        return role != null && SPARKWITCH_FIEND_ID.equals(role.identifier());
     }
 
     private static List<ServerPlayerEntity> livingPlayers(ServerWorld world, GameWorldComponent gameComponent) {

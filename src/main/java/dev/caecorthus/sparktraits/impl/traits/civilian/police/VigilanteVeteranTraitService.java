@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl.traits.civilian.police;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionFakeKillCooldowns;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
@@ -42,8 +43,8 @@ import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import dev.caecorthus.sparktraits.SparkTraits;
 
 /**
- * Shared rules for Vigilante and Veteran-only traits.
- * 义警与老兵专属天赋的共享规则入口，避免影响其他角色或阵营翻转逻辑。
+ * Shared rules for police-category gun traits and Veteran-only traits.
+ * 警职类别枪械天赋与老兵专属天赋的共享规则入口，避免影响其他角色或阵营翻转逻辑。
  */
 public final class VigilanteVeteranTraitService {
     public static final double REVOLVER_RANGE = 30.0;
@@ -91,11 +92,14 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static void register() {
+        GunShotCycles.register();
         ServerTickEvents.END_WORLD_TICK.register(VigilanteVeteranTraitService::tickWorld);
     }
 
+    /** Selection and runtime gate for the gun police traits; see {@link PoliceRoleCategory}.
+     *  枪械警类天赋的抽取与运行时判定入口，规则见 {@link PoliceRoleCategory}。 */
     public static boolean canSelectVigilanteTrait(Role role) {
-        return role == WatheRoles.VIGILANTE;
+        return PoliceRoleCategory.canReceiveGunPoliceTraits(role);
     }
 
     public static boolean canSelectVeteranTrait(Role role) {
@@ -122,6 +126,18 @@ public final class VigilanteVeteranTraitService {
 
     public static double gunRange(PlayerEntity player, double baseRange) {
         return gunRange(baseRange, roleOf(player), traitsOf(player), isSneaking(player));
+    }
+
+    /** Marksman-only range multiplier for downstream police weapons; never Niko's fixed range.
+     *  供下游警用武器使用的精确枪手射程倍率，仅看精确枪手，绝不返回 Niko 固定射程。 */
+    public static double marksmanRangeMultiplier(Role role, Collection<Identifier> traits) {
+        return canUseVigilanteTrait(role, traits, PoliceTraits.MARKSMAN) ? MARKSMAN_RANGE_MULTIPLIER : 1.0;
+    }
+
+    /** Resolves the runtime police role and synced traits, so it is safe on both client and server.
+     *  解析运行时警职与同步天赋，客户端与服务端均可安全调用。 */
+    public static double marksmanRangeMultiplier(PlayerEntity player) {
+        return marksmanRangeMultiplier(roleOf(player), traitsOf(player));
     }
 
     public static int fastReloadCooldown(Item item, int duration, Role role, Collection<Identifier> traits) {
@@ -333,13 +349,15 @@ public final class VigilanteVeteranTraitService {
             Identifier deathReason
     ) {
         boolean eligibleShot = isHeavyArtilleryShot(shooter, victim, deathReason);
-        GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason);
+        GunShotCycles.observeTargetKill(shooter, victim,
+                () -> GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason));
         if (shouldRetryHeavyArtilleryDamage(
                 eligibleShot,
                 GameFunctions.isPlayerPlayingAndAlive(victim),
                 isJesterMomentActiveOrTransitioning(victim)
         )) {
-            GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason);
+            GunShotCycles.observeTargetKill(shooter, victim,
+                    () -> GameFunctions.killPlayer(victim, spawnBody, shooter, deathReason));
         }
     }
 
@@ -440,13 +458,19 @@ public final class VigilanteVeteranTraitService {
             return;
         }
         GameWorldComponent scheduledGame = GameWorldComponent.KEY.get(scheduledWorld);
+        GunShotCycles.Cycle cycle = GunShotCycles.current();
+        // Repeat shots write no cooldown of their own; a Depression fake kill shortens the gun that fired the burst.
+        // 连射不单独写冷却；若触发抑郁假死，缩短的是打出这轮连射的枪。
+        Item burstWeapon = shooter.getMainHandStack().getItem();
         // Do not replay Wathe's full gun packet handler: it owns inventory, punishment, and cooldown side effects.
         // 不重复执行 Wathe 的完整枪械包处理；那里负责扣枪、惩罚和冷却，重复调用会扩大副作用。
         for (int shot = 1; shot < NIKO_BURST_SHOTS; shot++) {
             int repeatDelay = NIKO_BURST_INTERVAL_TICKS * shot;
             AtomicReference<Runnable> pendingPunishment = new AtomicReference<>();
+            GunShotCycles.expectRepeat(cycle);
             Scheduler.schedule(
-                    () -> repeatNikoBurstShot(shooter, scheduledWorld, scheduledGame, pendingPunishment),
+                    () -> GunShotCycles.runRepeat(cycle, () -> DepressionFakeKillCooldowns.withWeaponHint(burstWeapon,
+                            () -> repeatNikoBurstShot(shooter, scheduledWorld, scheduledGame, pendingPunishment))),
                     repeatDelay
             );
             Scheduler.schedule(

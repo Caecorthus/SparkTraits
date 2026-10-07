@@ -25,7 +25,13 @@ public final class LastStandTrait implements Trait {
     public static final Identifier ID = SparkTraits.id("last_stand");
     private static final Set<Identifier> ADDITIONAL_THREAT_ROLE_IDS = Set.of(
             Identifier.of("sparkwitch", "grand_witch"),
-            Identifier.of("sparkwitch", "accomplice")
+            Identifier.of("sparkwitch", "accomplice"),
+            // SparkWitch special accomplices share every Accomplice rule. / SparkWitch 特殊共犯沿用共犯的全部规则。
+            Identifier.of("sparkwitch", "abyss_listener"),
+            Identifier.of("sparkwitch", "potion_gunner"),
+            Identifier.of("sparkwitch", "riftwalker"),
+            // SparkWitch's Bewitched (魔化使) is an accomplice before promotion. / SparkWitch 魔化使是晋升前的共犯。
+            Identifier.of("sparkwitch", "bewitched")
     );
 
     @Override

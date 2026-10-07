@@ -1,5 +1,8 @@
 package dev.caecorthus.sparktraits.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeService;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
@@ -14,7 +17,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
@@ -24,37 +26,25 @@ import java.util.UUID;
  * Keeps a Last Stand survivor's revolver in their inventory during Wathe death drops.
  * 在 Wathe 死亡掉落阶段保留背水一战幸存者原本携带的左轮手枪。
  */
-@Mixin(value = GameFunctions.class, remap = false)
+@Mixin(value = GameFunctions.class, priority = 2000, remap = false)
 public abstract class GameFunctionsMixin {
-    @Inject(
-            method = "killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Z)V",
-            at = @At("HEAD"),
-            cancellable = true
-    )
-    private static void sparktraits$beginSecondStrikeAttempt(
-            ServerPlayerEntity victim,
-            boolean spawnBody,
-            ServerPlayerEntity killer,
-            Identifier deathReason,
-            boolean force,
-            CallbackInfo ci
+    @WrapMethod(method = "killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Z)V")
+    private static void sparktraits$guardAndScopeKillAttempt(
+            ServerPlayerEntity victim, boolean spawnBody, ServerPlayerEntity killer,
+            Identifier deathReason, boolean force, Operation<Void> original
     ) {
-        KillerTraitService.beginKillAttempt(victim, killer, force);
-    }
-
-    @Inject(
-            method = "killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Z)V",
-            at = @At("RETURN")
-    )
-    private static void sparktraits$finishSecondStrikeAttempt(
-            ServerPlayerEntity victim,
-            boolean spawnBody,
-            ServerPlayerEntity killer,
-            Identifier deathReason,
-            boolean force,
-            CallbackInfo ci
-    ) {
-        KillerTraitService.finishKillAttempt(victim, spawnBody, killer, deathReason, force);
+        // WrapMethod encloses injected cancellation returns, unlike HEAD/RETURN pairing.
+        if (LastEscapeService.blocksDeath(victim, deathReason)) return;
+        boolean trainEscape = LastEscapeService.isActive(victim) && LastEscapeService.isTrainDeath(deathReason);
+        KillerTraitService.beginKillAttempt(victim, killer, force || trainEscape);
+        boolean completed = false;
+        try (var scope = new dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeKillScope()) {
+            original.call(victim, spawnBody, killer, deathReason, force || trainEscape);
+            completed = true;
+        } finally {
+            if (completed) KillerTraitService.finishKillAttempt(victim, spawnBody, killer, deathReason, force || trainEscape);
+            else KillerTraitService.abortKillAttempt();
+        }
     }
 
     @Inject(method = "shouldDropOnDeath", at = @At("HEAD"), cancellable = true, remap = false)
