@@ -12,8 +12,8 @@ import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTraitService;
 
 /**
- * Global trait that scales the whole player body down to ninety percent.
- * 全局天赋：将玩家整体体型缩小到百分之九十。
+ * Global trait that scales the whole player body down to seventy-five percent; clients draw it big-headed.
+ * 全局天赋：将玩家整体体型缩小到百分之七十五，客户端按头大身子小绘制。
  */
 public final class ChildishTrait implements Trait {
     public static final Identifier ID = SparkTraits.id("childish");
