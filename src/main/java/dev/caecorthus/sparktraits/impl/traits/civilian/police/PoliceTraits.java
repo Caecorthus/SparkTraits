@@ -26,7 +26,11 @@ public final class PoliceTraits {
         TraitRegistry.register(vigilante(MARKSMAN, 0xD6C27A).build());
         TraitRegistry.register(vigilante(FAST_RELOAD, 0xF4A261).build());
         TraitRegistry.register(vigilante(HEAVY_ARTILLERY, 0xD94F30).build());
-        TraitRegistry.register(vigilante(NIKO, 0x39FF14).build());
+        // Replaces the shared gun police predicate with Niko's narrower gate (no USEC).
+        // 用 Niko 更窄的判定（排除 USEC）替换共享的枪械警职谓词。
+        TraitRegistry.register(vigilante(NIKO, 0x39FF14)
+                .predicate(context -> VigilanteVeteranTraitService.canSelectNikoTrait(context.role()))
+                .build());
         TraitRegistry.register(veteran(WELL_TRAINED, 0x4A90E2).build());
         TraitRegistry.register(veteran(GOING_DARK, 0x2E4057).build());
     }
