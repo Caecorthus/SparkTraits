@@ -50,7 +50,7 @@ public final class GlobalTraitService {
     public static final float STEADY_MOOD_MAX = 1.25f;
     public static final float MOOD_MIN = -1.0f;
     public static final Identifier CHILDISH_SCALE_MODIFIER_ID = SparkTraits.id("childish_scale");
-    public static final double CHILDISH_SCALE_MODIFIER_VALUE = -0.10;
+    public static final double CHILDISH_SCALE_MODIFIER_VALUE = -0.25;
     public static final Identifier EXCELLENT_PHYSIQUE_STAMINA_MODIFIER_ID = SparkTraits.id("excellent_physique_stamina");
     public static final double EXCELLENT_PHYSIQUE_STAMINA_MODIFIER_VALUE = 1.0;
     private static final EntityAttributeModifier CHILDISH_SCALE_MODIFIER = new EntityAttributeModifier(
@@ -263,6 +263,15 @@ public final class GlobalTraitService {
         }
         removeChildishScale(scale);
         player.calculateDimensions();
+    }
+
+    /**
+     * Reads Childish from the synced scale modifier, so every client can tell without the hidden trait list.
+     * 通过已同步的体型修饰符判断幼稚，任何客户端都无需读取隐藏的天赋列表。
+     */
+    public static boolean hasChildishScale(PlayerEntity player) {
+        EntityAttributeInstance scale = player.getAttributeInstance(EntityAttributes.GENERIC_SCALE);
+        return scale != null && scale.hasModifier(CHILDISH_SCALE_MODIFIER_ID);
     }
 
     static void applyChildishScale(EntityAttributeInstance scale) {

@@ -1,0 +1,37 @@
+package dev.caecorthus.sparktraits.client.render;
+
+import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+
+/**
+ * Childish players draw with vanilla's baby biped model (big head, small body), scaled back up to fill their hitbox.
+ * 幼稚玩家使用原版幼体双足模型（头大身子小），再整体放大以填满自身碰撞箱。
+ */
+public final class ChildishPlayerRendering {
+    // Vanilla AnimalModel baby biped: the 8 px head at 3/4 size, the 24 px body and legs at 1/2 size, 24 px lower.
+    // 原版 AnimalModel 幼体双足：8 像素的头按 3/4 绘制，24 像素的身体与腿按 1/2 绘制并下移 24 像素。
+    static final float ADULT_MODEL_HEIGHT_PX = 32.0F;
+    static final float BABY_HEAD_SCALE = 0.75F;
+    static final float BABY_BODY_SCALE = 0.5F;
+    static final float BABY_BODY_Y_OFFSET_PX = 24.0F;
+    static final float BABY_MODEL_HEIGHT_PX = 8.0F * BABY_HEAD_SCALE + 24.0F * BABY_BODY_SCALE;
+    public static final float BABY_MODEL_FILL_SCALE = ADULT_MODEL_HEIGHT_PX / BABY_MODEL_HEIGHT_PX;
+
+    private ChildishPlayerRendering() {
+    }
+
+    public static boolean rendersAsBaby(LivingEntity entity) {
+        return entity instanceof PlayerEntity player && GlobalTraitService.hasChildishScale(player);
+    }
+
+    /**
+     * Repeats AnimalModel's baby body transform for layers drawn outside the model, such as the cape.
+     * 为模型之外绘制的图层（如披风）重复 AnimalModel 的幼体身体变换。
+     */
+    public static void applyBabyBodyTransform(MatrixStack matrices) {
+        matrices.scale(BABY_BODY_SCALE, BABY_BODY_SCALE, BABY_BODY_SCALE);
+        matrices.translate(0.0F, BABY_BODY_Y_OFFSET_PX / 16.0F, 0.0F);
+    }
+}
