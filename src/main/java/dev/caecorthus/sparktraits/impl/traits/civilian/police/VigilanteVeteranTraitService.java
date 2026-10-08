@@ -102,6 +102,12 @@ public final class VigilanteVeteranTraitService {
         return PoliceRoleCategory.canReceiveGunPoliceTraits(role);
     }
 
+    /** Selection and runtime gate for Niko: the gun police gate minus revolver-less police such as USEC.
+     *  Niko 的抽取与运行时判定入口：枪械警职判定再排除不持左轮的警职（如 USEC）。 */
+    public static boolean canSelectNikoTrait(Role role) {
+        return PoliceRoleCategory.canReceiveNikoTrait(role);
+    }
+
     public static boolean canSelectVeteranTrait(Role role) {
         return role == WatheRoles.VETERAN;
     }
@@ -708,7 +714,7 @@ public final class VigilanteVeteranTraitService {
     }
 
     private static boolean canUseNikoTrait(Role role, Collection<Identifier> traits, boolean sneaking) {
-        return sneaking && canUseVigilanteTrait(role, traits, PoliceTraits.NIKO);
+        return sneaking && canSelectNikoTrait(role) && safeTraits(traits).contains(PoliceTraits.NIKO);
     }
 
     private static boolean canUseVigilanteTrait(Role role, Collection<Identifier> traits, Identifier traitId) {
