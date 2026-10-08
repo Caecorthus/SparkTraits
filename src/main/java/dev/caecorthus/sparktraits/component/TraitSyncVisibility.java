@@ -41,11 +41,19 @@ final class TraitSyncVisibility {
     /**
      * Also counts players Wathe marks dead while they stay in survival, as debug life-state tools do, matching the
      * client's trait-tag gate. Fake deaths (Depression, Jester, Taotie) never call markPlayerDead, so they still stay out.
+     * An active SparkWitch Wraith keeps Wathe's dead mark (Wathe cannot unmark it) but is back in the round, so it never
+     * gets the spectator tier.
      * 同时把 Wathe 标记为死亡但仍处于生存模式的玩家（调试存活状态工具）算作旁观者，与客户端天赋标签判定一致。
-     * 假死（抑郁、小丑、饕餮）不会调用 markPlayerDead，因此仍不会算入。
+     * 假死（抑郁、小丑、饕餮）不会调用 markPlayerDead，因此仍不会算入。激活中的 SparkWitch 冤魂仍带着 Wathe 的死亡
+     * 标记（Wathe 无法撤销），但已重新参与对局，因此始终不算旁观者。
      */
-    static boolean seesSpectatorInformation(boolean spectatingOrCreative, boolean playingAndAlive, boolean markedDead) {
-        return markedDead || seesSpectatorInformation(spectatingOrCreative, playingAndAlive);
+    static boolean seesSpectatorInformation(
+            boolean spectatingOrCreative,
+            boolean playingAndAlive,
+            boolean markedDead,
+            boolean wraithActive
+    ) {
+        return !wraithActive && (markedDead || seesSpectatorInformation(spectatingOrCreative, playingAndAlive));
     }
 
     static <T> Collection<T> revealedTraitsFor(

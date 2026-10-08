@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
+import dev.caecorthus.sparktraits.api.SparkTraitsApi;
 import dev.caecorthus.sparktraits.client.hud.ConscienceSerialKillerHud;
 import dev.caecorthus.sparktraits.client.hud.TraitNameplateTags;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
@@ -129,8 +130,14 @@ public abstract class TraitRoleNameRendererMixin {
      * <p>正常情况下沿用 Wathe 的旁观/创造模式判断；当玩家只是通过调试命令被
      * 加入 deadPlayers 时，补充 Wathe 的逻辑死亡标记，使其不必真正执行一次死亡
      * 流程就能看到自身和目标的词条准心显示。</p>
+     *
+     * <p>激活中的 SparkWitch 冤魂仍带着 Wathe 的死亡标记，但已重新参与对局，与服务端同步一致，
+     * 不获得旁观词条权限。</p>
      */
     private static boolean sparktraits$canSeeTraitInformation(ClientPlayerEntity player) {
+        if (SparkTraitsApi.isWraithActive(player)) {
+            return false;
+        }
         if (WatheClient.canSeeSpectatorInformation()) {
             return true;
         }

@@ -7,6 +7,7 @@ import dev.caecorthus.sparktraits.api.TraitRegistry;
 import dev.caecorthus.sparktraits.api.TraitRemovalReason;
 import dev.caecorthus.sparktraits.api.event.TraitEvents;
 import dev.caecorthus.sparktraits.compat.SparkWitchKillAttributionBridge;
+import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BluePoisonInteropService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
@@ -611,11 +612,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     }
 
     /**
-     * Re-sends recipient-filtered trait state to this player when their own view changes: death or spectating,
-     * Conscience/Impostor gain or loss, or a role swap (Coroner, Toxicologist, Poisoner). Polling also covers other
-     * mods' role changes; packets sent under the old view stay on the client for at most one tick.
-     * 当本玩家的接收视角变化时（死亡或旁观、获得或失去善良/内鬼、换职业如验尸官/毒理学家/投毒者），重发按接收者过滤的
-     * 天赋状态；轮询方式同样覆盖其他模组造成的职业变化，旧视角下发出的数据最多在客户端停留一个 tick。
+     * Re-sends recipient-filtered trait state to this player when their own view changes: death or spectating, Wraith
+     * activation or end, Conscience/Impostor gain or loss, or a role swap (Coroner, Toxicologist, Poisoner). Polling
+     * also covers other mods' role changes; packets sent under the old view stay on the client for at most one tick.
+     * 当本玩家的接收视角变化时（死亡或旁观、冤魂激活或结束、获得或失去善良/内鬼、换职业如验尸官/毒理学家/投毒者），
+     * 重发按接收者过滤的天赋状态；轮询方式同样覆盖其他模组造成的职业变化，旧视角下发出的数据最多在客户端停留一个 tick。
      */
     private void resyncFilteredStateOnRecipientChange() {
         if (!(player instanceof ServerPlayerEntity self)) {
@@ -645,7 +646,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 TraitSyncVisibility.seesSpectatorInformation(
                         spectatingOrCreative,
                         GameFunctions.isPlayerPlayingAndAlive(recipient),
-                        gameComponent.isPlayerDead(recipient.getUuid())
+                        gameComponent.isPlayerDead(recipient.getUuid()),
+                        SparkWitchWraithBridge.isWraithActive(recipient)
                 ),
                 // Mirrors the client instinct gate EffectiveTraitService.isEffectiveKiller(viewer, game).
                 // 与客户端本能入口 EffectiveTraitService.isEffectiveKiller(viewer, game) 保持一致。
