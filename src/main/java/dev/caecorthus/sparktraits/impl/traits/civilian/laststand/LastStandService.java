@@ -221,7 +221,7 @@ public final class LastStandService {
 
         markTriggeredThisRound(world, uuid);
         startPending(world, victim, deathReason);
-        SparkTraitsReplayEvents.recordLastStandTriggered(victim);
+        SparkTraitsReplayEvents.recordLastStandTriggered(victim, () -> LastStandOpponents.countAlive(world));
         return true;
     }
 

@@ -7,6 +7,8 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 
+import java.util.function.IntSupplier;
+
 /**
  * Writes SparkTraits' match-defining transitions through Wathe's replay API.
  * 通过 Wathe 回放 API 记录 SparkTraits 中会改变对局走向的状态转换。
@@ -28,12 +30,24 @@ public final class SparkTraitsReplayEvents {
         ReplayRegistry.registerGlobalEventFormatter(LOOSE_END_CONVERSION, (event, match, world) -> null);
     }
 
-    public static void recordLastStandTriggered(ServerPlayerEntity player) {
-        GameRecordManager.recordGlobalEvent(player.getServerWorld(), LAST_STAND_TRIGGERED, player, null);
+    /**
+     * Also writes {@code alive_opponents} (int) for SparkAssist's achievements; the count is only taken during a match.
+     * 同时写入供 SparkAssist 成就读取的 alive_opponents（int）；仅在对局进行中才统计该数值。
+     */
+    public static void recordLastStandTriggered(ServerPlayerEntity player, IntSupplier aliveOpponents) {
+        SparkTraitsAchievementRecords.guarded(LAST_STAND_TRIGGERED.toString(), () ->
+                GameRecordManager.recordGlobalEvent(player.getServerWorld(), LAST_STAND_TRIGGERED, player,
+                        SparkTraitsAchievementRecords.aliveOpponentsData(aliveOpponents.getAsInt())));
     }
 
-    public static void recordFinalMomentStarted(ServerWorld world) {
-        GameRecordManager.recordGlobalEvent(world, FINAL_MOMENT_START, null, null);
+    /**
+     * Also writes {@code alive_opponents} (int) for SparkAssist's achievements; the count is only taken during a match.
+     * 同时写入供 SparkAssist 成就读取的 alive_opponents（int）；仅在对局进行中才统计该数值。
+     */
+    public static void recordFinalMomentStarted(ServerWorld world, IntSupplier aliveOpponents) {
+        SparkTraitsAchievementRecords.guarded(FINAL_MOMENT_START.toString(), () ->
+                GameRecordManager.recordGlobalEvent(world, FINAL_MOMENT_START, null,
+                        SparkTraitsAchievementRecords.aliveOpponentsData(aliveOpponents.getAsInt())));
     }
 
     public static void recordLooseEndConversion(ServerPlayerEntity player) {
