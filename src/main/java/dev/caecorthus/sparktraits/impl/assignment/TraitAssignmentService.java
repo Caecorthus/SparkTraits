@@ -35,6 +35,8 @@ import dev.caecorthus.sparktraits.impl.selection.TraitRules;
 import dev.caecorthus.sparktraits.impl.selection.TraitSelector;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerialKillerService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraits;
+import dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
@@ -78,6 +80,7 @@ public final class TraitAssignmentService {
         List<PlayerPlan> plans = new ArrayList<>();
         List<ServerPlayerEntity> randomPlayers = new ArrayList<>();
         LinkedHashSet<Identifier> randomUniqueTraitReservations = new LinkedHashSet<>();
+        int lastEscapeCap = LastEscapeService.holderCap(publicKillerCount);
 
         for (ServerPlayerEntity player : players) {
             TraitPlayerComponent playerTraits = TraitPlayerComponent.KEY.get(player);
@@ -100,7 +103,8 @@ public final class TraitAssignmentService {
                     player,
                     random,
                     players.size(),
-                    randomUniqueTraitReservations
+                    randomUniqueTraitReservations,
+                    excludeLastEscapeAtCap(Set.of(), plans, lastEscapeCap)
             );
             reserveUniqueTraits(randomUniqueTraitReservations, randomTraits);
             plans.add(new PlayerPlan(player, List.of(), randomTraits));
@@ -121,7 +125,8 @@ public final class TraitAssignmentService {
                 publicKillerCount,
                 protectedLockedRolePlayers,
                 random,
-                randomUniqueTraitReservations
+                randomUniqueTraitReservations,
+                lastEscapeCap
         );
         forcePigOntoPigGod(gameComponent, traitWorld, plans);
         enforceRandomDepressionCap(plans, players.size());
@@ -254,7 +259,8 @@ public final class TraitAssignmentService {
             int publicKillerCount,
             Set<UUID> lockedRolePlayers,
             Random random,
-            Collection<Identifier> randomUniqueTraitReservations
+            Collection<Identifier> randomUniqueTraitReservations,
+            int lastEscapeCap
     ) {
         int originalKillerCount = EffectiveTraitService.originalKillerCount(gameComponent);
         int conscienceCount = countTrait(plans, ConscienceTrait.ID);
@@ -291,7 +297,7 @@ public final class TraitAssignmentService {
                     players.size(),
                     extraKiller.lockedTraits(),
                     randomUniqueTraitReservations,
-                    CONSCIENCE_COMPENSATION_REROLL_EXCLUSIONS
+                    excludeLastEscapeAtCap(CONSCIENCE_COMPENSATION_REROLL_EXCLUSIONS, plans, lastEscapeCap)
             );
             extraKiller.replaceRandomTraits(rerolledTraits);
             rebuildUniqueTraitReservations(randomUniqueTraitReservations, plans);
@@ -643,14 +649,34 @@ public final class TraitAssignmentService {
     }
 
     /**
-     * Caps only randomly rolled Depression traits; pending/admin locks intentionally bypass this random budget.
-     * 只限制随机抽到的抑郁天赋；管理员/待应用锁定不会消耗这个随机名额。
+     * Keeps Last Escape out of a random draw once the plans already hold {@code cap} of it, so that slot rolls another
+     * trait instead. Locked copies count toward the cap but are never removed.
+     * 计划中的绝处逢生已达 {@code cap} 个时，将其排除出本次随机抽取，使该槽位改抽其他天赋。锁定的绝处逢生计入上限，
+     * 但永不移除。
+     */
+    static Set<Identifier> excludeLastEscapeAtCap(Set<Identifier> exclusions, List<PlayerPlan> plans, int cap) {
+        if (countTrait(plans, KillerTraits.LAST_ESCAPE) < cap) {
+            return exclusions;
+        }
+        LinkedHashSet<Identifier> capped = new LinkedHashSet<>(exclusions);
+        capped.add(KillerTraits.LAST_ESCAPE);
+        return Set.copyOf(capped);
+    }
+
+    /**
+     * Trims randomly rolled Depression traits over the cap; pending/admin locks are never removed but count toward it.
+     * 移除超出上限的随机抑郁天赋；管理员/待应用锁定永不移除，但计入上限。
      */
     static void enforceRandomDepressionCap(List<PlayerPlan> plans, int startingPlayerCount) {
         int cap = DepressionTraitService.randomDepressionCap(startingPlayerCount);
-        int keptRandomDepressions = 0;
+        int keptDepressions = 0;
         for (PlayerPlan plan : plans) {
-            keptRandomDepressions = plan.removeRandomDepressionsOverLimit(cap, keptRandomDepressions);
+            if (plan.lockedTraits().contains(CivilianTraits.DEPRESSION)) {
+                keptDepressions++;
+            }
+        }
+        for (PlayerPlan plan : plans) {
+            keptDepressions = plan.removeRandomDepressionsOverLimit(cap, keptDepressions);
         }
     }
 
