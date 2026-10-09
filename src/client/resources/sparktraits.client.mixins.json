@@ -16,7 +16,6 @@
     "CautiousClientWorldSoundMixin",
     "CautiousPresenceFootstepsVolumeMixin",
     "ChildishBipedEntityModelMixin",
-    "ChildishCapeFeatureRendererMixin",
     "ChildishLivingEntityRendererMixin",
     "ChildishPlayerEntityRendererMixin",
     "DepressionGameRendererMixin",
