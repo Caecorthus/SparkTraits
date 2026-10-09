@@ -1,6 +1,8 @@
 package dev.caecorthus.sparktraits.client.render;
 
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
+import net.minecraft.client.render.entity.model.BipedEntityModel;
+import net.minecraft.client.render.entity.model.PlayerEntityModel;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -24,6 +26,14 @@ public final class ChildishPlayerRendering {
 
     public static boolean rendersAsBaby(LivingEntity entity) {
         return entity instanceof PlayerEntity player && GlobalTraitService.hasChildishScale(player);
+    }
+
+    /**
+     * Vanilla lists the hat layer with the baby body parts, which shrinks it inside the bigger baby head; player skins draw it with the head.
+     * 原版把帽子层归入幼体身体部件，会被缩小藏进更大的幼体头部；玩家皮肤改为随头部绘制。
+     */
+    public static boolean drawsHatWithBabyHead(BipedEntityModel<?> model) {
+        return model.child && model instanceof PlayerEntityModel;
     }
 
     /**
