@@ -664,14 +664,19 @@ public final class TraitAssignmentService {
     }
 
     /**
-     * Caps only randomly rolled Depression traits; pending/admin locks intentionally bypass this random budget.
-     * 只限制随机抽到的抑郁天赋；管理员/待应用锁定不会消耗这个随机名额。
+     * Trims randomly rolled Depression traits over the cap; pending/admin locks are never removed but count toward it.
+     * 移除超出上限的随机抑郁天赋；管理员/待应用锁定永不移除，但计入上限。
      */
     static void enforceRandomDepressionCap(List<PlayerPlan> plans, int startingPlayerCount) {
         int cap = DepressionTraitService.randomDepressionCap(startingPlayerCount);
-        int keptRandomDepressions = 0;
+        int keptDepressions = 0;
         for (PlayerPlan plan : plans) {
-            keptRandomDepressions = plan.removeRandomDepressionsOverLimit(cap, keptRandomDepressions);
+            if (plan.lockedTraits().contains(CivilianTraits.DEPRESSION)) {
+                keptDepressions++;
+            }
+        }
+        for (PlayerPlan plan : plans) {
+            keptDepressions = plan.removeRandomDepressionsOverLimit(cap, keptDepressions);
         }
     }
 
