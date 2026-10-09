@@ -59,6 +59,12 @@ public final class LastEscapeService {
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> { offline.clear(); runningServer = null; });
     }
 
+    /** Most players who may hold Last Escape in a round: half the round's killer count, rounded down.
+     *  每局最多持有绝处逢生的人数：本局杀手人数的一半，向下取整。 */
+    public static int holderCap(int killerCount) {
+        return Math.max(0, killerCount) / 2;
+    }
+
     public static boolean isActive(PlayerEntity player) {
         return player != null && TraitWorldComponent.KEY.get(player.getWorld()).isLastEscapeActive(player.getUuid());
     }
