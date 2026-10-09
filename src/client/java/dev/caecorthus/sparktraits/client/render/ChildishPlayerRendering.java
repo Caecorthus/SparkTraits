@@ -1,7 +1,10 @@
 package dev.caecorthus.sparktraits.client.render;
 
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
+import net.minecraft.client.render.entity.feature.CapeFeatureRenderer;
+import net.minecraft.client.render.entity.feature.FeatureRenderer;
 import net.minecraft.client.render.entity.model.BipedEntityModel;
+import net.minecraft.client.render.entity.model.EntityModel;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
@@ -21,6 +24,15 @@ public final class ChildishPlayerRendering {
     static final float BABY_MODEL_HEIGHT_PX = 8.0F * BABY_HEAD_SCALE + 24.0F * BABY_BODY_SCALE;
     public static final float BABY_MODEL_FILL_SCALE = ADULT_MODEL_HEIGHT_PX / BABY_MODEL_HEIGHT_PX;
 
+    // Cape mods such as WaveyCapes swap vanilla's cape for their own layer (CustomCapeRenderLayer), so match by name too.
+    // WaveyCapes 等披风模组会用自己的图层（CustomCapeRenderLayer）替换原版披风，因此也按类名匹配。
+    private static final ClassValue<Boolean> CAPE_FEATURES = new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            return CapeFeatureRenderer.class.isAssignableFrom(type) || type.getSimpleName().contains("Cape");
+        }
+    };
+
     private ChildishPlayerRendering() {
     }
 
@@ -34,6 +46,18 @@ public final class ChildishPlayerRendering {
      */
     public static boolean drawsHatWithBabyHead(BipedEntityModel<?> model) {
         return model.child && model instanceof PlayerEntityModel;
+    }
+
+    /**
+     * Cape layers hang from the model root rather than a body part, so a baby-drawn player needs the baby body transform around them.
+     * 披风图层挂在模型根部而非身体部件上，按幼体绘制的玩家需要在其外层套上幼体身体变换。
+     */
+    public static boolean hangsCapeOnBabyBody(EntityModel<?> model, FeatureRenderer<?, ?> feature) {
+        return model.child && model instanceof PlayerEntityModel && isCapeFeature(feature.getClass());
+    }
+
+    static boolean isCapeFeature(Class<?> featureType) {
+        return CAPE_FEATURES.get(featureType);
     }
 
     /**
