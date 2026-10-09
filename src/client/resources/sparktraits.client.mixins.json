@@ -15,6 +15,7 @@
     "BeveragePlateBluePoisonParticleMixin",
     "CautiousClientWorldSoundMixin",
     "CautiousPresenceFootstepsVolumeMixin",
+    "ChildishBipedEntityModelMixin",
     "ChildishCapeFeatureRendererMixin",
     "ChildishLivingEntityRendererMixin",
     "ChildishPlayerEntityRendererMixin",
