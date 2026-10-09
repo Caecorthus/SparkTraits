@@ -535,7 +535,7 @@ public final class LastStandFinalMomentService {
             List<UUID> finalPlayerUuids
     ) {
         traitWorld.setFinalMomentActive(true);
-        SparkTraitsReplayEvents.recordFinalMomentStarted(world);
+        SparkTraitsReplayEvents.recordFinalMomentStarted(world, () -> LastStandOpponents.countAlive(world));
 
         for (UUID uuid : finalPlayerUuids) {
             if (world.getPlayerByUuid(uuid) instanceof ServerPlayerEntity player
