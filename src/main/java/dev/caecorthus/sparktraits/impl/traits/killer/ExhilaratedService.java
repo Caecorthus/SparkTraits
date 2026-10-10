@@ -26,7 +26,9 @@ public final class ExhilaratedService {
             return;
         }
         // Vanilla merges effects without downgrading a stronger active speed effect.
-        // 原版状态合并不会把正在生效的更高等级速度降级。
-        killer.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, DURATION_TICKS, AMPLIFIER));
+        // Hide particles so the buff does not visibly mark the killer; keep the HUD icon.
+        // 原版状态合并不会把正在生效的更高等级速度降级。隐藏粒子避免暴露杀手，保留状态图标。
+        killer.addStatusEffect(new StatusEffectInstance(
+                StatusEffects.SPEED, DURATION_TICKS, AMPLIFIER, false, false, true));
     }
 }
