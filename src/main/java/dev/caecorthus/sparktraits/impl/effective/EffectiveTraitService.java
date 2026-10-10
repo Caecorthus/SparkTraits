@@ -1102,6 +1102,7 @@ public final class EffectiveTraitService {
         List<ServerPlayerEntity> players = world.getPlayers();
         List<Role> livingRoles = new ArrayList<>();
         boolean realKillerAlive = false;
+        boolean impostorAlive = false;
         boolean effectiveCivilianAlive = false;
         boolean noellesJesterBlocksTeamWin = false;
         boolean noellesShadowJesterDefersPassengerWin = false;
@@ -1139,21 +1140,30 @@ public final class EffectiveTraitService {
             if (isOriginalKiller(role) && !hasConscience(traits)) {
                 realKillerAlive = true;
             }
+            if (hasImpostor(traits)) {
+                impostorAlive = true;
+            }
             if (isEffectiveCivilian(role, traits)) {
                 effectiveCivilianAlive = true;
             }
         }
 
         if (!realKillerAlive) {
-            killUnsupportedImpostors(players, gameComponent, false);
-            if (shouldDeferTeamWinForBlockingNeutral(
-                    GameFunctions.WinStatus.PASSENGERS,
-                    livingRoles,
-                    noellesJesterBlocksTeamWin || noellesShadowJesterDefersPassengerWin
-            )) {
-                return null;
+            boolean shadowJesterShowdownStarted = hasStartedNoellesShadowJesterShowdown(players, gameComponent);
+            killUnsupportedImpostors(players, gameComponent, false, shadowJesterShowdownStarted);
+            // Impostors kept by the showdown are its killer-side opponents: the killer-win check below and NoellesRoles
+            // settle the round instead of handing it to passengers.
+            // 被谢幕保留的内鬼是杀手方对手：交给下方杀手胜利判定与 NoellesRoles 结算，而不是直接判好人胜。
+            if (!(shadowJesterShowdownStarted && impostorAlive)) {
+                if (shouldDeferTeamWinForBlockingNeutral(
+                        GameFunctions.WinStatus.PASSENGERS,
+                        livingRoles,
+                        noellesJesterBlocksTeamWin || noellesShadowJesterDefersPassengerWin
+                )) {
+                    return null;
+                }
+                return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.PASSENGERS);
             }
-            return CheckWinCondition.WinResult.allow(GameFunctions.WinStatus.PASSENGERS);
         }
         if (!effectiveCivilianAlive) {
             if (shouldDeferTeamWinForBlockingNeutral(
@@ -1204,8 +1214,9 @@ public final class EffectiveTraitService {
         }
     }
 
-    /** Kills Impostors once their real killer-side support is gone, even if neutral blockers keep the round active.
-     *  当真实杀手支持消失时清理内鬼，即使中立阻塞者让回合继续。 */
+    /** Kills Impostors once their real killer-side support is gone, even if neutral blockers keep the round active,
+     *  unless a Shadow Jester showdown has started and still needs them as opponents.
+     *  当真实杀手支持消失时清理内鬼，即使中立阻塞者让回合继续；但双影谢幕开始后内鬼仍是谢幕对手，不再清理。 */
     public static void killUnsupportedImpostorsIfNoRealKillers(ServerWorld world, GameWorldComponent gameComponent) {
         if (world == null
                 || gameComponent == null
@@ -1223,29 +1234,61 @@ public final class EffectiveTraitService {
                 break;
             }
         }
-        killUnsupportedImpostors(players, gameComponent, realKillerAlive);
+        killUnsupportedImpostors(
+                players,
+                gameComponent,
+                realKillerAlive,
+                !realKillerAlive && hasStartedNoellesShadowJesterShowdown(players, gameComponent)
+        );
     }
 
+    /** A started Shadow Jester showdown keeps Impostors in it as killer-side opponents, so they no longer self-realize.
+     *  双影谢幕开始后内鬼作为杀手方对手留在谢幕中，不再自我觉悟。 */
     public static boolean shouldSelfRealizeUnsupportedImpostor(
             Collection<Identifier> traits,
             boolean playerAlive,
             boolean playerInRound,
-            boolean realOriginalKillerAlive
+            boolean realOriginalKillerAlive,
+            boolean shadowJesterShowdownStarted
     ) {
-        return playerAlive && playerInRound && !realOriginalKillerAlive && traits != null && hasImpostor(traits);
+        return playerAlive
+                && playerInRound
+                && !realOriginalKillerAlive
+                && !shadowJesterShowdownStarted
+                && traits != null
+                && hasImpostor(traits);
+    }
+
+    /** NoellesRoles keeps showdownActive on fallen Shadow Jesters until the round resets, so this stays true after they die.
+     *  NoellesRoles 在回合重置前不会清除阵亡双影小丑的 showdownActive，因此小丑死后仍视为谢幕已开始。 */
+    private static boolean hasStartedNoellesShadowJesterShowdown(
+            List<ServerPlayerEntity> players,
+            GameWorldComponent gameComponent
+    ) {
+        for (ServerPlayerEntity player : players) {
+            Role role = gameComponent.getRole(player);
+            if (role != null
+                    && NOELLES_SHADOW_JESTER_ID.equals(role.identifier())
+                    && noellesShadowJesterComponentFlag(player, "isShowdownActive")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void killUnsupportedImpostors(
             List<ServerPlayerEntity> players,
             GameWorldComponent gameComponent,
-            boolean realOriginalKillerAlive
+            boolean realOriginalKillerAlive,
+            boolean shadowJesterShowdownStarted
     ) {
         for (ServerPlayerEntity player : players) {
             if (shouldSelfRealizeUnsupportedImpostor(
                     TraitPlayerComponent.KEY.get(player).getActiveTraitIds(),
                     GameFunctions.isPlayerPlayingAndAlive(player),
                     gameComponent.hasAnyRole(player),
-                    realOriginalKillerAlive
+                    realOriginalKillerAlive,
+                    shadowJesterShowdownStarted
             )) {
                 GameFunctions.killPlayer(player, true, null, SELF_REALIZATION, true);
             }
