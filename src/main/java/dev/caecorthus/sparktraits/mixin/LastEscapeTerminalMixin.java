@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
+import dev.caecorthus.sparktraits.impl.replay.SparkTraitsAchievementRecords;
 import dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeService;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -31,6 +32,9 @@ public abstract class LastEscapeTerminalMixin {
             ServerPlayerEntity killer, Identifier reason, boolean force, CallbackInfo ci) {
         if (!dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules.contains(reason)
                 && !LastEscapeService.isTrainDeath(reason) && !GameConstants.DeathReasons.ESCAPED.equals(reason)
-                && LastEscapeService.tryActivate(victim)) ci.cancel();
+                && LastEscapeService.tryActivate(victim)) {
+            ci.cancel();
+            SparkTraitsAchievementRecords.recordLastEscapeTriggered(victim, killer, reason);
+        }
     }
 }

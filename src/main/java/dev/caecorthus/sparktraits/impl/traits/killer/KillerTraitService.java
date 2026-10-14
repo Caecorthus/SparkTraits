@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.impl.traits.killer;
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.replay.SparkTraitsAchievementRecords;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.BuildShopEntries;
@@ -363,9 +364,11 @@ public final class KillerTraitService {
                 killerTraits.incrementBloodthirstyKillCount();
             }
             if (killerTraits.hasActiveTrait(KillerTraits.THE_SHOWMAN)) {
-                int reward = showmanReward(countNearbyAlivePlayers(victim, killer));
+                int witnesses = countNearbyAlivePlayers(victim, killer);
+                int reward = showmanReward(witnesses);
                 if (reward > 0) {
                     PlayerShopComponent.KEY.get(killer).addToBalance(reward);
+                    SparkTraitsAchievementRecords.recordShowmanReward(killer, victim, witnesses, reward);
                 }
             }
             if (killerTraits.hasActiveTrait(KillerTraits.PLUNDERER)) {
@@ -374,6 +377,7 @@ public final class KillerTraitService {
                 if (stolen > 0) {
                     victimShop.setBalance(victimShop.getBalance() - stolen);
                     PlayerShopComponent.KEY.get(killer).addToBalance(stolen);
+                    SparkTraitsAchievementRecords.recordPlundererSteal(killer, victim, stolen);
                 }
             }
         }

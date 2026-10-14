@@ -8,6 +8,10 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.UUID;
 
 /**
  * Record-only match events that SparkAssist reads at round end to award local hidden achievements.
@@ -22,6 +26,13 @@ public final class SparkTraitsAchievementRecords {
     static final String WEAPON = "weapon";
     static final String ATTACKER_ROLE = "attacker_role";
     static final String ALIVE_OPPONENTS = "alive_opponents";
+    static final String LAST_ESCAPE_TRIGGERED = SparkTraits.id("last_escape_triggered").toString();
+    static final String SHOWMAN_REWARD = SparkTraits.id("showman_reward").toString();
+    static final String PLUNDERER_STEAL = SparkTraits.id("plunderer_steal").toString();
+    static final String DEATH_REASON = "death_reason";
+    static final String WITNESSES = "witnesses";
+    static final String REWARD = "reward";
+    static final String STOLEN = "stolen";
 
     private SparkTraitsAchievementRecords() {
     }
@@ -42,6 +53,65 @@ public final class SparkTraitsAchievementRecords {
             }
             event.record();
         });
+    }
+
+    /**
+     * Last Escape cancelled a death: actor = the survivor, target = the player whose attack would have killed them
+     * (left out when no killer was passed or the death was self-inflicted, such as a gun backfire),
+     * {@code death_reason} = the cancelled death reason id.
+     * 绝处逢生取消了一次死亡：actor 为幸存者，target 为本会杀死他的玩家（未传入凶手或自己造成的死亡，例如枪械走火，
+     * 则不写 target），death_reason 为被取消的死因标识。
+     */
+    public static void recordLastEscapeTriggered(
+            ServerPlayerEntity survivor,
+            @Nullable ServerPlayerEntity killer,
+            @Nullable Identifier reason
+    ) {
+        guarded(LAST_ESCAPE_TRIGGERED, () -> {
+            GameRecordManager.EventBuilder event = GameRecordManager.event(LAST_ESCAPE_TRIGGERED).actor(survivor);
+            if (killer != null && isOtherPlayer(survivor.getUuid(), killer.getUuid())) {
+                event.target(killer);
+            }
+            if (reason != null) {
+                event.put(DEATH_REASON, reason.toString());
+            }
+            event.record();
+        });
+    }
+
+    /**
+     * The Showman paid a kill reward: actor = the killer, target = the victim, {@code witnesses} = the other living
+     * round players counted within range of the victim (not capped), {@code reward} = the coins paid.
+     * 作秀支付了击杀奖励：actor 为凶手，target 为死者，witnesses 为死者范围内被计入的其他存活对局玩家数（不封顶），
+     * reward 为支付的金币。
+     */
+    public static void recordShowmanReward(ServerPlayerEntity killer, ServerPlayerEntity victim, int witnesses, int reward) {
+        guarded(SHOWMAN_REWARD, () -> GameRecordManager.event(SHOWMAN_REWARD)
+                .actor(killer)
+                .target(victim)
+                .putInt(WITNESSES, witnesses)
+                .putInt(REWARD, reward)
+                .record());
+    }
+
+    /**
+     * The Plunderer took coins from a victim: actor = the killer, target = the victim, {@code stolen} = the coins moved.
+     * 掠夺者从死者处夺取了金币：actor 为凶手，target 为死者，stolen 为转移的金币。
+     */
+    public static void recordPlundererSteal(ServerPlayerEntity killer, ServerPlayerEntity victim, int stolen) {
+        guarded(PLUNDERER_STEAL, () -> GameRecordManager.event(PLUNDERER_STEAL)
+                .actor(killer)
+                .target(victim)
+                .putInt(STOLEN, stolen)
+                .record());
+    }
+
+    /**
+     * Whether {@code other} is a player other than {@code self}; a missing player is not.
+     * other 是否为 self 以外的玩家；缺失的玩家不算。
+     */
+    static boolean isOtherPlayer(UUID self, @Nullable UUID other) {
+        return other != null && !other.equals(self);
     }
 
     /**
