@@ -32,6 +32,12 @@ public final class SparkStrengthSabotageBridge {
         }
     }
 
+    /** Whether SparkStrength's tablet sabotage is present (it then owns the trait's effects). / SparkStrength 的平板破坏是否存在（存在时由它实现词条效果）。 */
+    public static boolean isAvailable() {
+        resolve();
+        return hasSabotageIdentity != null;
+    }
+
     private static synchronized void resolve() {
         if (resolved) {
             return;
