@@ -86,7 +86,7 @@
   "trait.sparktraits.herculean_strength.name": "Herculean Strength",
   "trait.sparktraits.herculean_strength.description": "Projectiles you throw launch 30% faster, and throw charges are 30% shorter.",
   "trait.sparktraits.master_saboteur.name": "Master Saboteur",
-  "trait.sparktraits.master_saboteur.description": "Blackouts you trigger last 50% longer.",
+  "trait.sparktraits.master_saboteur.description": "You pry junction boxes faster (5%/s) and hack them in 10 s; lights sabotage you trigger is harder to repair (2 more tripped switches, main lever held 1 s longer).",
   "trait.sparktraits.seasoned.name": "Seasoned",
   "trait.sparktraits.seasoned.description": "Knife windup is 20% shorter.",
   "trait.sparktraits.manic.name": "Manic",
