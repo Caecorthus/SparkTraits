@@ -123,9 +123,9 @@ public final class KillerTraitService {
 
     /**
      * Master Saboteur's pool rule: Wathe's shop blackout, or SparkStrength's tablet sabotage, which replaced it (there
-     * the trait speeds up prying and hacking and makes the player's lights sabotage harder to repair).
+     * the trait speeds up prying and hacking and makes the player's lights and engine sabotage harder to repair).
      * 破坏大师的抽取条件：Wathe 商店关灯，或取代它的 SparkStrength 平板破坏（在那里该词条加快撬箱与入侵，并让本人发起的
-     * 灯光破坏更难修）。
+     * 灯光破坏和动力破坏更难修）。
      */
     public static boolean canSabotage(PlayerEntity player) {
         return hasBlackoutShopEntry(player) || SparkStrengthSabotageBridge.canSabotage(player);
