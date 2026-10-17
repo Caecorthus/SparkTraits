@@ -74,10 +74,10 @@ public final class KillerTraits {
                 .predicate(context -> KillerTraitService.canSelectKillerTrait(context.role(), context.selectedTraitIds())
                         && HerculeanStrengthService.hasThrowableAccess(context.player()))
                 .build());
-        TraitRegistry.register(base(MASTER_SABOTEUR, 0x4A5A8C)
+        TraitRegistry.register(new MasterSaboteurTrait(base(MASTER_SABOTEUR, 0x4A5A8C)
                 .predicate(context -> KillerTraitService.canSelectKillerTrait(context.role(), context.selectedTraitIds())
-                        && KillerTraitService.hasBlackoutShopEntry(context.player()))
-                .build());
+                        && KillerTraitService.canSabotage(context.player()))
+                .build()));
         // Close Quarters already owns the knife windup; stacking both would leave Seasoned without an effect.
         // 狭路相逢已接管举刀前摇，两者叠加会让老练失去效果。
         TraitRegistry.register(base(SEASONED, 0x8C9AA6)

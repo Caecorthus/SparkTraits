@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.impl.traits.killer;
 
 import dev.caecorthus.sparktraits.SparkTraits;
+import dev.caecorthus.sparktraits.compat.SparkStrengthSabotageBridge;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.replay.SparkTraitsAchievementRecords;
@@ -118,6 +119,16 @@ public final class KillerTraitService {
 
     public static boolean hasPsychoModeShopEntry(PlayerEntity player) {
         return hasShopEntry(player, List.of("psycho_mode"), List.of(WatheItems.PSYCHO_MODE));
+    }
+
+    /**
+     * Master Saboteur's pool rule: Wathe's shop blackout, or SparkStrength's tablet sabotage, which replaced it (there
+     * the trait speeds up prying and hacking and makes the player's lights and engine sabotage harder to repair).
+     * 破坏大师的抽取条件：Wathe 商店关灯，或取代它的 SparkStrength 平板破坏（在那里该词条加快撬箱与入侵，并让本人发起的
+     * 灯光破坏和动力破坏更难修）。
+     */
+    public static boolean canSabotage(PlayerEntity player) {
+        return hasBlackoutShopEntry(player) || SparkStrengthSabotageBridge.canSabotage(player);
     }
 
     public static boolean hasBlackoutShopEntry(PlayerEntity player) {
