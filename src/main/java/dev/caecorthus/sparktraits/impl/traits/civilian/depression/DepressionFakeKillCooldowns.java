@@ -48,7 +48,10 @@ public final class DepressionFakeKillCooldowns {
             GameConstants.DeathReasons.GRENADE, List.of(Identifier.of("sparkstrength", "m67")),
             GameConstants.DeathReasons.KNIFE, List.of(Identifier.of("sparkwitch", "feather_blade")),
             Identifier.of("noellesroles", "bodyguard_sacrifice"), List.of(Identifier.of("sparkwitch", "feather_blade")),
-            Identifier.of("sparkwitch", "ninja_shuriken_kill"), List.of(Identifier.of("sparkwitch", "ninja_shuriken"))
+            Identifier.of("sparkwitch", "ninja_shuriken_kill"), List.of(Identifier.of("sparkwitch", "ninja_shuriken")),
+            // The Witch Maiden's crimson skull kills in its own tick; the Gohei's cooldown started at the left click.
+            // 巫女的赤色凋灵之首在自身 tick 中击杀；凋灵御币的冷却在左键时就已开始。
+            Identifier.of("sparkwitch", "crimson_wither_skull"), List.of(Identifier.of("sparkwitch", "wither_gohei"))
     );
     private static final Identifier POISON_NEEDLE = Identifier.of("noellesroles", "poison_needle");
     /** Keeps its own kill cooldown through the API; its item cooldown is the dash. 通过 API 自管击杀冷却；其物品冷却是冲刺。 */
