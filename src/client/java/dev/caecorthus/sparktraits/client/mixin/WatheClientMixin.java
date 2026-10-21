@@ -169,13 +169,15 @@ public abstract class WatheClientMixin {
         }
 
         /*
-         * 黑羽鸦在“本能：感知”模式下显示的是 SparkWitch 已完成积点后同步给拥有者的身份快照。
-         * 善良词条同样在 WatheClient.getInstinctHighlight 的 HEAD 阶段接管高亮，如果这里继续先走
-         * 善良分支，就会把黑羽鸦的职业色快照改成善良色，或者被善良 10 格范围限制直接压成隐藏。
-         *
-         * 因此在善良普通本能逻辑之前，先通过可选反射桥询问 SparkWitch：当前目标是否应该由黑羽鸦
-         * 感知模式裁决。返回 null 表示 SparkWitch 当前不接管；返回具体颜色或 -1 时，说明黑羽鸦
-         * 感知模式已经给出最终显示结果，SparkTraits 不再覆盖。
+         * SparkWitch's Black Raven is an always-civilian police role (2026-10-21): while it holds the instinct key,
+         * players it has sensed within 8 blocks show one raven-feather color. This priority-1000 HEAD callback runs
+         * before SparkWitch's priority-2000 HEAD hook, so SparkWitch is asked here, ahead of the Conscience and
+         * effective-killer branches below, for every viewer. null means SparkWitch does not take over; a color or -1
+         * is final.
+         * SparkWitch 黑羽鸦现为始终属于好人的警察身份（2026-10-21）：按住本能键时，8 格内被感知过的玩家显示
+         * 统一的鸦羽色描边。此优先级 1000 的 HEAD 回调早于 SparkWitch 优先级 2000 的 HEAD 钩子执行，因此对所有
+         * 观察者都在下方善良与有效杀手分支之前，先经可选反射桥询问 SparkWitch。返回 null 表示不接管；返回颜色
+         * 或 -1 即为最终结果，SparkTraits 不再覆盖。
          */
         Integer blackRavenSensedHighlight = SparkWitchBlackRavenBridge.resolveSensedInstinctHighlight(target);
         if (blackRavenSensedHighlight != null) {

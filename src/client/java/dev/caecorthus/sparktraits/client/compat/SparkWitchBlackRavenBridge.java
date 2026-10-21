@@ -8,8 +8,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 /**
- * Loader-safe optional bridge to SparkWitch's Black Raven sensed-instinct resolver.
- * 到 SparkWitch 黑羽鸦感知本能裁决器的加载器安全可选桥接。
+ * Loader-safe optional bridge to SparkWitch's Black Raven sensed-instinct resolver. The Black Raven is a civilian
+ * police role (2026-10-21); SparkWitch keeps the reflected {@code resolvePrioritySensedHighlight(Entity)} signature
+ * and answers its 8-block raven-feather x-ray through it.
+ * 到 SparkWitch 黑羽鸦感知本能裁决器的加载器安全可选桥接。黑羽鸦现为好人警察身份（2026-10-21）；SparkWitch
+ * 保留被反射的 {@code resolvePrioritySensedHighlight(Entity)} 签名，并通过它给出 8 格鸦羽色透视结果。
  */
 public final class SparkWitchBlackRavenBridge {
     private static final String MOD_ID = "sparkwitch";
@@ -52,7 +55,7 @@ public final class SparkWitchBlackRavenBridge {
         } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
             /*
              * SparkWitch 是可选依赖；如果对方版本还没有黑羽鸦感知桥，SparkTraits
-             * 必须继续使用自己的善良本能逻辑，不能因为兼容入口缺失导致客户端崩溃。
+             * 必须继续使用自己的本能逻辑，不能因为兼容入口缺失导致客户端崩溃。
              */
         }
     }

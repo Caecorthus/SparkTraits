@@ -7,6 +7,7 @@ import dev.caecorthus.sparktraits.impl.replay.SparkTraitsReplayEvents;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.mixin.GameWorldComponentAccessor;
+import dev.caecorthus.sparkfactionapi.api.settlement.SettlementExclusions;
 import dev.doctor4t.wathe.api.Faction;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
@@ -66,6 +67,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 
 /**
@@ -683,14 +685,34 @@ public final class LastStandService {
     }
 
     private static boolean meetsPopulationThresholdAfterDeath(GameWorldComponent game, UUID dyingPlayerUuid) {
+        return meetsPopulationThresholdAfterDeath(
+                game.getRoles(),
+                dyingPlayerUuid,
+                game::isPlayerDead,
+                uuid -> SettlementExclusions.isExcluded(game, uuid)
+        );
+    }
+
+    /**
+     * Civilian population gate of a Last Stand trigger. SparkFactionAPI settlement-excluded players (raw role) count
+     * toward neither the starting civilians nor the living civilians, as if they were not in the round.
+     * 背水一战触发的好人人数门槛。SparkFactionAPI 结算排除玩家（按原始身份判断）既不计入开局好人数，
+     * 也不计入存活好人数，如同其不在本局。
+     */
+    static boolean meetsPopulationThresholdAfterDeath(
+            Map<UUID, Role> rolesByPlayer,
+            UUID dyingPlayerUuid,
+            Predicate<UUID> dead,
+            Predicate<UUID> settlementExcluded
+    ) {
         int startingCivilians = 0;
         int aliveCiviliansAfterDeath = 0;
-        for (Map.Entry<UUID, Role> entry : game.getRoles().entrySet()) {
-            if (!isCivilian(entry.getValue())) {
+        for (Map.Entry<UUID, Role> entry : rolesByPlayer.entrySet()) {
+            if (!isCivilian(entry.getValue()) || settlementExcluded.test(entry.getKey())) {
                 continue;
             }
             startingCivilians++;
-            if (!entry.getKey().equals(dyingPlayerUuid) && !game.isPlayerDead(entry.getKey())) {
+            if (!entry.getKey().equals(dyingPlayerUuid) && !dead.test(entry.getKey())) {
                 aliveCiviliansAfterDeath++;
             }
         }

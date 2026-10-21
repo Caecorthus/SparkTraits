@@ -13,6 +13,7 @@ import dev.caecorthus.sparkfactionapi.api.FactionDefinition;
 import dev.caecorthus.sparkfactionapi.api.FactionIds;
 import dev.caecorthus.sparkfactionapi.api.SparkFactionApi;
 import dev.caecorthus.sparkfactionapi.api.replay.SparkReplayApi;
+import dev.caecorthus.sparkfactionapi.api.settlement.SettlementExclusions;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
@@ -104,7 +105,9 @@ public final class LastStandFinalMomentService {
         for (PlayerState player : players) {
             // The SparkWitch Fiend never affects a win (its own moment suspends wins in SparkWitch), so it is no opposing faction here.
             // SparkWitch 魔人从不影响胜负（魔人时刻由 SparkWitch 自行暂停胜利判定），因此这里不算作对立阵营。
-            if (!player.alive() || isSparkWitchFiend(player.role())) {
+            // A settlement-excluded player is neither a blocking ordinary civilian nor an opposing faction.
+            // 结算排除玩家既不算阻止终局的普通好人，也不算对立阵营。
+            if (!player.alive() || player.settlementExcluded() || isSparkWitchFiend(player.role())) {
                 continue;
             }
             boolean effectiveCivilian = EffectiveTraitService.isEffectiveCivilian(player.role(), player.traitIds());
@@ -222,7 +225,11 @@ public final class LastStandFinalMomentService {
 
     static GameFunctions.WinStatus timedOutFinalMomentStatus(Collection<PlayerState> players) {
         for (PlayerState player : players) {
-            if (player.alive() && EffectiveTraitService.isEffectiveCivilian(player.role(), player.traitIds())) {
+            // A settlement-excluded player never keeps the time win for the civilian side.
+            // 结算排除玩家永远不会为好人阵营保住时间胜利。
+            if (player.alive()
+                    && !player.settlementExcluded()
+                    && EffectiveTraitService.isEffectiveCivilian(player.role(), player.traitIds())) {
                 // A civilian who outlasted the clock keeps the ordinary time win.
                 // 撑过计时的平民仍按普通时间胜利结算。
                 return GameFunctions.WinStatus.TIME;
@@ -266,6 +273,7 @@ public final class LastStandFinalMomentService {
         }
         for (PlayerState player : players) {
             if (player.alive()
+                    && !player.settlementExcluded()
                     && player.lastStandTriggered()
                     && isLooseEndRole(player.role())) {
                 return true;
@@ -284,9 +292,9 @@ public final class LastStandFinalMomentService {
         PlayerState onlyLivingPlayer = null;
         int livingPlayers = 0;
         for (PlayerState player : players) {
-            // A living SparkWitch Fiend must not delay the survivor's win (D1).
-            // 存活的 SparkWitch 魔人不得拖延幸存者的胜利（D1）。
-            if (!player.alive() || isSparkWitchFiend(player.role())) {
+            // A living SparkWitch Fiend must not delay the survivor's win (D1); neither may a settlement-excluded player.
+            // 存活的 SparkWitch 魔人不得拖延幸存者的胜利（D1）；结算排除玩家同样不得拖延。
+            if (!player.alive() || player.settlementExcluded() || isSparkWitchFiend(player.role())) {
                 continue;
             }
             livingPlayers++;
@@ -522,7 +530,8 @@ public final class LastStandFinalMomentService {
                     gameComponent.getRole(player),
                     TraitPlayerComponent.KEY.get(player).getActiveTraitIds(),
                     gameComponent.hasAnyRole(player) && GameFunctions.isPlayerPlayingAndAlive(player),
-                    LastStandService.hasTriggeredThisRound(world, uuid)
+                    LastStandService.hasTriggeredThisRound(world, uuid),
+                    SettlementExclusions.isExcluded(gameComponent, uuid)
             ));
         }
         return players;
@@ -659,12 +668,20 @@ public final class LastStandFinalMomentService {
         }
     }
 
+    /**
+     * Settlement snapshot of one round participant. {@code settlementExcluded} is SparkFactionAPI's
+     * {@code SettlementExclusions.isExcluded} (raw role); every Final Moment count skips such a player as if they were
+     * not in the round.
+     * 单个对局参与者的结算快照。{@code settlementExcluded} 取自 SparkFactionAPI 的
+     * {@code SettlementExclusions.isExcluded}（按原始身份判断）；终局时刻的所有计数都跳过此类玩家，如同其不在本局。
+     */
     record PlayerState(
             UUID uuid,
             @Nullable Role role,
             Collection<Identifier> traitIds,
             boolean alive,
-            boolean lastStandTriggered
+            boolean lastStandTriggered,
+            boolean settlementExcluded
     ) {
         PlayerState {
             traitIds = traitIds == null ? List.of() : List.copyOf(traitIds);

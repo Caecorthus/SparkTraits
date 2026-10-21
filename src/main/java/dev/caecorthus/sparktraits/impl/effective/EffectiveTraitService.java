@@ -16,6 +16,7 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
+import dev.caecorthus.sparkfactionapi.api.settlement.SettlementExclusions;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
 import dev.doctor4t.wathe.api.event.CheckWinCondition;
@@ -1112,6 +1113,13 @@ public final class EffectiveTraitService {
             if (!GameFunctions.isPlayerPlayingAndAlive(player) || !gameComponent.hasAnyRole(player)) {
                 continue;
             }
+            // SparkFactionAPI settlement-excluded roles (raw role, e.g. SparkWitch's Black Raven) take no part in this
+            // census at all, so every team-win outcome reads exactly as if they were not in the round.
+            // SparkFactionAPI 结算排除身份（按原始身份判断，如 SparkWitch 黑羽鸦）完全不参与本次统计，
+            // 所有队伍胜负都与该玩家不在本局时完全一致。
+            if (SettlementExclusions.isExcluded(gameComponent, player.getUuid())) {
+                continue;
+            }
             Role role = gameComponent.getRole(player);
             Collection<Identifier> traits = TraitPlayerComponent.KEY.get(player).getActiveTraitIds();
             livingRoles.add(role);
@@ -1227,6 +1235,11 @@ public final class EffectiveTraitService {
         boolean realKillerAlive = false;
         for (ServerPlayerEntity player : players) {
             if (!GameFunctions.isPlayerPlayingAndAlive(player) || !gameComponent.hasAnyRole(player)) {
+                continue;
+            }
+            // Same census as the team-win listener: settlement-excluded players never keep the killer side alive.
+            // 与队伍胜利监听相同的统计口径：结算排除玩家永远不算作存活的杀手方。
+            if (SettlementExclusions.isExcluded(gameComponent, player.getUuid())) {
                 continue;
             }
             if (isRealOriginalKiller(player, gameComponent)) {

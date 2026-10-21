@@ -7,6 +7,7 @@ import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.impl.assignment.TraitAssignmentService;
+import dev.caecorthus.sparkfactionapi.api.settlement.SettlementExclusions;
 import dev.doctor4t.wathe.api.event.CheckWinCondition;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.ScoreboardRoleSelectorComponent;
@@ -138,7 +139,12 @@ public abstract class MurderGameModeMixin {
         // 进而无法触发 NoellesRoles 的双影谢幕入口。
         // 这里仅替换 MurderGameMode 的杀手胜利计算，不改变 GameWorldComponent
         // 的全局 isInnocent() 行为，避免影响其他仍依赖原始职业阵营的逻辑。
-        return EffectiveTraitService.isEffectiveCivilian(player, gameWorldComponent);
+        // SparkFactionAPI settlement-excluded roles (raw role, e.g. SparkWitch's Black Raven) never keep the civilian
+        // side alive, so Wathe's killer-win count reads as if they were not in the round.
+        // SparkFactionAPI 结算排除身份（按原始身份判断，如 SparkWitch 黑羽鸦）永远不算存活好人，
+        // 使 wathe 的杀手胜利统计与该玩家不在本局时一致。
+        return !SettlementExclusions.isExcluded(gameWorldComponent, player.getUuid())
+                && EffectiveTraitService.isEffectiveCivilian(player, gameWorldComponent);
     }
 
     @Inject(

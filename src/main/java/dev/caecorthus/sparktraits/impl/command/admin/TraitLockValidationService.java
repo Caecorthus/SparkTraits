@@ -18,6 +18,7 @@ import java.util.Collection;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.selection.TraitRoleEligibility;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 
@@ -89,6 +90,11 @@ public final class TraitLockValidationService {
         // Same permanent exclusion as round assignment, so locks fail loudly instead of being dropped.
         // 与开局分配相同的永久互斥，让锁定直接报错而不是在开局时被静默丢弃。
         if (trait.id().equals(ConscienceTrait.ID) && EffectiveTraitService.isConscienceBlockedRole(role)) {
+            return false;
+        }
+        // Settlement-excluded roles never hold Last Stand (process-lifetime SparkFactionAPI registration).
+        // 结算排除身份永远不能获得背水一战（SparkFactionAPI 注册在进程生命周期内持续有效）。
+        if (trait.id().equals(LastStandTrait.ID) && LastStandTrait.isSettlementExcludedRole(role)) {
             return false;
         }
         // Police-category roles mirror round assignment's Impostor block.
