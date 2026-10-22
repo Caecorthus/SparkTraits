@@ -44,9 +44,13 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     }
 
     public boolean isLastEscapeActive(UUID player) {
-        return world.isClient
-                ? world.getTime() < lastEscapeClientDeadlines.getOrDefault(player, Long.MIN_VALUE)
-                : lastEscape.isActive(player, world.getTime());
+        if (world.isClient) {
+            // Read through get(): getOrDefault would box Long.MIN_VALUE on every per-frame invisibility check.
+            // 使用 get() 读取：getOrDefault 会在每帧的隐身判定中反复装箱 Long.MIN_VALUE。
+            Long deadline = lastEscapeClientDeadlines.get(player);
+            return deadline != null && world.getTime() < deadline;
+        }
+        return lastEscape.isActive(player, world.getTime());
     }
 
     public boolean hasLastEscapeGrayscale(UUID player) {
@@ -66,9 +70,30 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     // Round-scoped final moment flag used by client highlight overlays.
     // 本局终局时刻标记，供客户端高亮覆盖使用。
     private boolean finalMomentActive;
+    // Server-only per-tick memo of KillerTraitService's Oppressive scan; never saved or synced.
+    // 仅服务端使用的压迫感扫描每 tick 缓存；不保存也不同步。
+    private long oppressiveScanTime = Long.MIN_VALUE;
+    private int oppressiveScanServerTick = Integer.MIN_VALUE;
+    private boolean oppressiveScanActive;
 
     public TraitWorldComponent(World world) {
         this.world = world;
+    }
+
+    /**
+     * Returns the Oppressive scan result remembered for this tick, or null when it must be recomputed. Both clocks key
+     * it: world time stops under /tick freeze while players keep ticking, and the server tick alone misses time skips.
+     * 返回本 tick 记住的压迫感扫描结果，需重算时返回 null。两种时钟共同作为键：/tick freeze 时世界时间停止而玩家仍在 tick，
+     * 只用服务器 tick 又会漏掉时间跳变。
+     */
+    public Boolean oppressiveActiveAt(long time, int serverTick) {
+        return time == oppressiveScanTime && serverTick == oppressiveScanServerTick ? oppressiveScanActive : null;
+    }
+
+    public void rememberOppressiveActive(long time, int serverTick, boolean active) {
+        oppressiveScanTime = time;
+        oppressiveScanServerTick = serverTick;
+        oppressiveScanActive = active;
     }
 
     public boolean isTraitEnabled(Identifier traitId) {
@@ -139,6 +164,10 @@ public class TraitWorldComponent implements AutoSyncedComponent {
 
     public boolean hasLastStandTriggered(UUID playerUuid) {
         return playerUuid != null && lastStandTriggeredPlayers.contains(playerUuid);
+    }
+
+    public boolean hasAnyLastStandTriggered() {
+        return !lastStandTriggeredPlayers.isEmpty();
     }
 
     public boolean isFinalMomentActive() {

@@ -3,6 +3,9 @@ package dev.caecorthus.sparktraits.compat;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -13,9 +16,7 @@ import java.lang.reflect.Modifier;
 public final class SparkStrengthCoronerBridge {
     private static final String MOD_ID = "sparkstrength";
     private static final String CORONER_SERVICE = "annina.sparkstrength.role.coroner.CoronerService";
-    private static boolean resolved;
-    private static Method hasKillerFactionDisguise;
-    private static Method hasUndercoverDisguise;
+    private static final MethodType QUERY_TYPE = MethodType.methodType(boolean.class, PlayerEntity.class);
 
     private SparkStrengthCoronerBridge() {
     }
@@ -26,44 +27,52 @@ public final class SparkStrengthCoronerBridge {
         if (player == null) {
             return false;
         }
-        resolve();
-        return query(hasKillerFactionDisguise, player) || query(hasUndercoverDisguise, player);
+        MethodHandle[] methods = Methods.QUERIES;
+        return query(methods[0], player) || query(methods[1], player);
     }
 
-    private static boolean query(Method method, PlayerEntity player) {
+    private static boolean query(MethodHandle method, PlayerEntity player) {
         if (method == null) {
             return false;
         }
         try {
-            return Boolean.TRUE.equals(method.invoke(null, player));
-        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
+            return (boolean) method.invokeExact(player);
+        } catch (Throwable ignored) {
             return false;
         }
     }
 
-    private static synchronized void resolve() {
-        if (resolved) {
-            return;
-        }
-        resolved = true;
+    /**
+     * Resolved once on first query; class initialization keeps later per-frame instinct reads lock-free.
+     * 首次查询时解析一次；类初始化保证之后每帧本能判定的读取无需加锁。
+     */
+    private static final class Methods {
+        // [hasKillerFactionDisguise, hasUndercoverDisguise]; a null slot means that query is unavailable.
+        // [hasKillerFactionDisguise, hasUndercoverDisguise]；为 null 表示该查询不可用。
+        private static final MethodHandle[] QUERIES = resolve();
+    }
+
+    private static MethodHandle[] resolve() {
+        MethodHandle[] methods = new MethodHandle[2];
         if (!FabricLoader.getInstance().isModLoaded(MOD_ID)) {
-            return;
+            return methods;
         }
         try {
             Class<?> service = Class.forName(CORONER_SERVICE, false, SparkStrengthCoronerBridge.class.getClassLoader());
-            hasKillerFactionDisguise = booleanQuery(service, "hasKillerFactionDisguise");
-            hasUndercoverDisguise = booleanQuery(service, "hasUndercoverDisguise");
-        } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
+            methods[0] = booleanQuery(service, "hasKillerFactionDisguise");
+            methods[1] = booleanQuery(service, "hasUndercoverDisguise");
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             // Older or absent providers simply leave the Coroner looking like a civilian to Impostor instinct.
             // 旧版或缺失的提供方只会让验尸官在内鬼本能中保持平民外观，不引入强制依赖。
         }
+        return methods;
     }
 
-    private static Method booleanQuery(Class<?> service, String name) throws NoSuchMethodException {
+    private static MethodHandle booleanQuery(Class<?> service, String name) throws ReflectiveOperationException {
         Method method = service.getMethod(name, PlayerEntity.class);
         if (!Modifier.isStatic(method.getModifiers()) || method.getReturnType() != boolean.class) {
             throw new NoSuchMethodException(name + " must be public static and return boolean");
         }
-        return method;
+        return MethodHandles.publicLookup().unreflect(method).asType(QUERY_TYPE);
     }
 }

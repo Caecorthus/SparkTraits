@@ -1,7 +1,10 @@
 package dev.caecorthus.sparktraits.client.compat;
 
 import net.fabricmc.loader.api.FabricLoader;
+import org.jetbrains.annotations.Nullable;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -12,10 +15,14 @@ import java.lang.reflect.Modifier;
 public final class SparkStrengthHudBridge {
     private static final String MOD_ID = "sparkstrength";
     private static final String HOOKS_CLASS = "annina.sparkstrength.client.role.economy.KillerTeamEconomyClientHooks";
-    private static Method topRightHudBottom;
-    private static boolean initialized;
 
     private SparkStrengthHudBridge() {
+    }
+
+    // Resolved once on first use by thread-safe class initialization; per-frame calls take no lock.
+    // 首次使用时由线程安全的类初始化解析一次；逐帧调用不加锁。
+    private static final class Holder {
+        private static final @Nullable MethodHandle TOP_RIGHT_HUD_BOTTOM = resolveMethod();
     }
 
     /**
@@ -23,34 +30,30 @@ public final class SparkStrengthHudBridge {
      * SparkStrength 右上角额外行的底边 y（不含），否则为 0；提供方缺失、过旧或调用失败时均返回 0。
      */
     public static int topRightHudBottom() {
-        resolveMethod();
-        Method method = topRightHudBottom;
+        MethodHandle method = Holder.TOP_RIGHT_HUD_BOTTOM;
         if (method == null) {
             return 0;
         }
         try {
-            return method.invoke(null) instanceof Integer bottom ? Math.max(0, bottom) : 0;
-        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
+            return Math.max(0, (int) method.invokeExact());
+        } catch (Throwable ignored) {
             return 0;
         }
     }
 
-    private static synchronized void resolveMethod() {
-        if (initialized) {
-            return;
-        }
-        initialized = true;
+    private static @Nullable MethodHandle resolveMethod() {
         if (!FabricLoader.getInstance().isModLoaded(MOD_ID)) {
-            return;
+            return null;
         }
         try {
             Method method = Class.forName(HOOKS_CLASS, false, SparkStrengthHudBridge.class.getClassLoader())
                     .getMethod("topRightHudBottom");
             if (Modifier.isStatic(method.getModifiers()) && method.getReturnType() == int.class) {
-                topRightHudBottom = method;
+                return MethodHandles.publicLookup().unreflect(method);
             }
-        } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             // Older SparkStrength builds keep the card at Wathe's own HUD band. 旧版 SparkStrength 时卡片沿用 Wathe 原有顶带。
         }
+        return null;
     }
 }

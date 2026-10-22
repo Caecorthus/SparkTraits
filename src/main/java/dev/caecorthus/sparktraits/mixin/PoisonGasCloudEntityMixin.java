@@ -76,6 +76,10 @@ public abstract class PoisonGasCloudEntityMixin extends Entity implements Consci
 
     @Unique
     private boolean sparktraits$conscienceGas;
+    // Particle sampling list; the blue cloud only grows, so it is rebuilt only after a spread added blocks.
+    // 粒子采样列表；蓝色毒气只会扩散增长，因此只在扩散新增方块后才重建。
+    @Unique
+    private List<BlockPos> sparktraits$particleBlocks = List.of();
 
     protected PoisonGasCloudEntityMixin(EntityType<?> type, World world) {
         super(type, world);
@@ -245,10 +249,11 @@ public abstract class PoisonGasCloudEntityMixin extends Entity implements Consci
     @Unique
     private boolean sparktraits$isPlayerInGas(ServerPlayerEntity player) {
         Box box = player.getBoundingBox();
+        BlockPos.Mutable cell = new BlockPos.Mutable();
         for (int x = MathHelper.floor(box.minX); x <= MathHelper.floor(box.maxX); x++) {
             for (int y = MathHelper.floor(box.minY); y <= MathHelper.floor(box.maxY); y++) {
                 for (int z = MathHelper.floor(box.minZ); z <= MathHelper.floor(box.maxZ); z++) {
-                    if (gasBlocks.contains(new BlockPos(x, y, z))) {
+                    if (gasBlocks.contains(cell.set(x, y, z))) {
                         return true;
                     }
                 }
@@ -284,7 +289,10 @@ public abstract class PoisonGasCloudEntityMixin extends Entity implements Consci
         if (gasBlocks.isEmpty()) {
             return;
         }
-        List<BlockPos> blockList = new ArrayList<>(gasBlocks);
+        if (sparktraits$particleBlocks.size() != gasBlocks.size()) {
+            sparktraits$particleBlocks = new ArrayList<>(gasBlocks);
+        }
+        List<BlockPos> blockList = sparktraits$particleBlocks;
         int particleCount = 4 + serverWorld.random.nextInt(3);
         for (int i = 0; i < particleCount && !blockList.isEmpty(); i++) {
             BlockPos pos = blockList.get(serverWorld.random.nextInt(blockList.size()));

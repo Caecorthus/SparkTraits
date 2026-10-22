@@ -59,6 +59,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
     private final PlayerEntity player;
     private final LinkedHashSet<Identifier> activeTraits = new LinkedHashSet<>();
+    // Immutable copy handed out by getActiveTraitIds(); dropped on every activeTraits write and rebuilt on demand.
+    // getActiveTraitIds() 返回的不可变副本；activeTraits 每次写入后作废，下次读取时再重建。
+    private List<Identifier> activeTraitSnapshot = List.of();
     private final LinkedHashSet<Identifier> pendingTraits = new LinkedHashSet<>();
     private final LinkedHashSet<Identifier> revealedTraits = new LinkedHashSet<>();
     private boolean killerInstinctHidden;
@@ -93,6 +96,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Owner-only Depression suicide countdown, in ticks. -1 means hidden.
     // 抑郁自杀判定倒计时，仅同步给本人；-1 表示隐藏。
     private int depressionSuicideTicks = -1;
+    // Client-only world time at which the last synced countdown reaches zero.
+    // 仅客户端使用：最近一次同步的倒计时归零时的世界时间。
+    private long depressionSuicideClientDeadline;
     // Public psycho flag is needed for skin rendering; UUIDs are owner-only target hints.
     // 疯魔公开标记用于皮肤渲染；UUID 只给本人用于高亮目标。
     private boolean depressionPsychoActive;
@@ -112,7 +118,18 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     }
 
     public List<Identifier> getActiveTraitIds() {
-        return List.copyOf(activeTraits);
+        // Read on per-tick and per-frame paths, so copy only after the set changed.
+        // 每 tick、每帧都会读取，因此只在集合变化后才重新复制。
+        List<Identifier> snapshot = activeTraitSnapshot;
+        if (snapshot == null) {
+            snapshot = List.copyOf(activeTraits);
+            activeTraitSnapshot = snapshot;
+        }
+        return snapshot;
+    }
+
+    private void activeTraitsChanged() {
+        activeTraitSnapshot = null;
     }
 
     public List<Identifier> getPendingTraitIds() {
@@ -250,6 +267,31 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         }
     }
 
+    /**
+     * Server countdown step without a sync: the owner's client mirrors it in tickDepressionSuicideClient.
+     * 服务端倒计时步进且不同步：本人客户端通过 tickDepressionSuicideClient 同步倒数。
+     */
+    public int countDownDepressionSuicideTicks() {
+        if (depressionSuicideTicks > 0) {
+            depressionSuicideTicks--;
+        }
+        return depressionSuicideTicks;
+    }
+
+    /**
+     * Owner HUD value. The client counts against the world clock, which the server keeps correcting, so a lagging
+     * server slows it just like its own countdown; it then holds at one tick until the roll's reset or stop arrives.
+     * 本人 HUD 显示值。客户端按服务端持续校正的世界时间倒数，因此服务端卡顿时会和服务端倒计时一样变慢；
+     * 倒数到最后会停在 1 tick，直到收到判定后的重置或停止。
+     */
+    public int displayedDepressionSuicideTicks() {
+        if (depressionSuicideTicks <= 0 || !player.getWorld().isClient) {
+            return depressionSuicideTicks;
+        }
+        long remaining = depressionSuicideClientDeadline - player.getWorld().getTime();
+        return (int) Math.max(1L, Math.min(depressionSuicideTicks, remaining));
+    }
+
     public void setDepressionPsychoState(boolean active, UUID attacker) {
         if (this.depressionPsychoActive != active
                 || (this.depressionPsychoAttacker == null ? attacker != null : !this.depressionPsychoAttacker.equals(attacker))) {
@@ -374,6 +416,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 continue;
             }
             activeTraits.add(traitId);
+            activeTraitsChanged();
             Trait trait = TraitRegistry.get(traitId);
             if (trait == null || !trait.hiddenFromOwnerAtStart()) {
                 revealedTraits.add(traitId);
@@ -437,6 +480,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
 
         activeTraits.clear();
         activeTraits.addAll(plan.target());
+        activeTraitsChanged();
         revealedTraits.clear();
         if (exactRevealedTraitIds == null) {
             revealedTraits.addAll(plan.retainedRevealed());
@@ -504,6 +548,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             }
         }
         activeTraits.clear();
+        activeTraitsChanged();
         revealedTraits.clear();
         killerInstinctHidden = false;
         conscienceInstinctVisible = false;
@@ -626,7 +671,23 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         if (current.equals(lastSyncRecipient)) {
             return;
         }
-        lastSyncRecipient = current;
+        resyncFilteredStateTo(self, current);
+    }
+
+    /**
+     * Pushes recipient-filtered trait state to this player now, e.g. right after their death made them a spectator.
+     * Only this player's view changed, so nobody else needs a re-send; the next tick's poll then sees no change.
+     * 立即把按接收者过滤的天赋状态发给本玩家（例如死亡刚使其成为旁观者时）。
+     * 只有本玩家的视角发生变化，其他人无需重发；下一 tick 的轮询也不会再次判定为变化。
+     */
+    public void resyncFilteredStateNow() {
+        if (player instanceof ServerPlayerEntity self) {
+            resyncFilteredStateTo(self, syncRecipient(self));
+        }
+    }
+
+    private void resyncFilteredStateTo(ServerPlayerEntity self, TraitSyncVisibility.Recipient view) {
+        lastSyncRecipient = view;
         for (ServerPlayerEntity other : self.getServerWorld().getPlayers()) {
             if (other == self || PlayerLookup.tracking(other).contains(self)) {
                 KEY.syncWith(self, (ComponentProvider) other);
@@ -718,6 +779,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     public void applySyncPacket(RegistryByteBuf buf) {
         boolean wasPigActive = isPigActive();
         readIdentifierSet(buf, activeTraits);
+        activeTraitsChanged();
         readIdentifierSet(buf, pendingTraits);
         readIdentifierSet(buf, revealedTraits);
         killerInstinctHidden = buf.readBoolean();
@@ -734,6 +796,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionSuicideTicks = buf.readableBytes() > 0 ? buf.readVarInt() : -1;
         if (depressionSuicideTicks <= 0) {
             depressionSuicideTicks = -1;
+        } else {
+            depressionSuicideClientDeadline = player.getWorld().getTime() + depressionSuicideTicks;
         }
         depressionPsychoActive = buf.readableBytes() > 0 && buf.readBoolean();
         depressionPsychoAttacker = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;
@@ -778,6 +842,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     @Override
     public void readFromNbt(@NotNull NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
         activeTraits.clear();
+        activeTraitsChanged();
         pendingTraits.clear();
         revealedTraits.clear();
         killerInstinctHidden = false;
@@ -802,6 +867,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         pigActive = false;
         resetPigAmbientSoundChance();
         fromNbt(tag.getList("ActiveTraits", NbtElement.STRING_TYPE), activeTraits);
+        activeTraitsChanged();
         fromNbt(tag.getList("PendingTraits", NbtElement.STRING_TYPE), pendingTraits);
         fromNbt(tag.getList("RevealedTraits", NbtElement.STRING_TYPE), revealedTraits);
         if (tag.contains("SerialKillerMurdererRole", NbtElement.STRING_TYPE)) {

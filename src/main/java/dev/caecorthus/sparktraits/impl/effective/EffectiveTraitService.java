@@ -37,8 +37,8 @@ import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import org.agmas.noellesroles.morphling.MorphlingPlayerComponent;
+import org.agmas.noellesroles.shadowjester.ShadowJesterPlayerComponent;
 import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
-import org.ladysnake.cca.api.v3.component.ComponentKey;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -1195,31 +1195,23 @@ public final class EffectiveTraitService {
             GameFunctions.WinStatus currentStatus,
             GameFunctions.WinStatus proposedWinStatus
     ) {
+        // Runs for every living player each tick, so only Shadow Jesters read NoellesRoles' component.
+        // 每 tick 对每个存活玩家都会执行，因此只有双影小丑才读取 NoellesRoles 组件。
+        if (player == null || !isNoellesShadowJester(role)) {
+            return false;
+        }
+        ShadowJesterPlayerComponent jester = ShadowJesterPlayerComponent.KEY.get(player);
         return shouldDeferTeamWinForNoellesShadowJester(
                 currentStatus,
                 proposedWinStatus,
                 role,
-                noellesShadowJesterComponentFlag(player, "isAllied"),
-                noellesShadowJesterComponentFlag(player, "isShowdownActive")
+                jester.isAllied(),
+                jester.isShowdownActive()
         );
     }
 
-    private static boolean noellesShadowJesterComponentFlag(PlayerEntity player, String methodName) {
-        if (player == null) {
-            return false;
-        }
-        try {
-            Class<?> componentClass = Class.forName("org.agmas.noellesroles.shadowjester.ShadowJesterPlayerComponent");
-            Object keyObject = componentClass.getField("KEY").get(null);
-            if (!(keyObject instanceof ComponentKey<?> key)) {
-                return false;
-            }
-            Object component = key.get(player);
-            Object result = componentClass.getMethod(methodName).invoke(component);
-            return result instanceof Boolean value && value;
-        } catch (ReflectiveOperationException | LinkageError | ClassCastException exception) {
-            return false;
-        }
+    private static boolean isNoellesShadowJester(Role role) {
+        return role != null && NOELLES_SHADOW_JESTER_ID.equals(role.identifier());
     }
 
     /** Kills Impostors once their real killer-side support is gone, even if neutral blockers keep the round active,
@@ -1279,10 +1271,8 @@ public final class EffectiveTraitService {
             GameWorldComponent gameComponent
     ) {
         for (ServerPlayerEntity player : players) {
-            Role role = gameComponent.getRole(player);
-            if (role != null
-                    && NOELLES_SHADOW_JESTER_ID.equals(role.identifier())
-                    && noellesShadowJesterComponentFlag(player, "isShowdownActive")) {
+            if (isNoellesShadowJester(gameComponent.getRole(player))
+                    && ShadowJesterPlayerComponent.KEY.get(player).isShowdownActive()) {
                 return true;
             }
         }
@@ -1295,6 +1285,11 @@ public final class EffectiveTraitService {
             boolean realOriginalKillerAlive,
             boolean shadowJesterShowdownStarted
     ) {
+        // Either flag already rules out every player below; skip the per-player trait reads.
+        // 任一标记成立时下方所有玩家都不会觉悟；直接跳过逐个读取天赋。
+        if (realOriginalKillerAlive || shadowJesterShowdownStarted) {
+            return;
+        }
         for (ServerPlayerEntity player : players) {
             if (shouldSelfRealizeUnsupportedImpostor(
                     TraitPlayerComponent.KEY.get(player).getActiveTraitIds(),

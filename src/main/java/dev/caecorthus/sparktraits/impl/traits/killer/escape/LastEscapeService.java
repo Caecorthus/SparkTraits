@@ -131,10 +131,17 @@ public final class LastEscapeService {
     }
 
     private static void tick(ServerWorld world) {
+        // Most ticks, the lobby included, have no Last Escape running: only a leftover speed modifier can remain.
+        boolean anyActive = TraitWorldComponent.KEY.get(world).lastEscape().hasAnyActive(world.getTime());
         for (ServerPlayerEntity player : world.getPlayers()) {
+            if (!anyActive) {
+                removeSpeed(player);
+                continue;
+            }
             if (isActive(player)) player.clearActiveItem();
             updateSpeed(player);
         }
+        if (offline.isEmpty()) return;
         // Wathe's disconnect death was deferred by immunity. Settle it once, at the original
         // deadline, using Wathe's normal terminal route rather than leaving an immortal member.
         for (ServerPlayerEntity player : java.util.List.copyOf(offline.values())) {

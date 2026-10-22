@@ -1,12 +1,11 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
-import dev.caecorthus.sparktraits.SparkTraits;
+import dev.caecorthus.sparktraits.client.render.DepressionPsychoTextures;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.entity.PlayerEntityRenderer;
-import net.minecraft.client.util.SkinTextures;
 import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -26,7 +25,6 @@ public abstract class DepressionPsychoArmSkinMixin {
                 || !TraitPlayerComponent.KEY.get(player).isDepressionPsychoActive()) {
             return skinTexture;
         }
-        String suffix = player.getSkinTextures().model() == SkinTextures.Model.SLIM ? "_thin" : "";
-        return SparkTraits.id("textures/entity/depression_psycho" + suffix + ".png");
+        return DepressionPsychoTextures.forModel(player.getSkinTextures().model());
     }
 }

@@ -5,7 +5,9 @@ import dev.caecorthus.sparktraits.client.text.TraitClientTexts;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.option.GameOptions;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Language;
 
 import java.util.List;
 
@@ -31,17 +33,107 @@ public final class TraitNameplateTags {
     private TraitNameplateTags() {
     }
 
+    /** One cached layout per line, since the player and body lines can both show in one frame. 玩家行与尸体行各缓存一份布局。 */
+    private static final LayoutCache PLAYER_LAYOUT = new LayoutCache();
+    private static final LayoutCache BODY_LAYOUT = new LayoutCache();
+
     public static void renderUnderPlayer(DrawContext context, TextRenderer font, List<Identifier> traits, boolean cohortLine, float alpha) {
         int lastLine = cohortLine ? 20 + font.fontHeight : PLAYER_NAME_Y;
-        render(context, font, traits, lastLine + font.fontHeight + LINE_GAP, alpha);
+        render(PLAYER_LAYOUT, context, font, traits, lastLine + font.fontHeight + LINE_GAP, alpha);
     }
 
     public static void renderUnderBody(DrawContext context, TextRenderer font, List<Identifier> traits, float alpha) {
-        render(context, font, traits, BODY_DEATH_INFO_Y + font.fontHeight + LINE_GAP, alpha);
+        render(BODY_LAYOUT, context, font, traits, BODY_DEATH_INFO_Y + font.fontHeight + LINE_GAP, alpha);
     }
 
-    private static void render(DrawContext context, TextRenderer font, List<Identifier> traits, int top, float alpha) {
+    private static void render(LayoutCache cache, DrawContext context, TextRenderer font, List<Identifier> traits, int top, float alpha) {
         double guiScale = MinecraftClient.getInstance().getWindow().getScaleFactor();
+        Layout layout = cache.get(context, font, traits, top, guiScale);
+        String[] names = layout.names();
+        int[] colors = layout.colors();
+        int[] factionColors = layout.factionColors();
+        List<TraitTagLayout.Tag> tags = layout.tags();
+        int unit = layout.unit();
+
+        // Chrome in physical pixels; text afterwards, never inside the fill batch. 先以物理像素绘制装饰，文字在批次之后。
+        context.getMatrices().push();
+        context.getMatrices().scale((float) (1.0 / guiScale), (float) (1.0 / guiScale), 1.0f);
+        InventoryCardPaint.batch(context, () -> {
+            for (int i = 0; i < tags.size(); i++) {
+                TraitTagLayout.Tag tag = tags.get(i);
+                tag(context, tag, unit, colors[i], alpha);
+                gem(context, tag.gemX(), tag.gemY(), unit, factionColors[i], alpha);
+            }
+        });
+        context.getMatrices().pop();
+
+        int text = fade(InventoryCardPaint.TEXT, alpha);
+        for (int i = 0; i < tags.size(); i++) {
+            TraitTagLayout.Tag tag = tags.get(i);
+            context.getMatrices().push();
+            context.getMatrices().translate((float) (tag.textX() / guiScale), (float) (tag.textY() / guiScale), 0.0f);
+            context.getMatrices().scale(TraitTagLayout.TEXT_SCALE, TraitTagLayout.TEXT_SCALE, 1.0f);
+            context.drawText(font, names[i], 0, 0, text, true);
+            context.getMatrices().pop();
+        }
+    }
+
+    /**
+     * Resolved names, colours and tag geometry for one trait list. Everything it depends on is in the key: the list,
+     * GUI scale and scaled window size, the row top, and the language and font settings that change names and widths
+     * (a resource reload installs a new Language instance, so it rebuilds too). Only the fade alpha varies per frame.
+     * 一个天赋列表解析后的名称、颜色与标签几何。其依赖全部在键中：列表、界面缩放与缩放后的窗口尺寸、行顶，以及影响名称与
+     * 宽度的语言和字体设置（资源重载会安装新的 Language 实例，因此同样触发重建）。每帧只有淡入淡出透明度变化。
+     */
+    private record Layout(String[] names, int[] colors, int[] factionColors, int unit, List<TraitTagLayout.Tag> tags) {
+    }
+
+    private static final class LayoutCache {
+        private List<Identifier> traits = List.of();
+        private double guiScale = Double.NaN;
+        private int scaledWidth = -1;
+        private int scaledHeight = -1;
+        private int top = Integer.MIN_VALUE;
+        private Language language;
+        private TextRenderer font;
+        private boolean forceUnicodeFont;
+        private boolean japaneseGlyphVariants;
+        private Layout layout;
+
+        Layout get(DrawContext context, TextRenderer font, List<Identifier> traits, int top, double guiScale) {
+            int scaledWidth = context.getScaledWindowWidth();
+            int scaledHeight = context.getScaledWindowHeight();
+            Language language = Language.getInstance();
+            GameOptions options = MinecraftClient.getInstance().options;
+            boolean forceUnicodeFont = options.getForceUnicodeFont().getValue();
+            boolean japaneseGlyphVariants = options.getJapaneseGlyphVariants().getValue();
+            if (layout == null
+                    || guiScale != this.guiScale
+                    || scaledWidth != this.scaledWidth
+                    || scaledHeight != this.scaledHeight
+                    || top != this.top
+                    || language != this.language
+                    || font != this.font
+                    || forceUnicodeFont != this.forceUnicodeFont
+                    || japaneseGlyphVariants != this.japaneseGlyphVariants
+                    || !traits.equals(this.traits)) {
+                // Copied, so a list changed in place later still misses the cache. 复制一份，原列表之后被原地修改时仍会失效。
+                this.traits = List.copyOf(traits);
+                this.guiScale = guiScale;
+                this.scaledWidth = scaledWidth;
+                this.scaledHeight = scaledHeight;
+                this.top = top;
+                this.language = language;
+                this.font = font;
+                this.forceUnicodeFont = forceUnicodeFont;
+                this.japaneseGlyphVariants = japaneseGlyphVariants;
+                this.layout = build(font, this.traits, top, guiScale, scaledWidth, scaledHeight);
+            }
+            return layout;
+        }
+    }
+
+    private static Layout build(TextRenderer font, List<Identifier> traits, int top, double guiScale, int scaledWidth, int scaledHeight) {
         TraitTagLayout.Metrics metrics = TraitTagLayout.Metrics.of(guiScale);
         String[] names = new String[traits.size()];
         int[] colors = new int[traits.size()];
@@ -56,32 +148,11 @@ public final class TraitNameplateTags {
             factionColors[i] = TraitClientTexts.factionColor(id);
             advances[i] = font.getWidth(names[i]);
         }
-        int centerX = (int) Math.floor(context.getScaledWindowWidth() * guiScale / 2.0);
-        int topPx = (int) Math.round((context.getScaledWindowHeight() / 2.0 + 6.0 + top * TraitTagLayout.TEXT_SCALE) * guiScale);
+        int centerX = (int) Math.floor(scaledWidth * guiScale / 2.0);
+        int topPx = (int) Math.round((scaledHeight / 2.0 + 6.0 + top * TraitTagLayout.TEXT_SCALE) * guiScale);
         List<TraitTagLayout.Tag> tags = TraitTagLayout.arrange(metrics, advances, centerX, topPx,
                 (int) Math.round(MAX_ROW_UNITS * metrics.px()));
-
-        // Chrome in physical pixels; text afterwards, never inside the fill batch. 先以物理像素绘制装饰，文字在批次之后。
-        context.getMatrices().push();
-        context.getMatrices().scale((float) (1.0 / guiScale), (float) (1.0 / guiScale), 1.0f);
-        InventoryCardPaint.batch(context, () -> {
-            for (int i = 0; i < tags.size(); i++) {
-                TraitTagLayout.Tag tag = tags.get(i);
-                tag(context, tag, metrics.unit(), colors[i], alpha);
-                gem(context, tag.gemX(), tag.gemY(), metrics.unit(), factionColors[i], alpha);
-            }
-        });
-        context.getMatrices().pop();
-
-        int text = fade(InventoryCardPaint.TEXT, alpha);
-        for (int i = 0; i < tags.size(); i++) {
-            TraitTagLayout.Tag tag = tags.get(i);
-            context.getMatrices().push();
-            context.getMatrices().translate((float) (tag.textX() / guiScale), (float) (tag.textY() / guiScale), 0.0f);
-            context.getMatrices().scale(TraitTagLayout.TEXT_SCALE, TraitTagLayout.TEXT_SCALE, 1.0f);
-            context.drawText(font, names[i], 0, 0, text, true);
-            context.getMatrices().pop();
-        }
+        return new Layout(names, colors, factionColors, metrics.unit(), tags);
     }
 
     /**

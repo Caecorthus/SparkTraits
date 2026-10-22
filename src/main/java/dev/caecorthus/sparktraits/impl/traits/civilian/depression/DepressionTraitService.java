@@ -21,6 +21,7 @@ import dev.doctor4t.wathe.index.WatheEntities;
 import dev.doctor4t.wathe.index.WatheAttributes;
 import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.util.ShopUtils;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
@@ -30,6 +31,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.s2c.play.StopSoundS2CPacket;
+import net.minecraft.network.packet.s2c.play.UpdateSelectedSlotS2CPacket;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
@@ -80,6 +82,10 @@ public final class DepressionTraitService {
     public static final int RANDOM_CAP_STEP_PLAYERS = 8;
     public static final int JESTER_MOMENT_PSYCHO_ARMOUR = 2;
     public static final int CHASE_LOOP_INTERVAL_TICKS = 1121;
+    // Depression psycho is held at Integer.MAX_VALUE; re-top it only after an hour has drained or something cut it short.
+    // 抑郁疯魔维持在 Integer.MAX_VALUE；只在消耗超过一小时或被其他逻辑缩短后才重新补满。
+    static final int PSYCHO_HOLD_TOP_UP_BELOW_TICKS = Integer.MAX_VALUE - GameConstants.getInTicks(60, 0);
+    static final int PSYCHO_ACTIONBAR_REFRESH_TICKS = 10;
     public static final int DEPRESSION_PSYCHO_SPEED_DURATION_TICKS = Integer.MAX_VALUE;
     public static final int DEPRESSION_PSYCHO_SPEED_AMPLIFIER = 1;
     public static final int FAKE_DEATH_REWARD_DIVISOR = 2;
@@ -120,6 +126,15 @@ public final class DepressionTraitService {
         DoorInteraction.EVENT.register(DepressionTraitService::onDoorInteraction);
         ShopPurchase.BEFORE.register((player, entry, index) ->
                 isPsychoActive(player) ? ShopPurchase.PurchaseResult.deny() : null);
+        // A singleplayer world can be reopened in the same JVM; never carry this server's round state into the next.
+        // 单人存档可在同一 JVM 中重新打开；不能把本服务器的回合状态带到下一次。
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            pendingPlayers.clear();
+            activePlayers.clear();
+            fakeBodies.clear();
+            DepressionFakeKillCooldowns.clear();
+            forceMentalBreakdownDeaths.clear();
+        });
     }
 
     public static boolean canSelectDepression(
@@ -272,20 +287,7 @@ public final class DepressionTraitService {
     }
 
     public static void removeDepressionStamina(ServerPlayerEntity player) {
-        EntityAttributeInstance stamina = player.getAttributeInstance(WatheAttributes.MAX_SPRINT_TIME);
-        if (stamina == null) {
-            return;
-        }
-        if (stamina.hasModifier(DEPRESSION_STAMINA_MODIFIER_ID)) {
-            stamina.removeModifier(DEPRESSION_STAMINA_MODIFIER_ID);
-        }
-        PlayerStaminaComponent staminaComponent = PlayerStaminaComponent.KEY.get(player);
-        if (!staminaComponent.isInfiniteStamina()) {
-            int maxSprintTime = (int) stamina.getValue();
-            staminaComponent.setMaxSprintTime(maxSprintTime);
-            staminaComponent.setSprintingTicks(Math.min(staminaComponent.getSprintingTicks(), maxSprintTime));
-            staminaComponent.sync();
-        }
+        GlobalTraitService.removeStaminaModifier(player, DEPRESSION_STAMINA_MODIFIER_ID);
     }
 
     public static void applyFiniteStaminaPenalty(ServerPlayerEntity player, float previousSprintingTicks) {
@@ -665,9 +667,9 @@ public final class DepressionTraitService {
                 traits.setDepressionSuicideTicks(SUICIDE_INTERVAL_TICKS);
                 continue;
             }
-            ticks--;
-            if (ticks > 0) {
-                traits.setDepressionSuicideTicks(ticks);
+            // The owner's client counts down locally, so only starts, resets and stops are synced.
+            // 本人客户端会自行倒数，因此只在开始、重置与停止时同步。
+            if (traits.countDownDepressionSuicideTicks() > 0) {
                 continue;
             }
             double chance = triggerChance(mood.getMood());
@@ -682,6 +684,9 @@ public final class DepressionTraitService {
     }
 
     private static void tickPending(ServerWorld world) {
+        if (pendingPlayers.isEmpty()) {
+            return;
+        }
         long time = world.getTime();
         for (PendingState state : Set.copyOf(pendingPlayers.values())) {
             if (!(world.getPlayerByUuid(state.playerUuid()) instanceof ServerPlayerEntity player)) {
@@ -695,6 +700,9 @@ public final class DepressionTraitService {
     }
 
     private static void tickActive(ServerWorld world) {
+        if (activePlayers.isEmpty()) {
+            return;
+        }
         for (ActiveState state : Set.copyOf(activePlayers.values())) {
             if (!(world.getPlayerByUuid(state.playerUuid()) instanceof ServerPlayerEntity player)) {
                 activePlayers.remove(state.playerUuid());
@@ -709,7 +717,7 @@ public final class DepressionTraitService {
                 endPsycho(player, playerAlive, playerAlive);
                 continue;
             }
-            ActiveState updatedState = maintainPsycho(player, attacker, state);
+            ActiveState updatedState = maintainPsycho(player, attacker, state, false);
             if (activePlayers.containsKey(player.getUuid())) {
                 activePlayers.put(player.getUuid(), updatedState);
             }
@@ -822,11 +830,17 @@ public final class DepressionTraitService {
         activePlayers.put(player.getUuid(), maintainPsycho(
                 player,
                 attacker,
-                activeState
+                activeState,
+                true
         ));
     }
 
-    private static ActiveState maintainPsycho(ServerPlayerEntity player, @Nullable ServerPlayerEntity attacker, ActiveState state) {
+    private static ActiveState maintainPsycho(
+            ServerPlayerEntity player,
+            @Nullable ServerPlayerEntity attacker,
+            ActiveState state,
+            boolean refreshActionbar
+    ) {
         PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
         if (holdDepressionPsycho(psycho)) {
             // English: The Jester bonus is starting armour only; consumed armour stays consumed.
@@ -838,14 +852,14 @@ public final class DepressionTraitService {
         }
         applyPsychoSpeed(player);
         enforceBatOnly(player);
-        PlayerStaminaComponent stamina = PlayerStaminaComponent.KEY.get(player);
-        stamina.setMaxSprintTime(-1);
-        stamina.setSprintingTicks(Integer.MAX_VALUE);
-        stamina.setExhausted(false);
-        stamina.sync();
-        player.sendMessage(PSYCHO_ACTIONBAR, true);
-        if (attacker != null) {
-            attacker.sendMessage(ATTACKER_ACTIONBAR, true);
+        holdInfiniteStamina(PlayerStaminaComponent.KEY.get(player));
+        // An action bar message stays up for 60 ticks, so a refresh every few ticks keeps it on screen.
+        // 动作栏消息会停留 60 tick，每隔几 tick 刷新一次即可保持显示。
+        if (refreshActionbar || player.getServerWorld().getTime() % PSYCHO_ACTIONBAR_REFRESH_TICKS == 0) {
+            player.sendMessage(PSYCHO_ACTIONBAR, true);
+            if (attacker != null) {
+                attacker.sendMessage(ATTACKER_ACTIONBAR, true);
+            }
         }
         ActiveState updatedState = tickChaseAudio(player, attacker, state);
         return updatedState;
@@ -862,7 +876,11 @@ public final class DepressionTraitService {
         if (psycho.getPsychoTicks() <= 0 && !psycho.startPsycho(PsychoType.VISIBLE_QUIET)) {
             return false;
         }
-        psycho.setPsychoTicks(Integer.MAX_VALUE);
+        // Wathe's setter syncs to every tracker, so top up only after the hold has drained instead of every tick.
+        // Wathe 的设置方法会同步给所有追踪者，因此只在维持时长被消耗后补满，而不是每 tick 重设。
+        if (psycho.getPsychoTicks() < PSYCHO_HOLD_TOP_UP_BELOW_TICKS) {
+            psycho.setPsychoTicks(Integer.MAX_VALUE);
+        }
         return true;
     }
 
@@ -988,6 +1006,9 @@ public final class DepressionTraitService {
      * 假尸只会在假死结束时所在区块已卸载的情况下残留；区块重新加载后将其移除。
      */
     private static void discardStaleFakeBodies(ServerWorld world) {
+        if (fakeBodies.isEmpty()) {
+            return;
+        }
         for (DepressionFakeBodyTracker.FakeBody fakeBody : fakeBodies.bodiesIn(world.getRegistryKey().getValue())) {
             if (!pendingPlayers.containsKey(fakeBody.playerUuid())) {
                 discardFakeBody(world, fakeBody);
@@ -1016,31 +1037,64 @@ public final class DepressionTraitService {
 
     private static void enforceBatOnly(ServerPlayerEntity player) {
         PlayerInventory inventory = player.getInventory();
-        boolean hasBat = false;
+        ItemStack bat = null;
+        boolean changed = false;
         for (List<ItemStack> list : List.of(inventory.main, inventory.armor, inventory.offHand)) {
             for (int i = 0; i < list.size(); i++) {
                 ItemStack stack = list.get(i);
                 if (stack.isEmpty()) {
                     continue;
                 }
-                if (!hasBat && stack.isOf(WatheItems.BAT)) {
-                    hasBat = true;
+                if (bat == null && stack.isOf(WatheItems.BAT)) {
+                    bat = stack;
+                    if (list != inventory.main || i != 0) {
+                        // Keep the bat in the forced slot, or the client reselects wherever it was moved to.
+                        // 让球棒留在强制选中的槽位，否则客户端会重新选中球棒被移到的槽位。
+                        list.set(i, ItemStack.EMPTY);
+                        changed = true;
+                    }
                     continue;
                 }
                 list.set(i, ItemStack.EMPTY);
+                changed = true;
             }
         }
-        if (!hasBat) {
+        if (bat == null) {
             inventory.main.set(0, new ItemStack(WatheItems.BAT));
+            changed = true;
+        } else if (inventory.main.get(0) != bat) {
+            inventory.main.set(0, bat);
         }
-        inventory.selectedSlot = 0;
-        player.currentScreenHandler.sendContentUpdates();
+        if (inventory.selectedSlot != 0) {
+            // The client keeps its own hotbar slot, so a server-only write would leave it holding a different slot.
+            // 客户端维护自己的快捷栏槽位；只改服务端会让客户端仍停在另一个槽位。
+            inventory.selectedSlot = 0;
+            player.networkHandler.sendPacket(new UpdateSelectedSlotS2CPacket(0));
+        }
+        if (changed) {
+            player.currentScreenHandler.sendContentUpdates();
+        }
+    }
+
+    private static void holdInfiniteStamina(PlayerStaminaComponent stamina) {
+        // Keep the owner-only sync every tick: Wathe's sprint limiter also runs on the client and would drain the
+        // owner's copy to exhaustion between server corrections.
+        // 保留每 tick 仅发给本人的同步：Wathe 的冲刺限制也在客户端运行，两次服务端校正之间会把本人副本耗尽。
+        stamina.setMaxSprintTime(-1);
+        stamina.setSprintingTicks(Integer.MAX_VALUE);
+        stamina.setExhausted(false);
+        stamina.sync();
     }
 
     private static void applyPsychoSpeed(ServerPlayerEntity player) {
         StatusEffectInstance speed = player.getStatusEffect(StatusEffects.SPEED);
+        // An equal layer that is still effectively permanent is ours: re-adding it every tick only resets its
+        // duration and sends the player an effect packet each time.
+        // 仍近乎永久的同级速度层就是本状态添加的：每 tick 重新添加只会重置时长，并每次给玩家发送效果数据包。
         if (speed != null
-                && speed.getAmplifier() > DEPRESSION_PSYCHO_SPEED_AMPLIFIER) {
+                && (speed.getAmplifier() > DEPRESSION_PSYCHO_SPEED_AMPLIFIER
+                || (speed.getAmplifier() == DEPRESSION_PSYCHO_SPEED_AMPLIFIER
+                && speed.getDuration() > DEPRESSION_PSYCHO_SPEED_DURATION_TICKS / 2))) {
             return;
         }
         // English: Depression psycho owns a persistent Speed II layer until endPsycho restores/clears it.

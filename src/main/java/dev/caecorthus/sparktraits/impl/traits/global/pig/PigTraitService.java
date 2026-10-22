@@ -23,6 +23,9 @@ public final class PigTraitService {
     public static final int RESET_AMBIENT_SOUND_CHANCE = -80;
     public static final float PIG_COLLISION_WIDTH = 0.6F;
     public static final float PIG_COLLISION_HEIGHT = 1.4F;
+    // EntityDimensions is immutable, and pose updates ask for it several times per tick.
+    // EntityDimensions 不可变，而姿态更新每 tick 会多次请求它。
+    private static final EntityDimensions PIG_DIMENSIONS = EntityDimensions.changing(PIG_COLLISION_WIDTH, PIG_COLLISION_HEIGHT);
     public static final Identifier PIG_GOD_ROLE_ID = Identifier.of("sparkwitch", "pig_god");
     private static final int AMBIENT_SOUND_RANDOM_BOUND = 1000;
 
@@ -42,7 +45,7 @@ public final class PigTraitService {
     }
 
     public static EntityDimensions pigDimensions() {
-        return EntityDimensions.changing(PIG_COLLISION_WIDTH, PIG_COLLISION_HEIGHT);
+        return PIG_DIMENSIONS;
     }
 
     public static SoundEvent ambientSound() {
@@ -71,9 +74,13 @@ public final class PigTraitService {
         }
         TraitPlayerComponent component = TraitPlayerComponent.KEY.get(player);
         boolean pigActive = component.isPigActive();
+        if (!pigActive) {
+            component.resetPigAmbientSoundChance();
+            return;
+        }
         boolean alive = player.isAlive();
         boolean spectator = GameFunctions.isPlayerSpectatingOrCreative(player) || component.isLastStandPending();
-        if (!pigActive || !alive || spectator) {
+        if (!alive || spectator) {
             component.resetPigAmbientSoundChance();
             return;
         }

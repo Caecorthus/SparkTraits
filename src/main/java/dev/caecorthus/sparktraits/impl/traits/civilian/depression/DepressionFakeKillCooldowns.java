@@ -206,6 +206,11 @@ public final class DepressionFakeKillCooldowns {
      */
     public static void endServerTask(MinecraftServer server) {
         try {
+            // Runs after every received packet; there is almost never a pending fake kill to settle.
+            // 每个收到的数据包后都会执行；几乎总是没有待结算的假死。
+            if (pendingFakeKills.isEmpty()) {
+                return;
+            }
             for (UUID uuid : Set.copyOf(pendingFakeKills.keySet())) {
                 FakeKills fakeKills = pendingFakeKills.get(uuid);
                 if (fakeKills.phase == phase) {
@@ -240,6 +245,9 @@ public final class DepressionFakeKillCooldowns {
     }
 
     public static void flushAll(MinecraftServer server) {
+        if (pendingFakeKills.isEmpty()) {
+            return;
+        }
         for (UUID uuid : Set.copyOf(pendingFakeKills.keySet())) {
             FakeKills fakeKills = pendingFakeKills.remove(uuid);
             ServerPlayerEntity attacker = server.getPlayerManager().getPlayer(uuid);

@@ -39,6 +39,11 @@ public abstract class PigPlayerRendererMixin {
             int light,
             CallbackInfo ci
     ) {
+        // The cheap gates run first: the Wraith queries below are reflective and every player renders each frame.
+        // 先执行廉价判定：下方冤魂查询依赖反射，而每名玩家每帧都会渲染。
+        if (!SparkTraitsServerConnection.isConfirmedServer() || !PigTraitService.isPig(player)) {
+            return;
+        }
         AbstractClientPlayerEntity viewer = MinecraftClient.getInstance().player;
         // SparkWitch owns Wraith projection; this trait-owned renderer only yields to its public state query.
         // SparkWitch 负责冤魂投影；此天赋渲染器仅通过公开状态查询让出渲染权。
@@ -46,10 +51,8 @@ public abstract class PigPlayerRendererMixin {
         boolean spectatorReveal = viewer != null
                 && viewer.isSpectator()
                 && SparkTraitsApi.isWraithActive(player);
-        if (SparkTraitsServerConnection.isConfirmedServer()
-                && !wraithViewer
-                && (!player.isInvisible() || spectatorReveal)
-                && PigTraitService.isPig(player)) {
+        if (!wraithViewer
+                && (!player.isInvisible() || spectatorReveal)) {
             Identifier headTexture = getTexture(player);
             PigPlayerRenderer.render(player, yaw, tickDelta, matrices, vertexConsumers, light, headTexture);
             ci.cancel();

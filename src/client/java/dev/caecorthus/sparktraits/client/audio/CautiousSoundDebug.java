@@ -9,12 +9,15 @@ import net.minecraft.util.Identifier;
 /** Client-only, opt-in diagnostics for Cautious sound adapters. */
 public final class CautiousSoundDebug {
     private static final String ENABLED_PROPERTY = "sparktraits.debugCautiousSound";
+    // Read once at class load (set with -D at launch): every client sound asks, and a property lookup is not free.
+    // 类加载时读取一次（启动时以 -D 设置）：每个客户端声音都会询问，而系统属性查找并非零开销。
+    private static final boolean ENABLED = Boolean.getBoolean(ENABLED_PROPERTY);
 
     private CautiousSoundDebug() {
     }
 
     public static boolean isEnabled() {
-        return Boolean.getBoolean(ENABLED_PROPERTY);
+        return ENABLED;
     }
 
     public static void trace(

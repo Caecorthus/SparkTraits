@@ -4,6 +4,8 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -26,10 +28,13 @@ public final class SparkStrengthCoronerClientBridge {
     private static final String HOOKS_CLASS =
             "annina.sparkstrength.client.role.coroner.CoronerClientHooks";
 
-    private static Method resolveKillerDisguiseColor;
-    private static boolean initialized;
-
     private SparkStrengthCoronerClientBridge() {
+    }
+
+    // Resolved once on first use by thread-safe class initialization; calls take no lock and box no arguments.
+    // 首次使用时由线程安全的类初始化解析一次；调用时不加锁，也不装箱参数。
+    private static final class Holder {
+        private static final @Nullable MethodHandle RESOLVE_KILLER_DISGUISE_COLOR = resolveMethod();
     }
 
     /**
@@ -40,26 +45,22 @@ public final class SparkStrengthCoronerClientBridge {
         if (target == null) {
             return null;
         }
-        resolveMethods();
-        Method method = resolveKillerDisguiseColor;
+        MethodHandle method = Holder.RESOLVE_KILLER_DISGUISE_COLOR;
         if (method == null) {
             return null;
         }
         try {
-            Object result = method.invoke(null, target);
-            return result instanceof Integer color ? color : null;
-        } catch (ReflectiveOperationException | LinkageError | ClassCastException ignored) {
+            return (Integer) method.invokeExact(target);
+        } catch (Throwable ignored) {
+            // Like the reflective call it replaces, any failure inside SparkStrength falls back to SparkTraits' logic.
+            // 与被替换的反射调用一致，SparkStrength 内部的任何失败都回退到 SparkTraits 的逻辑。
             return null;
         }
     }
 
-    private static synchronized void resolveMethods() {
-        if (initialized) {
-            return;
-        }
-        initialized = true;
+    private static @Nullable MethodHandle resolveMethod() {
         if (!FabricLoader.getInstance().isModLoaded(MOD_ID)) {
-            return;
+            return null;
         }
         try {
             Class<?> hooks = Class.forName(
@@ -67,11 +68,11 @@ public final class SparkStrengthCoronerClientBridge {
                     false,
                     SparkStrengthCoronerClientBridge.class.getClassLoader()
             );
-            resolveKillerDisguiseColor = integerQuery(
+            return MethodHandles.publicLookup().unreflect(integerQuery(
                     hooks,
                     "resolveKillerDisguiseInstinctColor"
-            );
-        } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
+            ));
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             /*
              * SparkStrength 是可选扩展；缺失或版本没有此公开接缝时，
              * SparkTraits 必须继续使用自己的本能判定，不能让客户端崩溃。
@@ -79,6 +80,7 @@ public final class SparkStrengthCoronerClientBridge {
              * SparkStrength is optional. A missing or older seam must leave
              * SparkTraits' own instinct logic intact instead of crashing the client.
              */
+            return null;
         }
     }
 

@@ -22,7 +22,9 @@ public final class DepressionHud {
     }
 
     public static void render(TextRenderer renderer, ClientPlayerEntity player, DrawContext context, float delta) {
-        int ticks = TraitPlayerComponent.KEY.get(player).getDepressionSuicideTicks();
+        // The server syncs only countdown starts, resets and stops; the component counts the rest down locally.
+        // 服务端只同步倒计时的开始、重置与停止；其余由组件在本地倒数。
+        int ticks = TraitPlayerComponent.KEY.get(player).displayedDepressionSuicideTicks();
         if (ticks <= 0) {
             return;
         }

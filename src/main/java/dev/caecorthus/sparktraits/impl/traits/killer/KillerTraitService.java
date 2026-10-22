@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.impl.traits.killer;
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.compat.SparkStrengthSabotageBridge;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.replay.SparkTraitsAchievementRecords;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
@@ -296,6 +297,11 @@ public final class KillerTraitService {
     }
 
     public static float oppressiveAdjustedMood(float currentMood, float proposedMood, PlayerEntity affectedPlayer) {
+        // Rising or unchanged mood is never amplified, so skip the world scan.
+        // 理智上升或不变时不会被放大，因此跳过整个世界的扫描。
+        if (proposedMood >= currentMood) {
+            return proposedMood;
+        }
         return oppressiveAdjustedMood(currentMood, proposedMood, hasActiveOppressiveInWorld(affectedPlayer));
     }
 
@@ -408,6 +414,14 @@ public final class KillerTraitService {
             return;
         }
         TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
+        // Runs every tick for every player: without Thrust there is only a stale modifier to remove.
+        // 每个玩家每 tick 都会执行：没有突刺时只需移除残留的修饰。
+        if (!traits.hasActiveTrait(KillerTraits.THRUST)) {
+            if (knockback.hasModifier(THRUST_KNOCKBACK_MODIFIER_ID)) {
+                knockback.removeModifier(THRUST_KNOCKBACK_MODIFIER_ID);
+            }
+            return;
+        }
         boolean active = canUseThrust(
                 traits.hasActiveTrait(KillerTraits.THRUST),
                 hasEligibleKillerTraitOwner(player),
@@ -504,6 +518,21 @@ public final class KillerTraitService {
         if (affectedPlayer == null || !(affectedPlayer.getWorld() instanceof ServerWorld world)) {
             return false;
         }
+        // Every player's mood tick asks the same question, so scan the world once per tick.
+        // 每个玩家的理智 tick 都会问同一个问题，因此每 tick 只扫描一次世界。
+        TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(world);
+        long time = world.getTime();
+        int serverTick = world.getServer().getTicks();
+        Boolean cached = traitWorld.oppressiveActiveAt(time, serverTick);
+        if (cached != null) {
+            return cached;
+        }
+        boolean active = scanActiveOppressive(world);
+        traitWorld.rememberOppressiveActive(time, serverTick, active);
+        return active;
+    }
+
+    private static boolean scanActiveOppressive(ServerWorld world) {
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
         for (ServerPlayerEntity player : world.getPlayers()) {
             if (hasEligibleTrait(player, KillerTraits.OPPRESSIVE)
