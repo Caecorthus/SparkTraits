@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.client.hud;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.doctor4t.wathe.client.gui.TimeRenderer;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -18,6 +19,12 @@ public final class DepressionHud {
     }
 
     public static void tick() {
+        // The server syncs only countdown starts, resets and stops, so the owner counts the rest down here.
+        // 服务端只同步倒计时的开始、重置与停止，其余由本人客户端在此自行倒数。
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player != null && !client.isPaused()) {
+            TraitPlayerComponent.KEY.get(client.player).tickDepressionSuicideClient();
+        }
         timer.update();
     }
 

@@ -22,6 +22,7 @@ import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheEntities;
 import dev.doctor4t.wathe.index.WatheItems;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
@@ -117,6 +118,18 @@ public final class LastStandService {
             return null;
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> cancelPendingRevive(handler.player));
+        // A singleplayer world can be reopened in the same JVM; never carry this server's round state into the next.
+        // 单人存档可在同一 JVM 中重新打开；不能把本服务器的回合状态带到下一次。
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            pendingPlayers.clear();
+            returnPoints.clear();
+            moodSamples.clear();
+            lastSampleTicks.clear();
+            preDeathMoodPercent.clear();
+            consumedPlayers.clear();
+            approvedLastStandDeaths.clear();
+            revivedImmunePlayers.clear();
+        });
         registerInteractionLocks();
     }
 
@@ -245,9 +258,14 @@ public final class LastStandService {
         }
         if (entity instanceof PlayerBodyEntity body) {
             UUID playerUuid = body.getPlayerUuid();
+            // The server map answers without the linear player lookup below.
+            // 服务端映射可直接给出结果，无需下方的线性玩家查找。
+            if (isPending(playerUuid)) {
+                return true;
+            }
             PlayerEntity player = body.getWorld().getPlayerByUuid(playerUuid);
             boolean syncedPending = player != null && TraitPlayerComponent.KEY.get(player).isLastStandPending();
-            return shouldDisablePendingCollision(isPending(playerUuid), syncedPending);
+            return shouldDisablePendingCollision(false, syncedPending);
         }
         return false;
     }
@@ -426,6 +444,12 @@ public final class LastStandService {
         );
     }
 
+    /** Cheap round-wide gate: without any Last Stand trigger no Final Moment can start. */
+    public static boolean hasAnyTriggeredThisRound(ServerWorld world) {
+        return !consumedPlayers.isEmpty()
+                || (world != null && TraitWorldComponent.KEY.get(world).hasAnyLastStandTriggered());
+    }
+
     static boolean hasTriggeredThisRound(boolean runtimeTriggered, boolean roundStateTriggered) {
         return runtimeTriggered || roundStateTriggered;
     }
@@ -521,6 +545,9 @@ public final class LastStandService {
     }
 
     private static void tickPendingPlayers(ServerWorld world) {
+        if (pendingPlayers.isEmpty()) {
+            return;
+        }
         long time = world.getTime();
         for (PendingState state : Set.copyOf(pendingPlayers.values())) {
             if (!state.deathWorldKey().equals(world.getRegistryKey())) {

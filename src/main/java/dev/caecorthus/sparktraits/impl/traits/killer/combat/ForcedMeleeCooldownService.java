@@ -20,13 +20,16 @@ import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /** Independent item-type deadlines survive stack replacement, normal cooldown writes and disconnects. */
 public final class ForcedMeleeCooldownService {
     private static final Map<UUID, Penalties> SERVER = new HashMap<>();
     private static final Map<Identifier, Long> CLIENT = new HashMap<>();
+    private static final Set<UUID> EXPIRED = new HashSet<>();
     private static UUID clientOwner;
     private static boolean registered;
 
@@ -51,15 +54,18 @@ public final class ForcedMeleeCooldownService {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             long now = server.getOverworld().getTime();
             SERVER.values().forEach(state -> state.deadlines.values().removeIf(deadline -> deadline <= now));
-            SERVER.values().removeIf(state -> state.deadlines.isEmpty());
+            // A player whose last floor just expired gets one empty snapshot; players without floors need no resync.
+            SERVER.entrySet().removeIf(entry -> entry.getValue().deadlines.isEmpty() && EXPIRED.add(entry.getKey()));
             for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                boolean expired = EXPIRED.remove(player.getUuid());
                 if (!GameFunctions.isPlayerPlayingAndAlive(player)) {
                     if (SERVER.containsKey(player.getUuid())) clearPlayer(player);
                     continue;
                 }
                 restoreFloors(player);
-                if (server.getTicks() % 20 == 0) sync(player);
+                if (expired || (server.getTicks() % 20 == 0 && SERVER.containsKey(player.getUuid()))) sync(player);
             }
+            EXPIRED.clear();
         });
     }
 

@@ -20,6 +20,13 @@ public final class LastEscapeRoundState {
         return state != null && state.grayscale && now < state.expiresAt;
     }
 
+    public boolean hasAnyActive(long now) {
+        for (State state : players.values()) {
+            if (state.grayscale && now < state.expiresAt) return true;
+        }
+        return false;
+    }
+
     public boolean hasGrayscale(UUID player) {
         State state = players.get(player);
         return state != null && state.grayscale;

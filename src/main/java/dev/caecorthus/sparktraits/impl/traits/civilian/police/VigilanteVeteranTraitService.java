@@ -17,8 +17,10 @@ import dev.doctor4t.wathe.index.tag.WatheItemTags;
 import dev.doctor4t.wathe.util.GunDropPayload;
 import dev.doctor4t.wathe.util.Scheduler;
 import dev.doctor4t.wathe.util.ShootMuzzleS2CPayload;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -94,6 +96,10 @@ public final class VigilanteVeteranTraitService {
     public static void register() {
         GunShotCycles.register();
         ServerTickEvents.END_WORLD_TICK.register(VigilanteVeteranTraitService::tickWorld);
+        // A reconnect re-derives ownership from the live effect, so the marker must not outlive the connection.
+        // 重连后会依据实际效果重新判定归属，因此标记不能比连接存活更久。
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> NIKO_NIGHT_VISION.remove(handler.player.getUuid()));
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> NIKO_NIGHT_VISION.clear());
     }
 
     /** Selection and runtime gate for the gun police traits; see {@link PoliceRoleCategory}.
@@ -403,6 +409,12 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static float wellTrainedAdjustedMood(float currentMood, float proposedMood, PlayerEntity player) {
+        // Runs in every player's mood tick: resolve the role only for a rising drain on a Well-Trained owner.
+        // 每个玩家的理智 tick 都会执行：只有理智下降且拥有训练有素时才解析职业。
+        if (proposedMood >= currentMood || player == null
+                || !TraitPlayerComponent.KEY.get(player).hasActiveTrait(PoliceTraits.WELL_TRAINED)) {
+            return proposedMood;
+        }
         return wellTrainedAdjustedMood(currentMood, proposedMood, roleOf(player), traitsOf(player));
     }
 
@@ -637,6 +649,12 @@ public final class VigilanteVeteranTraitService {
         long worldTick = world.getTime();
         for (ServerPlayerEntity player : world.getPlayers()) {
             TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
+            // Without a Niko-owned effect to maintain, only a sneaking Niko owner can need any work.
+            // 没有需要维护的 Niko 夜视时，只有潜行中的 Niko 持有者才可能需要处理。
+            if (!NIKO_NIGHT_VISION.containsKey(player.getUuid())
+                    && !(player.isSneaking() && traits.hasActiveTrait(PoliceTraits.NIKO))) {
+                continue;
+            }
             boolean eligible = shouldRefreshNikoNightVision(
                     GameFunctions.isPlayerPlayingAndAlive(player),
                     roleOf(player),
@@ -685,6 +703,11 @@ public final class VigilanteVeteranTraitService {
     }
 
     private static void clearNikoNightVision(ServerWorld world) {
+        // Unowned night vision is always kept, so there is nothing to clear without a marker.
+        // 非 Niko 持有的夜视总是保留，因此没有标记时无需清理。
+        if (NIKO_NIGHT_VISION.isEmpty()) {
+            return;
+        }
         long worldTick = world.getTime();
         for (ServerPlayerEntity player : world.getPlayers()) {
             syncNikoNightVision(player, false, worldTick);

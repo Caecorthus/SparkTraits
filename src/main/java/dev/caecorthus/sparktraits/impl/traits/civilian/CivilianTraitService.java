@@ -88,8 +88,13 @@ public final class CivilianTraitService {
         if (proposedMood >= currentMood || player == null) {
             return proposedMood;
         }
-        GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
         Collection<Identifier> traits = traitsOf(player);
+        // Counting nearby players is a world scan, so do it only for Extroverted or Introverted owners.
+        // 统计附近玩家需要扫描世界，因此只对外向或内向的玩家执行。
+        if (!traits.contains(CivilianTraits.EXTROVERTED) && !traits.contains(CivilianTraits.INTROVERTED)) {
+            return proposedMood;
+        }
+        GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
         if (!canSelectCivilianTrait(game.getRole(player), traits)) {
             return proposedMood;
         }

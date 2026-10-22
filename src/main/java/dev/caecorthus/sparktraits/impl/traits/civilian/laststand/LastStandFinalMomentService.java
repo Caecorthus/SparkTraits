@@ -143,6 +143,13 @@ public final class LastStandFinalMomentService {
             return false;
         }
         TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(world);
+        // Runs from the win check every tick: rule out the common cases before snapshotting every round player.
+        // 每 tick 都会从胜负判定进入：先排除常见情况，再为每位本局玩家生成快照。
+        if (gameComponent.getGameStatus() != GameWorldComponent.GameStatus.ACTIVE
+                || traitWorld.isFinalMomentActive()
+                || !LastStandService.hasAnyTriggeredThisRound(world)) {
+            return false;
+        }
         List<PlayerState> players = snapshotPlayers(world, gameComponent);
         if (!canTriggerInactiveFinalMoment(
                 gameComponent.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE,

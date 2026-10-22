@@ -39,6 +39,10 @@ final class DepressionFakeBodyTracker {
                 .toList();
     }
 
+    boolean isEmpty() {
+        return bodies.isEmpty();
+    }
+
     void untrack(UUID bodyUuid) {
         bodies.remove(bodyUuid);
     }

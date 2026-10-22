@@ -302,12 +302,20 @@ public final class GlobalTraitService {
     }
 
     public static void removeExcellentPhysiqueStamina(ServerPlayerEntity player) {
+        removeStaminaModifier(player, EXCELLENT_PHYSIQUE_STAMINA_MODIFIER_ID);
+    }
+
+    /**
+     * Drops one max-sprint modifier and clamps finite live stamina to the new maximum; shared by stamina trait removals.
+     * 移除一个最大冲刺时长修饰，并把有限体力夹到新的上限；供各体力类天赋移除时共用。
+     */
+    public static void removeStaminaModifier(ServerPlayerEntity player, Identifier modifierId) {
         EntityAttributeInstance stamina = player.getAttributeInstance(WatheAttributes.MAX_SPRINT_TIME);
         if (stamina == null) {
             return;
         }
-        if (stamina.hasModifier(EXCELLENT_PHYSIQUE_STAMINA_MODIFIER_ID)) {
-            stamina.removeModifier(EXCELLENT_PHYSIQUE_STAMINA_MODIFIER_ID);
+        if (stamina.hasModifier(modifierId)) {
+            stamina.removeModifier(modifierId);
         }
         PlayerStaminaComponent staminaComponent = PlayerStaminaComponent.KEY.get(player);
         if (!staminaComponent.isInfiniteStamina()) {

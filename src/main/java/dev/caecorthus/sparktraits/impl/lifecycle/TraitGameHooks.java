@@ -81,7 +81,7 @@ public final class TraitGameHooks {
             EffectiveTraitService.handleAfterKill(victim, killer, deathReason);
             DepressionTraitService.handleAfterKill(victim, killer, deathReason);
             if (lastStandStarted) {
-                syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), GameWorldComponent.KEY.get(victim.getWorld()));
+                syncPlayerTraitsToNewSpectators(victim);
                 return;
             }
             ConscienceEconomyService.rewardAfterConfirmedRealDeath(victim);
@@ -96,7 +96,7 @@ public final class TraitGameHooks {
             // Publish Wathe's confirmed-death set before syncing spectator-visible trait state.
             // 在同步旁观者可见的天赋状态前，先发布 Wathe 的已确认死亡集合。
             gameComponent.sync();
-            syncPlayerTraitsToNewSpectators((ServerWorld) victim.getWorld(), gameComponent);
+            syncPlayerTraitsToNewSpectators(victim);
         });
 
         dev.doctor4t.wathe.api.event.GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
@@ -128,11 +128,11 @@ public final class TraitGameHooks {
         }
     }
 
-    private static void syncPlayerTraitsToNewSpectators(ServerWorld world, GameWorldComponent gameComponent) {
-        for (UUID uuid : gameComponent.getAllPlayers()) {
-            if (world.getPlayerByUuid(uuid) instanceof ServerPlayerEntity player) {
-                TraitPlayerComponent.KEY.sync(player);
-            }
-        }
+    /**
+     * A death changes only the victim's own view, so only the victim needs everyone's spectator-visible traits re-sent.
+     * 死亡只改变死者自己的视角，因此只需把所有人的旁观者可见天赋重发给死者。
+     */
+    private static void syncPlayerTraitsToNewSpectators(ServerPlayerEntity victim) {
+        TraitPlayerComponent.KEY.get(victim).resyncFilteredStateNow();
     }
 }
