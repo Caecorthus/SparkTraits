@@ -1,13 +1,12 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.sugar.Local;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.traits.global.SpiritSleuthTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.SpiritSleuthVisibilityRules;
-import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.At;
  */
 @Mixin(LivingEntityRenderer.class)
 public abstract class SpiritSleuthLivingEntityRendererMixin {
-    @WrapOperation(
+    @ModifyExpressionValue(
             method = "render(Lnet/minecraft/entity/LivingEntity;FFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V",
             at = @At(
                     value = "INVOKE",
@@ -27,15 +26,16 @@ public abstract class SpiritSleuthLivingEntityRendererMixin {
             )
     )
     private boolean sparktraits$revealSpectatorHead(
-            LivingEntity target,
-            PlayerEntity viewer,
-            Operation<Boolean> original
+            boolean originallyInvisible,
+            @Local(argsOnly = true) LivingEntity target
     ) {
-        boolean originallyInvisible = original.call(target, viewer);
         if (!originallyInvisible) {
             return false;
         }
 
+        // Vanilla asks on behalf of the local player (MinecraftClient.player), the same viewer read here.
+        // 原版以本地玩家（MinecraftClient.player）的身份询问，这里读取的是同一观察者。
+        PlayerEntity viewer = MinecraftClient.getInstance().player;
         boolean viewerHasActiveTrait = viewer != null
                 && TraitPlayerComponent.KEY.get(viewer).hasActiveTrait(SpiritSleuthTrait.ID);
         boolean targetIsSpectatorPlayer = target instanceof PlayerEntity targetPlayer
