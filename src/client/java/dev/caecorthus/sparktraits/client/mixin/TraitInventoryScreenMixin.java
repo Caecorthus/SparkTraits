@@ -25,7 +25,10 @@ public abstract class TraitInventoryScreenMixin extends LimitedHandledScreen<Pla
         super(handler, inventory, title);
     }
 
-    @Inject(method = "method_25394(Lnet/minecraft/class_332;IIF)V", at = @At("TAIL"))
+    // Named selector: Loom remaps it to Screen's intermediary method_25394 in the packaged jar, and dev runs keep the
+    // named render, so both environments resolve Wathe's override.
+    // 使用具名选择器：Loom 在打包 jar 中将其重映射为 Screen 的中间名 method_25394，开发环境则保留具名 render，两端都能命中 Wathe 的重写。
+    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;IIF)V", at = @At("TAIL"))
     private void sparktraits$renderOwnerTraits(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (OwnerInventoryClientAdapter.externallyPresented() || OwnerInventoryClientAdapter.nativeCardDisabled()) return;
         // A failure must not escape Wathe's render (it would crash the client): the card is disabled for this
