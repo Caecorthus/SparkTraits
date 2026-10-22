@@ -20,6 +20,7 @@ import java.util.UUID;
  */
 public final class DepressionRageLoopController {
     private static final Map<UUID, DepressionRageLoopSoundInstance> activeLoops = new HashMap<>();
+    private static final Set<UUID> ACTIVE_PLAYERS = new HashSet<>();
 
     private DepressionRageLoopController() {
     }
@@ -33,7 +34,10 @@ public final class DepressionRageLoopController {
             return;
         }
 
-        Set<UUID> activePlayers = new HashSet<>();
+        // Reused every tick instead of allocated: almost every tick has no psycho at all.
+        // 每 tick 复用而非新建：绝大多数 tick 根本没有疯魔玩家。
+        Set<UUID> activePlayers = ACTIVE_PLAYERS;
+        activePlayers.clear();
         for (PlayerEntity player : client.world.getPlayers()) {
             if (!TraitPlayerComponent.KEY.get(player).isDepressionPsychoActive()) {
                 continue;
@@ -55,6 +59,11 @@ public final class DepressionRageLoopController {
             }
         }
 
+        if (activeLoops.size() == activePlayers.size()) {
+            // Every loop belongs to a psycho seen this tick, so there is nothing to stop.
+            // 每个循环都属于本 tick 看到的疯魔玩家，无需停止任何循环。
+            return;
+        }
         Iterator<Map.Entry<UUID, DepressionRageLoopSoundInstance>> iterator = activeLoops.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<UUID, DepressionRageLoopSoundInstance> entry = iterator.next();
@@ -67,6 +76,9 @@ public final class DepressionRageLoopController {
     }
 
     private static void stopAll(SoundManager soundManager) {
+        if (activeLoops.isEmpty()) {
+            return;
+        }
         for (DepressionRageLoopSoundInstance instance : activeLoops.values()) {
             stop(soundManager, instance);
         }

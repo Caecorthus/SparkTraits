@@ -7,6 +7,7 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
+import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
@@ -15,6 +16,7 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import dev.caecorthus.sparktraits.client.killer.LastEscapeWitchBridge;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 
 import java.io.IOException;
 
@@ -27,11 +29,14 @@ public final class DepressionScreenEffects {
     private static final float DESATURATE_FACTOR = 0.69f;
     private static final float SPREAD_FACTOR = 1.43f;
     private static final ScreenEffect NO_EFFECT = new ScreenEffect(0.0f, 0.0f, 1.0f);
+    /** An unused processor is kept this long before its framebuffers are freed. 处理器闲置超过该时长后释放其帧缓冲。 */
+    private static final long IDLE_CLOSE_MS = 5_000L;
     private static boolean loadFailed;
     private static Framebuffer processorTarget;
     private static PostEffectProcessor processor;
     private static int processorWidth = -1;
     private static int processorHeight = -1;
+    private static long lastUsedMs;
 
     private DepressionScreenEffects() {
     }
@@ -43,12 +48,12 @@ public final class DepressionScreenEffects {
         }
         // Delegation performs the pass now, so mixin ordering cannot cause a second pass.
         if (SparkTraitsApi.hasLastEscapeGrayscale(player) && LastEscapeWitchBridge.tryRender(player, delta)) {
-            closeProcessor();
+            releaseIfIdle(player);
             return;
         }
         ScreenEffect effect = screenEffect(player);
         if (!effect.isVisible()) {
-            closeProcessor();
+            releaseIfIdle(player);
             return;
         }
 
@@ -57,6 +62,7 @@ public final class DepressionScreenEffects {
         if (activeProcessor == null) {
             return;
         }
+        lastUsedMs = Util.getMeasuringTimeMs();
 
         activeProcessor.setUniforms("DesaturateFactor", effect.desaturateFactor());
         activeProcessor.setUniforms("SpreadFactor", effect.spreadFactor());
@@ -65,6 +71,20 @@ public final class DepressionScreenEffects {
             activeProcessor.render(delta);
         } finally {
             client.getFramebuffer().beginWrite(false);
+        }
+    }
+
+    /*
+     * An invisible frame only skips the pass: mood crossing the threshold or a psycho toggle would otherwise rebuild the
+     * processor (JSON parse, shader link, framebuffers) on the next visible frame. It is closed once unused for a few
+     * seconds, or right away when the round is over.
+     * 不可见的帧只跳过本次后处理：否则心情跨过阈值或疯魔切换后，下一可见帧就要重建处理器（解析 JSON、链接着色器、创建帧缓冲）。
+     * 闲置数秒后关闭；对局结束时立即关闭。
+     */
+    private static void releaseIfIdle(PlayerEntity player) {
+        if (processor != null && (Util.getMeasuringTimeMs() - lastUsedMs > IDLE_CLOSE_MS
+                || !GameWorldComponent.KEY.get(player.getWorld()).isRunning())) {
+            closeProcessor();
         }
     }
 
@@ -115,11 +135,17 @@ public final class DepressionScreenEffects {
         if (loadFailed || framebuffer.textureWidth <= 0 || framebuffer.textureHeight <= 0) {
             return null;
         }
-        if (processor != null && (processorTarget != framebuffer
-                || processorWidth != framebuffer.textureWidth || processorHeight != framebuffer.textureHeight)) {
+        if (processor != null && processorTarget != framebuffer) {
             closeProcessor();
         }
         if (processor != null) {
+            if (processorWidth != framebuffer.textureWidth || processorHeight != framebuffer.textureHeight) {
+                // A window resize only resizes the pass targets, as vanilla does for its own post effects.
+                // 窗口尺寸变化时只调整后处理目标的大小，与原版处理自身后处理效果的方式一致。
+                processor.setupDimensions(framebuffer.textureWidth, framebuffer.textureHeight);
+                processorWidth = framebuffer.textureWidth;
+                processorHeight = framebuffer.textureHeight;
+            }
             return processor;
         }
 

@@ -3,7 +3,7 @@ package dev.caecorthus.sparktraits.client.mixin;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import dev.caecorthus.sparktraits.SparkTraits;
+import dev.caecorthus.sparktraits.client.render.DepressionPsychoTextures;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -59,7 +59,6 @@ public abstract class DepressionPsychoSkinMixin {
                 || !TraitPlayerComponent.KEY.get(player).isDepressionPsychoActive()) {
             return null;
         }
-        String suffix = player.getSkinTextures().model() == SkinTextures.Model.SLIM ? "_thin" : "";
-        return SparkTraits.id("textures/entity/depression_psycho" + suffix + ".png");
+        return DepressionPsychoTextures.forModel(player.getSkinTextures().model());
     }
 }

@@ -93,6 +93,7 @@
   "trait.sparktraits.manic.name": "狂躁",
   "trait.sparktraits.manic.description": "球棒的攻击冷却缩短 20%。",
   "gui.sparktraits.forced_melee_cooldown": "%ss",
+  "gui.sparktraits.conscience_serial_killer.murderer_role": "凶手身份：%s",
   "announcement.goal.sparktraits.conscience": "使用你的能力帮助好人生还！",
   "announcement.goal.sparktraits.impostor": "运用你的身份为杀手阵营获取胜利",
   "subtitle.sparktraits.final_moment": "最后三分钟开始了。",

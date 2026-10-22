@@ -4,6 +4,8 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -18,45 +20,49 @@ public final class SparkWitchBlackRavenBridge {
     private static final String MOD_ID = "sparkwitch";
     private static final String HOOKS_CLASS =
             "dev.caecorthus.sparkwitch.client.blackraven.BlackRavenInstinctClientHooks";
-    private static Method resolveSensedHighlight;
-    private static boolean initialized;
 
     private SparkWitchBlackRavenBridge() {
+    }
+
+    /*
+     * Resolved once, on first use, by the JVM's thread-safe class initialization: the instinct hook calls this for every
+     * visible entity each frame, so no call takes a lock or boxes arguments into an Object[].
+     * 首次使用时由 JVM 线程安全的类初始化解析一次：本能钩子每帧为每个可见实体调用此处，因此调用时不加锁，也不把参数装进 Object[]。
+     */
+    private static final class Holder {
+        private static final @Nullable MethodHandle RESOLVE_SENSED_HIGHLIGHT = resolveMethod();
     }
 
     public static @Nullable Integer resolveSensedInstinctHighlight(Entity target) {
         if (target == null) {
             return null;
         }
-        resolveMethods();
-        Method method = resolveSensedHighlight;
+        MethodHandle method = Holder.RESOLVE_SENSED_HIGHLIGHT;
         if (method == null) {
             return null;
         }
         try {
-            Object result = method.invoke(null, target);
-            return result instanceof Integer color ? color : null;
-        } catch (ReflectiveOperationException | LinkageError | ClassCastException ignored) {
+            return (Integer) method.invokeExact(target);
+        } catch (Throwable ignored) {
+            // Like the reflective call it replaces, any failure inside SparkWitch falls back to SparkTraits' own logic.
+            // 与被替换的反射调用一致，SparkWitch 内部的任何失败都回退到 SparkTraits 自身逻辑。
             return null;
         }
     }
 
-    private static synchronized void resolveMethods() {
-        if (initialized) {
-            return;
-        }
-        initialized = true;
+    private static @Nullable MethodHandle resolveMethod() {
         if (!FabricLoader.getInstance().isModLoaded(MOD_ID)) {
-            return;
+            return null;
         }
         try {
             Class<?> hooks = Class.forName(HOOKS_CLASS, false, SparkWitchBlackRavenBridge.class.getClassLoader());
-            resolveSensedHighlight = integerQuery(hooks, "resolvePrioritySensedHighlight");
-        } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
+            return MethodHandles.publicLookup().unreflect(integerQuery(hooks, "resolvePrioritySensedHighlight"));
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             /*
              * SparkWitch 是可选依赖；如果对方版本还没有黑羽鸦感知桥，SparkTraits
              * 必须继续使用自己的本能逻辑，不能因为兼容入口缺失导致客户端崩溃。
              */
+            return null;
         }
     }
 

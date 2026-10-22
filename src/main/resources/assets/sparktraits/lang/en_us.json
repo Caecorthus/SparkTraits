@@ -93,6 +93,7 @@
   "trait.sparktraits.manic.name": "Manic",
   "trait.sparktraits.manic.description": "Bat attack cooldown is 20% shorter.",
   "gui.sparktraits.forced_melee_cooldown": "%ss",
+  "gui.sparktraits.conscience_serial_killer.murderer_role": "Murderer's role: %s",
   "announcement.goal.sparktraits.conscience": "Use your abilities to help the innocents survive!",
   "announcement.goal.sparktraits.impostor": "Use your identity to secure victory for the killer team.",
   "subtitle.sparktraits.final_moment": "The final three minutes begin.",
