@@ -96,6 +96,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Owner-only Depression suicide countdown, in ticks. -1 means hidden.
     // 抑郁自杀判定倒计时，仅同步给本人；-1 表示隐藏。
     private int depressionSuicideTicks = -1;
+    // Client-only world time at which the last synced countdown reaches zero.
+    // 仅客户端使用：最近一次同步的倒计时归零时的世界时间。
+    private long depressionSuicideClientDeadline;
     // Public psycho flag is needed for skin rendering; UUIDs are owner-only target hints.
     // 疯魔公开标记用于皮肤渲染；UUID 只给本人用于高亮目标。
     private boolean depressionPsychoActive;
@@ -275,13 +278,18 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         return depressionSuicideTicks;
     }
 
-    public void tickDepressionSuicideClient() {
-        if (player.getWorld().isClient && depressionSuicideTicks > 0) {
-            depressionSuicideTicks--;
-            if (depressionSuicideTicks <= 0) {
-                depressionSuicideTicks = -1;
-            }
+    /**
+     * Owner HUD value. The client counts against the world clock, which the server keeps correcting, so a lagging
+     * server slows it just like its own countdown; it then holds at one tick until the roll's reset or stop arrives.
+     * 本人 HUD 显示值。客户端按服务端持续校正的世界时间倒数，因此服务端卡顿时会和服务端倒计时一样变慢；
+     * 倒数到最后会停在 1 tick，直到收到判定后的重置或停止。
+     */
+    public int displayedDepressionSuicideTicks() {
+        if (depressionSuicideTicks <= 0 || !player.getWorld().isClient) {
+            return depressionSuicideTicks;
         }
+        long remaining = depressionSuicideClientDeadline - player.getWorld().getTime();
+        return (int) Math.max(1L, Math.min(depressionSuicideTicks, remaining));
     }
 
     public void setDepressionPsychoState(boolean active, UUID attacker) {
@@ -788,6 +796,8 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         depressionSuicideTicks = buf.readableBytes() > 0 ? buf.readVarInt() : -1;
         if (depressionSuicideTicks <= 0) {
             depressionSuicideTicks = -1;
+        } else {
+            depressionSuicideClientDeadline = player.getWorld().getTime() + depressionSuicideTicks;
         }
         depressionPsychoActive = buf.readableBytes() > 0 && buf.readBoolean();
         depressionPsychoAttacker = buf.readableBytes() > 0 ? readOptionalUuid(buf) : null;

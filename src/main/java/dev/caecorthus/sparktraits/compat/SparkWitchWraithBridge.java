@@ -54,9 +54,11 @@ public final class SparkWitchWraithBridge {
         try {
             Class<?> api = Class.forName(API_CLASS);
             return booleanQuery(api, "isWraithActive");
-        } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
-            // SparkWitch is optional; absent or incompatible APIs must leave normal mood behavior intact.
-            // SparkWitch 是可选依赖；缺失或不兼容的 API 必须保留正常理智条行为。
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
+            // SparkWitch is optional; absent or incompatible APIs must leave normal mood behavior intact. A failure here
+            // must not escape: it would fail the holder class and turn every later query into an error.
+            // SparkWitch 是可选依赖；缺失或不兼容的 API 必须保留正常理智条行为。此处的失败不能抛出：
+            // 否则持有类初始化失败，之后的每次查询都会报错。
             return null;
         }
     }

@@ -235,12 +235,15 @@ public abstract class WatheClientMixin {
         }
         // SparkTraits answers before NoellesRoles' event skip, so mirror sight-gated target skips here.
         // SparkTraits 会先于 NoellesRoles 的事件 skip 返回，因此这里同步只阻止遮挡透视的目标规则。
+        // canSee is a block raycast per target per frame; it only matters when the rule would otherwise skip,
+        // so ask the rule with the target unseen first and raycast only then.
+        // canSee 是每帧对每个目标的方块射线；只有规则在目标不可见时会跳过才需要它，因此先按不可见询问，再做射线。
         if (EffectiveTraitService.isHiddenFromKillerInstinct(playerTarget)
-                || EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(
+                || (EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(
                         game.getRole(playerTarget),
                         context.hasImpostor(),
-                        viewer.canSee(playerTarget)
-                )) {
+                        false
+                ) && !viewer.canSee(playerTarget))) {
             cir.setReturnValue(-1);
             return;
         }

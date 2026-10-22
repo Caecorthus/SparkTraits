@@ -1037,7 +1037,7 @@ public final class DepressionTraitService {
 
     private static void enforceBatOnly(ServerPlayerEntity player) {
         PlayerInventory inventory = player.getInventory();
-        boolean hasBat = false;
+        ItemStack bat = null;
         boolean changed = false;
         for (List<ItemStack> list : List.of(inventory.main, inventory.armor, inventory.offHand)) {
             for (int i = 0; i < list.size(); i++) {
@@ -1045,17 +1045,25 @@ public final class DepressionTraitService {
                 if (stack.isEmpty()) {
                     continue;
                 }
-                if (!hasBat && stack.isOf(WatheItems.BAT)) {
-                    hasBat = true;
+                if (bat == null && stack.isOf(WatheItems.BAT)) {
+                    bat = stack;
+                    if (list != inventory.main || i != 0) {
+                        // Keep the bat in the forced slot, or the client reselects wherever it was moved to.
+                        // 让球棒留在强制选中的槽位，否则客户端会重新选中球棒被移到的槽位。
+                        list.set(i, ItemStack.EMPTY);
+                        changed = true;
+                    }
                     continue;
                 }
                 list.set(i, ItemStack.EMPTY);
                 changed = true;
             }
         }
-        if (!hasBat) {
+        if (bat == null) {
             inventory.main.set(0, new ItemStack(WatheItems.BAT));
             changed = true;
+        } else if (inventory.main.get(0) != bat) {
+            inventory.main.set(0, bat);
         }
         if (inventory.selectedSlot != 0) {
             // The client keeps its own hotbar slot, so a server-only write would leave it holding a different slot.
@@ -1069,13 +1077,9 @@ public final class DepressionTraitService {
     }
 
     private static void holdInfiniteStamina(PlayerStaminaComponent stamina) {
-        // Wathe's own stamina tick re-syncs drift; push only when this hold actually rewrites a value.
-        // Wathe 自身的体力 tick 会同步偏差；只有本维持逻辑真正改写数值时才主动同步。
-        if (stamina.getMaxSprintTime() == -1
-                && stamina.getSprintingTicks() == Integer.MAX_VALUE
-                && !stamina.isExhausted()) {
-            return;
-        }
+        // Keep the owner-only sync every tick: Wathe's sprint limiter also runs on the client and would drain the
+        // owner's copy to exhaustion between server corrections.
+        // 保留每 tick 仅发给本人的同步：Wathe 的冲刺限制也在客户端运行，两次服务端校正之间会把本人副本耗尽。
         stamina.setMaxSprintTime(-1);
         stamina.setSprintingTicks(Integer.MAX_VALUE);
         stamina.setExhausted(false);

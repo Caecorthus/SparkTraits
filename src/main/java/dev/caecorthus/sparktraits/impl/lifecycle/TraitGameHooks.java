@@ -15,6 +15,7 @@ import java.util.UUID;
 import dev.caecorthus.sparktraits.impl.compatibility.noellesroles.SilencedKillerRestrictionService;
 import dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi.SparkFactionApiEffectiveFactionBridge;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.death.EffectiveDeathConsequenceRules;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBombService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceEconomyService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
@@ -108,6 +109,9 @@ public final class TraitGameHooks {
             ConscienceSerialKillerService.clearAll();
             LastStandService.clearRoundState(serverWorld);
             DepressionTraitService.clearRoundState(serverWorld);
+            // Attributions for victims who never died this round must not reach a death in the next one.
+            // 本局未死亡受害者的毒源归因不能带到下一局的死亡判定。
+            EffectiveDeathConsequenceRules.clearPoisonSources();
             clearActiveTraits(serverWorld, gameComponent);
         });
     }

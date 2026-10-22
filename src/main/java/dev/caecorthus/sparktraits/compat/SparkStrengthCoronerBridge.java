@@ -61,7 +61,7 @@ public final class SparkStrengthCoronerBridge {
             Class<?> service = Class.forName(CORONER_SERVICE, false, SparkStrengthCoronerBridge.class.getClassLoader());
             methods[0] = booleanQuery(service, "hasKillerFactionDisguise");
             methods[1] = booleanQuery(service, "hasUndercoverDisguise");
-        } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             // Older or absent providers simply leave the Coroner looking like a civilian to Impostor instinct.
             // 旧版或缺失的提供方只会让验尸官在内鬼本能中保持平民外观，不引入强制依赖。
         }

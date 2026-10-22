@@ -522,12 +522,13 @@ public final class KillerTraitService {
         // 每个玩家的理智 tick 都会问同一个问题，因此每 tick 只扫描一次世界。
         TraitWorldComponent traitWorld = TraitWorldComponent.KEY.get(world);
         long time = world.getTime();
-        Boolean cached = traitWorld.oppressiveActiveAt(time);
+        int serverTick = world.getServer().getTicks();
+        Boolean cached = traitWorld.oppressiveActiveAt(time, serverTick);
         if (cached != null) {
             return cached;
         }
         boolean active = scanActiveOppressive(world);
-        traitWorld.rememberOppressiveActive(time, active);
+        traitWorld.rememberOppressiveActive(time, serverTick, active);
         return active;
     }
 

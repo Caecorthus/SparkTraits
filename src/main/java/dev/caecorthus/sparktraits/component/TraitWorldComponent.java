@@ -73,19 +73,26 @@ public class TraitWorldComponent implements AutoSyncedComponent {
     // Server-only per-tick memo of KillerTraitService's Oppressive scan; never saved or synced.
     // 仅服务端使用的压迫感扫描每 tick 缓存；不保存也不同步。
     private long oppressiveScanTime = Long.MIN_VALUE;
+    private int oppressiveScanServerTick = Integer.MIN_VALUE;
     private boolean oppressiveScanActive;
 
     public TraitWorldComponent(World world) {
         this.world = world;
     }
 
-    /** Returns the Oppressive scan result remembered for this world time, or null when it must be recomputed. */
-    public Boolean oppressiveActiveAt(long time) {
-        return time == oppressiveScanTime ? oppressiveScanActive : null;
+    /**
+     * Returns the Oppressive scan result remembered for this tick, or null when it must be recomputed. Both clocks key
+     * it: world time stops under /tick freeze while players keep ticking, and the server tick alone misses time skips.
+     * 返回本 tick 记住的压迫感扫描结果，需重算时返回 null。两种时钟共同作为键：/tick freeze 时世界时间停止而玩家仍在 tick，
+     * 只用服务器 tick 又会漏掉时间跳变。
+     */
+    public Boolean oppressiveActiveAt(long time, int serverTick) {
+        return time == oppressiveScanTime && serverTick == oppressiveScanServerTick ? oppressiveScanActive : null;
     }
 
-    public void rememberOppressiveActive(long time, boolean active) {
+    public void rememberOppressiveActive(long time, int serverTick, boolean active) {
         oppressiveScanTime = time;
+        oppressiveScanServerTick = serverTick;
         oppressiveScanActive = active;
     }
 
