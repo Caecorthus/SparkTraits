@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.client.killer;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.caecorthus.sparktraits.api.SparkTraitsApi;
+import dev.caecorthus.sparktraits.client.render.ClientFrameClock;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -13,11 +14,29 @@ import net.minecraft.util.Identifier;
 public final class ForcedMeleeHud {
     private static final Identifier AIM = Identifier.of("wathe", "hud/crosshair");
     private static final int RED = 0xffff4040;
+    private static long remainingTicksFrame = ClientFrameClock.NO_FRAME;
+    private static int remainingTicks;
 
     private ForcedMeleeHud() {
     }
 
+    /**
+     * Read up to three times per frame (Wathe's crosshair, the vanilla fallback, the hotbar indicator); the cooldown
+     * counts in ticks, so one frame shares one answer.
+     * 每帧最多读取三次（Wathe 准星、原版回退、快捷栏指示器）；冷却以 tick 计，因此同一帧共用一个结果。
+     */
     public static int remainingTicks() {
+        long frame = ClientFrameClock.currentFrame();
+        if (frame != ClientFrameClock.NO_FRAME && frame == remainingTicksFrame) {
+            return remainingTicks;
+        }
+        int ticks = computeRemainingTicks();
+        remainingTicksFrame = frame;
+        remainingTicks = ticks;
+        return ticks;
+    }
+
+    private static int computeRemainingTicks() {
         MinecraftClient client = MinecraftClient.getInstance();
         if (!SparkTraitsServerConnection.isConfirmedServer() || client.player == null || client.world == null
                 || !GameWorldComponent.KEY.get(client.world).isRunning()

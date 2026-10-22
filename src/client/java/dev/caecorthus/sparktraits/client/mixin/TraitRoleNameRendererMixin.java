@@ -1,5 +1,6 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import dev.caecorthus.sparktraits.api.SparkTraitsApi;
 import dev.caecorthus.sparktraits.client.hud.ConscienceSerialKillerHud;
 import dev.caecorthus.sparktraits.client.hud.TraitNameplateTags;
@@ -24,9 +25,11 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.LightType;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -43,8 +46,35 @@ public abstract class TraitRoleNameRendererMixin {
     private static List<Identifier> sparktraits$lastPlayerTraits = List.of();
     private static List<Identifier> sparktraits$lastBodyTraits = List.of();
 
+    /*
+     * Wathe's own body raycast (its second getCollision) with Wathe's range, captured for this renderHud call. Its
+     * predicate is the one updateBodyTraitLine uses, so when both ranges agree the tags reuse the hit instead of casting
+     * again. The player raycast (the first) is not reused: SparkWitch narrows and relabels it (Wraiths, Magician puppets).
+     * 本次 renderHud 中 Wathe 自身的尸体射线（第二个 getCollision）及其距离。其判定与 updateBodyTraitLine 相同，因此两者距离
+     * 一致时标签直接复用命中结果，不再重复投射。玩家射线（第一个）不复用：SparkWitch 会收窄并改写它（冤魂、魔术师皮套）。
+     */
+    private static HitResult sparktraits$watheBodyHit;
+    private static boolean sparktraits$watheBodyHitCaptured;
+
+    @ModifyExpressionValue(
+            method = "renderHud",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/entity/projectile/ProjectileUtil;getCollision(Lnet/minecraft/entity/Entity;Ljava/util/function/Predicate;D)Lnet/minecraft/util/hit/HitResult;",
+                    ordinal = 1
+            )
+    )
+    private static HitResult sparktraits$captureWatheBodyHit(HitResult hit) {
+        sparktraits$watheBodyHit = hit;
+        sparktraits$watheBodyHitCaptured = true;
+        return hit;
+    }
+
     @Inject(method = "renderHud", at = @At("TAIL"))
     private static void sparktraits$renderTraitTags(TextRenderer renderer, ClientPlayerEntity player, DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
+        HitResult watheBodyHit = sparktraits$watheBodyHitCaptured ? sparktraits$watheBodyHit : null;
+        sparktraits$watheBodyHit = null;
+        sparktraits$watheBodyHitCaptured = false;
         if (!SparkTraitsServerConnection.isConfirmedServer()) {
             return;
         }
@@ -56,10 +86,16 @@ public abstract class TraitRoleNameRendererMixin {
         }
 
         float delta = tickCounter.getTickDelta(true) / 4.0f;
+        // Read once per frame: it costs a reflective state query and a component lookup.
+        // 每帧只读取一次：它需要一次反射状态查询与一次组件查找。
         boolean canSeeTraitInformation = sparktraits$canSeeTraitInformation(player);
         float range = canSeeTraitInformation ? 8.0f : 2.0f;
-        updatePlayerTraitLine(player, range, delta);
-        updateBodyTraitLine(player, range, delta);
+        // Wathe casts its body ray with the spectator-information range; reuse it only when that is our range too.
+        // Wathe 以旁观信息距离投射尸体射线；仅当该距离与本处相同时复用。
+        boolean watheBodyRangeMatches = canSeeTraitInformation == WatheClient.canSeeSpectatorInformation();
+        updatePlayerTraitLine(player, canSeeTraitInformation, range, delta);
+        updateBodyTraitLine(player, canSeeTraitInformation, range, delta,
+                watheBodyHit != null && watheBodyRangeMatches ? watheBodyHit : null);
 
         if (sparktraits$playerTraitAlpha > 0.05f && !sparktraits$lastPlayerTraits.isEmpty()) {
             TraitNameplateTags.renderUnderPlayer(context, renderer, sparktraits$lastPlayerTraits, sparktraits$playerCohortLine, sparktraits$playerTraitAlpha);
@@ -69,8 +105,8 @@ public abstract class TraitRoleNameRendererMixin {
         }
     }
 
-    private static void updatePlayerTraitLine(ClientPlayerEntity player, float range, float delta) {
-        if (!sparktraits$canSeeTraitInformation(player)) {
+    private static void updatePlayerTraitLine(ClientPlayerEntity player, boolean canSeeTraitInformation, float range, float delta) {
+        if (!canSeeTraitInformation) {
             sparktraits$playerTraitAlpha = MathHelper.lerp(delta, sparktraits$playerTraitAlpha, 0.0f);
             return;
         }
@@ -97,11 +133,20 @@ public abstract class TraitRoleNameRendererMixin {
         sparktraits$playerTraitAlpha = MathHelper.lerp(delta, sparktraits$playerTraitAlpha, 0.0f);
     }
 
-    private static void updateBodyTraitLine(ClientPlayerEntity player, float range, float delta) {
-        if (ProjectileUtil.getCollision(player, entity -> entity instanceof PlayerBodyEntity body && CanTargetBody.EVENT.invoker().canTarget(player, body), range) instanceof EntityHitResult hit
+    private static void updateBodyTraitLine(
+            ClientPlayerEntity player,
+            boolean canSeeTraitInformation,
+            float range,
+            float delta,
+            @Nullable HitResult watheBodyHit
+    ) {
+        HitResult bodyHit = watheBodyHit != null
+                ? watheBodyHit
+                : ProjectileUtil.getCollision(player, entity -> entity instanceof PlayerBodyEntity body && CanTargetBody.EVENT.invoker().canTarget(player, body), range);
+        if (bodyHit instanceof EntityHitResult hit
                 && hit.getEntity() instanceof PlayerBodyEntity body) {
             UUID deadPlayerUuid = body.getPlayerUuid();
-            if (deadPlayerUuid != null && (sparktraits$canSeeTraitInformation(player) || CanSeeBodyRole.EVENT.invoker().canSee(MinecraftClient.getInstance().player))) {
+            if (deadPlayerUuid != null && (canSeeTraitInformation || CanSeeBodyRole.EVENT.invoker().canSee(MinecraftClient.getInstance().player))) {
                 Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(deadPlayerUuid);
                 List<Identifier> traits = TraitWorldComponent.KEY.get(player.getWorld()).getDeathTraitSnapshot(deadPlayerUuid);
                 if (role != null && !traits.isEmpty()) {
