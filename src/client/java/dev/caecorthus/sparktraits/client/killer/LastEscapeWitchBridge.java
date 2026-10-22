@@ -12,6 +12,7 @@ public final class LastEscapeWitchBridge {
     private static boolean resolved;
     private static Method render;
     private static Method protocol;
+    private static boolean protocolConfirmed;
 
     private LastEscapeWitchBridge() {
     }
@@ -38,10 +39,17 @@ public final class LastEscapeWitchBridge {
             return false;
         }
         try {
-            // Recheck initialization, not just method presence; old/incompatible clients retain fallback.
-            // 每次确认已初始化的兼容协议，不能仅凭方法存在就放弃本地后处理。
-            return Integer.valueOf(1).equals(protocol.invoke(null))
-                    && Boolean.TRUE.equals(render.invoke(null, player, delta));
+            // Check initialization, not just method presence; old/incompatible clients retain fallback. SparkWitch installs
+            // its compositor once and never removes it, so version 1 is rechecked only until first seen, not every frame.
+            // 确认兼容协议已初始化，不能仅凭方法存在就放弃本地后处理。SparkWitch 只安装一次合成器且从不移除，
+            // 因此只在首次确认版本 1 之前逐次复核，而非每帧调用。
+            if (!protocolConfirmed) {
+                if (!Integer.valueOf(1).equals(protocol.invoke(null))) {
+                    return false;
+                }
+                protocolConfirmed = true;
+            }
+            return Boolean.TRUE.equals(render.invoke(null, player, delta));
         } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             render = null;
             return false;
