@@ -18,6 +18,7 @@
     "ChildishBipedEntityModelMixin",
     "ChildishLivingEntityRendererMixin",
     "ChildishPlayerEntityRendererMixin",
+    "ClientFrameClockMixin",
     "DepressionGameRendererMixin",
     "DepressionPsychoArmSkinMixin",
     "DepressionInGameHudMixin",
