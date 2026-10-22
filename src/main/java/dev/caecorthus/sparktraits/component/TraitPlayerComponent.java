@@ -832,6 +832,7 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     @Override
     public void readFromNbt(@NotNull NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
         activeTraits.clear();
+        activeTraitsChanged();
         pendingTraits.clear();
         revealedTraits.clear();
         killerInstinctHidden = false;
