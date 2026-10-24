@@ -4,6 +4,7 @@ import dev.caecorthus.sparktraits.client.compat.SparkStrengthCoronerClientBridge
 import dev.caecorthus.sparktraits.client.compat.SparkWitchBlackRavenBridge;
 import dev.caecorthus.sparktraits.client.instinct.GoingDarkInstinctClientHooks;
 import dev.caecorthus.sparktraits.client.instinct.InstinctViewerContext;
+import dev.caecorthus.sparktraits.client.instinct.PartyAnimalInstinctClientHooks;
 import dev.caecorthus.sparktraits.compat.SparkStrengthCoronerBridge;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
@@ -207,11 +208,17 @@ public abstract class WatheClientMixin {
                     false,
                     bombHolderIgnoresRange || poisonedTargetIgnoresRange
             );
+            // Conscience hides the event's outlines, but a Party Animal's keyless helium and balloon outlines are its own
+            // ability, so they still show wherever the Conscience outline does not.
+            // 善良会隐藏事件给出的描边，但派对狂免按键的氦气与气球描边是其自身能力，因此在善良描边不显示的地方照常显示。
+            Integer partyAnimalOutline = shouldHighlight
+                    ? null
+                    : PartyAnimalInstinctClientHooks.ownKeylessHighlight(context, playerTarget);
             cir.setReturnValue(shouldHighlight
                     ? (poisonedTargetIgnoresRange
                     ? ConsciencePoisonerService.poisonInstinctColor(normalPoisoned, bluePoisoned)
                     : (bombHolderIgnoresRange ? Noellesroles.BOMBER.color() : EffectiveTraitService.CONSCIENCE_COLOR))
-                    : -1);
+                    : (partyAnimalOutline != null ? partyAnimalOutline : -1));
             return;
         }
 
@@ -274,6 +281,10 @@ public abstract class WatheClientMixin {
                         false,
                         false
                 ));
+            } else if (PartyAnimalInstinctClientHooks.ownKeylessHighlight(context, playerTarget) != null) {
+                // The helium and balloon outlines are keyless overlays; while the key is held the instinct colour wins.
+                // 氦气与气球描边是免按键叠加层；按住本能键时以本能颜色为准。
+                cir.setReturnValue(PartyAnimalInstinctClientHooks.nativeKillerInstinctColor(context, playerTarget));
             }
         }
     }

@@ -42,6 +42,7 @@ public final class InstinctViewerContext {
     private final SerialKillerPlayerComponent serialKillerTargets;
     private final boolean toxicologist;
     private final boolean bomber;
+    private final boolean partyAnimal;
     private final boolean conscience;
     private final boolean conscienceDelegatesToNative;
     private final boolean consciencePoisoner;
@@ -67,6 +68,7 @@ public final class InstinctViewerContext {
         this.serialKillerTargets = SerialKillerPlayerComponent.KEY.get(viewer);
         this.toxicologist = game.isRole(viewer, Noellesroles.TOXICOLOGIST);
         this.bomber = game.isRole(viewer, Noellesroles.BOMBER);
+        this.partyAnimal = game.isRole(viewer, Noellesroles.PARTY_ANIMAL);
         this.conscience = EffectiveTraitService.hasConscience(viewer);
         // The delegate query is reflective, so it is only asked for Conscience viewers, as the hook did.
         // 该委托查询依赖反射，因此与原钩子一致，只对善良观察者询问。
@@ -167,6 +169,10 @@ public final class InstinctViewerContext {
 
     public boolean isBomber() {
         return bomber;
+    }
+
+    public boolean isPartyAnimal() {
+        return partyAnimal;
     }
 
     public boolean hasConscience() {
