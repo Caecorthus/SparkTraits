@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import dev.caecorthus.sparktraits.client.render.DepressionPsychoTextures;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
+import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.entity.PlayerEntityRenderer;
 import net.minecraft.client.util.SkinTextures;
@@ -54,9 +55,18 @@ public abstract class DepressionPsychoSkinMixin {
         );
     }
 
+    /*
+     * The grey skin is a variant of Wathe's psycho skin, so it also needs Wathe psycho, read through getPsychoTicks()
+     * rather than the field. Depression psycho holds Wathe psycho on for its whole run, so real players are unchanged,
+     * and a look query that reads that player's Wathe psycho as off (SparkWitch's Magician puppet stand-in) gets no
+     * grey skin either.
+     * 灰度皮肤是 Wathe 疯魔皮肤的变体，因此同样要求 Wathe 疯魔，且经 getPsychoTicks() 读取而非字段。抑郁疯魔全程维持
+     * Wathe 疯魔，真实玩家不受影响；而把该玩家的 Wathe 疯魔读作关闭的外观查询（SparkWitch 魔术师皮套替身）也不会得到灰度皮肤。
+     */
     private static Identifier depressionPsychoTexture(AbstractClientPlayerEntity player) {
         if (!SparkTraitsServerConnection.isConfirmedServer()
-                || !TraitPlayerComponent.KEY.get(player).isDepressionPsychoActive()) {
+                || !TraitPlayerComponent.KEY.get(player).isDepressionPsychoActive()
+                || PlayerPsychoComponent.KEY.get(player).getPsychoTicks() <= 0) {
             return null;
         }
         return DepressionPsychoTextures.forModel(player.getSkinTextures().model());

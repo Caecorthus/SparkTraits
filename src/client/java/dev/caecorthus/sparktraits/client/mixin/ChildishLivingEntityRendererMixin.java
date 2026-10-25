@@ -15,8 +15,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Draws Childish players with the baby model; held items, armor and the cape follow the model's child flag.
- * 让幼稚玩家使用幼体模型绘制；手持物品、盔甲与披风都跟随模型的 child 标记。
+ * Draws Childish players, and non-players wearing a Childish player look, with the baby model; held items, armor and
+ * the cape follow the model's child flag.
+ * 让幼稚玩家及呈现幼稚玩家外观的非玩家实体使用幼体模型绘制；手持物品、盔甲与披风都跟随模型的 child 标记。
  */
 @Mixin(LivingEntityRenderer.class)
 public abstract class ChildishLivingEntityRendererMixin {
@@ -31,7 +32,33 @@ public abstract class ChildishLivingEntityRendererMixin {
             )
     )
     private boolean sparktraits$drawChildishPlayerAsBaby(boolean baby, @Local(argsOnly = true) LivingEntity entity) {
-        return baby || ChildishPlayerRendering.rendersAsBaby(entity);
+        return baby || ChildishPlayerRendering.rendersAsBaby(entity, ((LivingEntityRenderer<?, ?>) (Object) this).getModel());
+    }
+
+    /*
+     * Fill scale for a non-player drawn as a Childish player (a SparkWitch Magician puppet): it runs right after the
+     * renderer's own scale step, where PlayerEntityRenderer.scale fills players, so the puppet stands as tall as the
+     * Childish player it copies even when its renderer overrides scale. Players never match here.
+     * 为按幼稚玩家绘制的非玩家实体（SparkWitch 魔术师皮套）补上填充缩放：紧跟渲染器自身的缩放步骤执行，即
+     * PlayerEntityRenderer.scale 为玩家填充的位置，因此即使其渲染器重写了 scale，皮套也与被复制的幼稚玩家等高。玩家从不命中此处。
+     */
+    @Inject(
+            method = "render(Lnet/minecraft/entity/LivingEntity;FFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/render/entity/LivingEntityRenderer;scale(Lnet/minecraft/entity/LivingEntity;Lnet/minecraft/client/util/math/MatrixStack;F)V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void sparktraits$fillNonPlayerBabyModel(
+            CallbackInfo ci,
+            @Local(argsOnly = true) LivingEntity entity,
+            @Local(argsOnly = true) MatrixStack matrices
+    ) {
+        if (ChildishPlayerRendering.fillsNonPlayerBabyModel(entity, ((LivingEntityRenderer<?, ?>) (Object) this).getModel())) {
+            float scale = ChildishPlayerRendering.BABY_MODEL_FILL_SCALE;
+            matrices.scale(scale, scale, scale);
+        }
     }
 
     /*

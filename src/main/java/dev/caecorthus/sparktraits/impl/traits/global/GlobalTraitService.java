@@ -13,6 +13,7 @@ import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheAttributes;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -266,11 +267,13 @@ public final class GlobalTraitService {
     }
 
     /**
-     * Reads Childish from the synced scale modifier, so every client can tell without the hidden trait list.
-     * 通过已同步的体型修饰符判断幼稚，任何客户端都无需读取隐藏的天赋列表。
+     * Reads Childish from the synced scale modifier, so every client can tell without the hidden trait list. Any living
+     * entity may carry it: SparkWitch copies it onto a Magician puppet that copies a Childish player.
+     * 通过已同步的体型修饰符判断幼稚，任何客户端都无需读取隐藏的天赋列表。任何生物实体都可能带有它：SparkWitch 会把它复制到
+     * 复制幼稚玩家的魔术师皮套上。
      */
-    public static boolean hasChildishScale(PlayerEntity player) {
-        EntityAttributeInstance scale = player.getAttributeInstance(EntityAttributes.GENERIC_SCALE);
+    public static boolean hasChildishScale(LivingEntity entity) {
+        EntityAttributeInstance scale = entity.getAttributeInstance(EntityAttributes.GENERIC_SCALE);
         return scale != null && scale.hasModifier(CHILDISH_SCALE_MODIFIER_ID);
     }
 

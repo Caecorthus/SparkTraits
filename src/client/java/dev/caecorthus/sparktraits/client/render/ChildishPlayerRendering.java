@@ -36,8 +36,42 @@ public final class ChildishPlayerRendering {
     private ChildishPlayerRendering() {
     }
 
-    public static boolean rendersAsBaby(LivingEntity entity) {
-        return entity instanceof PlayerEntity player && GlobalTraitService.hasChildishScale(player);
+    /**
+     * Players keep the original rule (the Childish modifier alone, whatever their renderer); a non-player qualifies through
+     * {@link #wearsChildishPlayerLook}.
+     * 玩家保持原有规则（只看幼稚修饰符，与渲染器无关）；非玩家实体经 {@link #wearsChildishPlayerLook} 判定。
+     */
+    public static boolean rendersAsBaby(LivingEntity entity, EntityModel<?> model) {
+        if (entity instanceof PlayerEntity player) {
+            return GlobalTraitService.hasChildishScale(player);
+        }
+        return wearsChildishPlayerLook(entity, model);
+    }
+
+    /**
+     * A non-player entity drawn with a player model that carries Childish's synced scale modifier, such as a SparkWitch
+     * Magician puppet copying a Childish player, is drawn like that player: the baby model plus the same fill scale.
+     * Detected by the modifier and the model type only, never by another mod's classes; mobs, armor stands and other
+     * mods' entities lack the modifier or the player model and stay vanilla.
+     * 使用玩家模型、且带有幼稚同步体型修饰符的非玩家实体（如复制幼稚玩家的 SparkWitch 魔术师皮套）按该玩家的方式绘制：
+     * 幼体模型加同样的填充缩放。只依据修饰符与模型类型判定，从不依赖其他模组的类；生物、盔甲架与其他模组实体缺少该修饰符
+     * 或玩家模型，保持原版。
+     */
+    static boolean wearsChildishPlayerLook(LivingEntity entity, EntityModel<?> model) {
+        return !(entity instanceof PlayerEntity)
+                && model instanceof PlayerEntityModel
+                && GlobalTraitService.hasChildishScale(entity);
+    }
+
+    /**
+     * The fill-scale half for non-players, which must ship with their baby model or it stands at 18/32 of a Childish
+     * player's height: PlayerEntityRenderer.scale fills players, so a non-player renderer gets it right after its own
+     * scale step. A natively baby entity is left to vanilla.
+     * 非玩家实体的填充缩放部分，必须与其幼体模型同时生效，否则只有幼稚玩家 18/32 的高度：PlayerEntityRenderer.scale 负责
+     * 玩家，因此非玩家渲染器在其自身缩放步骤之后补上。原生幼体实体交给原版处理。
+     */
+    public static boolean fillsNonPlayerBabyModel(LivingEntity entity, EntityModel<?> model) {
+        return model.child && !entity.isBaby() && wearsChildishPlayerLook(entity, model);
     }
 
     /**
