@@ -31,6 +31,9 @@ public final class SparkTraitsSounds {
     public static final SoundEvent DEPRESSION_MELEE_KILL_2 = registrar.create("depression.melee_kill_2");
     public static final Identifier DEPRESSION_SHYGUY_KILLED_ID = SparkTraits.id("depression.shyguy_killed");
     public static final SoundEvent DEPRESSION_SHYGUY_KILLED = registrar.create("depression.shyguy_killed");
+    /** Last Stand final moment BGM. / 背水一战终局时刻背景音乐。 */
+    public static final Identifier FINAL_MOMENT_MUSIC_ID = SparkTraits.id("music.final_moment");
+    public static final SoundEvent FINAL_MOMENT_MUSIC = registrar.create("music.final_moment");
 
     private SparkTraitsSounds() {
     }
@@ -48,7 +51,8 @@ public final class SparkTraitsSounds {
                 DEPRESSION_PLAYER_WAS_SEEN_ID,
                 DEPRESSION_MELEE_KILL_1_ID,
                 DEPRESSION_MELEE_KILL_2_ID,
-                DEPRESSION_SHYGUY_KILLED_ID
+                DEPRESSION_SHYGUY_KILLED_ID,
+                FINAL_MOMENT_MUSIC_ID
         }) {
             if (!Registries.SOUND_EVENT.containsId(id)) {
                 SparkTraits.LOGGER.warn("SparkTraits sound event {} was not registered.", id);

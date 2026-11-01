@@ -6,6 +6,7 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi.SparkFactionApiEffectiveFactionBridge;
 import dev.caecorthus.sparktraits.impl.replay.SparkTraitsReplayEvents;
+import dev.caecorthus.sparktraits.impl.resource.SparkTraitsSounds;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.mixin.RoleHistoryComponentAccessor;
@@ -37,6 +38,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
 import net.minecraft.network.packet.s2c.play.TitleFadeS2CPacket;
 import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
+import net.minecraft.sound.SoundCategory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
@@ -572,6 +574,11 @@ public final class LastStandFinalMomentService {
 
         GameTimeComponent.KEY.get(world).setTime(FINAL_MOMENT_TICKS);
         broadcastFinalMomentTitle(world);
+        for (ServerPlayerEntity player : world.getPlayers()) {
+            // Played once for everyone; the client controller stops it when the moment or round ends.
+            // 对全场只播放一次；终局时刻或回合结束时由客户端控制器停止。
+            player.playSoundToPlayer(SparkTraitsSounds.FINAL_MOMENT_MUSIC, SoundCategory.MASTER, 1.0F, 1.0F);
+        }
     }
 
     private static void convertToLooseEnd(
