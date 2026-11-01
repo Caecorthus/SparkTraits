@@ -23,6 +23,7 @@
     "DepressionPsychoArmSkinMixin",
     "DepressionInGameHudMixin",
     "DepressionPsychoSkinMixin",
+    "JesterInventoryLockMixin",
     "LastStandHeldItemRendererMixin",
     "MarksmanCrosshairMixin",
     "MarksmanDerringerMixin",
