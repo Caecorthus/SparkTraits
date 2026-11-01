@@ -10,8 +10,11 @@ import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.cca.GameRoundEndComponent;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
+import org.agmas.noellesroles.Noellesroles;
+import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -74,7 +77,8 @@ public abstract class GameRoundEndComponentMixin {
                     winStatus,
                     role,
                     traitWorld.isFinalMomentLooseEnd(uuid)
-            ) || EffectiveTraitService.didEffectiveTeamWin(
+            ) || isWinningJester(serverWorld, uuid, role)
+                    || EffectiveTraitService.didEffectiveTeamWin(
                     winStatus,
                     role,
                     RoundEndTraitResolver.resolve(serverWorld, traitWorld, uuid)
@@ -101,6 +105,20 @@ public abstract class GameRoundEndComponentMixin {
             }
         }
         cir.setReturnValue(false);
+    }
+
+    /**
+     * A triggered hidden Jester is the real NoellesRoles Jester role; NoellesRoles marks the win on its component,
+     * and that flag must survive SparkTraits' replacement of the round-end data so the player gets the Jester screen.
+     * 触发后的隐藏小丑就是真正的 NoellesRoles 小丑；NoellesRoles 会把胜利写在组件上，SparkTraits 替换回合结束数据时必须
+     * 保留该标志，玩家才能看到小丑结算界面。
+     */
+    private static boolean isWinningJester(ServerWorld world, UUID uuid, @Nullable Role role) {
+        if (role == null || !Noellesroles.JESTER_ID.equals(role.identifier())) {
+            return false;
+        }
+        ServerPlayerEntity player = world.getServer().getPlayerManager().getPlayer(uuid);
+        return player != null && JesterPlayerComponent.KEY.get(player).won;
     }
 
     private static GameRoundEndComponent.PlayerEndStatus sparktraits$endStatus(boolean wasDead, boolean isOnline) {

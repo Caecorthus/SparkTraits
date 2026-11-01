@@ -168,6 +168,10 @@ public final class EffectiveTraitService {
         return player != null && hasImpostor(TraitPlayerComponent.KEY.get(player).getActiveTraitIds());
     }
 
+    public static boolean hasJester(PlayerEntity player) {
+        return player != null && hasJester(TraitPlayerComponent.KEY.get(player).getActiveTraitIds());
+    }
+
     /** Keeps effective alignment stable after death listeners clear a dead player's active traits.
      *  死亡监听清空当前天赋后，回退到死亡快照以保持有效阵营判定稳定。 */
     public static Collection<Identifier> effectiveTraitIds(PlayerEntity player, GameWorldComponent game) {
@@ -600,6 +604,10 @@ public final class EffectiveTraitService {
         return EffectiveAlignment.hasImpostor(traits);
     }
 
+    public static boolean hasJester(Collection<Identifier> traits) {
+        return EffectiveAlignment.hasJester(traits);
+    }
+
     public static boolean canSelectConscience(Role role, GameWorldComponent gameComponent, Collection<Identifier> selectedTraits) {
         return canSelectConscience(
                 role,
@@ -832,6 +840,11 @@ public final class EffectiveTraitService {
         return EffectiveAlignment.isEffectiveCivilian(role, traits);
     }
 
+    /** Settlement-only civilian membership: an untriggered Jester still settles with the passengers. */
+    public static boolean isSettlementCivilian(Role role, Collection<Identifier> traits) {
+        return EffectiveAlignment.isSettlementCivilian(role, traits);
+    }
+
     /** Resolves round-end winner membership through effective alignment.
      *  通过有效阵营判断回合结束时玩家是否属于胜利方。 */
     public static boolean didEffectiveTeamWin(
@@ -841,7 +854,7 @@ public final class EffectiveTraitService {
     ) {
         return switch (winStatus) {
             case KILLERS -> isEffectiveKiller(role, traits);
-            case PASSENGERS, TIME -> isEffectiveCivilian(role, traits);
+            case PASSENGERS, TIME -> isSettlementCivilian(role, traits);
             default -> false;
         };
     }
