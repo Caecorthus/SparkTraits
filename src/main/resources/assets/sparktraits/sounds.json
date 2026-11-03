@@ -67,5 +67,13 @@
       }
     ],
     "subtitle": "subtitle.sparktraits.depression.shyguy_killed"
+  },
+  "music.final_moment": {
+    "sounds": [
+      {
+        "name": "sparktraits:music/final_moment",
+        "stream": true
+      }
+    ]
   }
 }
