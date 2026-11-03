@@ -3,11 +3,14 @@ package dev.caecorthus.sparktraits.client.audio;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.resource.SparkTraitsSounds;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
+import dev.doctor4t.wathe.api.Role;
+import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.sound.SoundCategory;
+
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Stops the final moment BGM as soon as the moment is no longer active or the round has ended. The server plays the
@@ -29,9 +32,9 @@ public final class FinalMomentMusicController {
             GameWorldComponent game = GameWorldComponent.KEY.maybeGet(client.world).orElse(null);
             active = traitWorld != null
                     && traitWorld.isFinalMomentActive()
-                    && hasLivingLooseEnd(client, traitWorld)
                     && game != null
-                    && game.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE;
+                    && game.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE
+                    && hasLivingLooseEnd(traitWorld, game);
         }
         if (wasActive && !active) {
             stop(client);
@@ -41,16 +44,19 @@ public final class FinalMomentMusicController {
 
     /**
      * The moment is over once no living loose end remains; the synced world component still keeps the flag set until
-     * the round itself resets, so the music must not wait for that.
-     * 最后一名亡命徒死亡后终局时刻即结束；同步的世界组件要到回合重置才清标记，因此音乐不能等它。
+     * the round itself resets, so the music must not wait for that. Reads the synced role map and dead set rather than
+     * {@code client.world.getPlayers()}, which only holds players inside this client's entity tracking range.
+     * 最后一名亡命徒死亡后终局时刻即结束；同步的世界组件要到回合重置才清标记，因此音乐不能等它。这里读同步的身份表与
+     * 死亡名单，而不是 {@code client.world.getPlayers()}：后者只包含本客户端实体追踪范围内的玩家。
      */
-    private static boolean hasLivingLooseEnd(MinecraftClient client, TraitWorldComponent traitWorld) {
-        if (client.world == null) {
-            return false;
-        }
-        for (PlayerEntity player : client.world.getPlayers()) {
-            if (traitWorld.isFinalMomentLooseEnd(player.getUuid())
-                    && GameFunctions.isPlayerPlayingAndAlive(player)) {
+    private static boolean hasLivingLooseEnd(TraitWorldComponent traitWorld, GameWorldComponent game) {
+        for (Map.Entry<UUID, Role> entry : game.getRoles().entrySet()) {
+            UUID uuid = entry.getKey();
+            Role role = entry.getValue();
+            if (traitWorld.isFinalMomentLooseEnd(uuid)
+                    && role != null
+                    && WatheRoles.LOOSE_END.identifier().equals(role.identifier())
+                    && !game.isPlayerDead(uuid)) {
                 return true;
             }
         }
