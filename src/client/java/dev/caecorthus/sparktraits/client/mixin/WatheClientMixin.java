@@ -2,10 +2,12 @@ package dev.caecorthus.sparktraits.client.mixin;
 
 import dev.caecorthus.sparktraits.client.compat.SparkStrengthCoronerClientBridge;
 import dev.caecorthus.sparktraits.client.compat.SparkWitchBlackRavenBridge;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import dev.caecorthus.sparktraits.client.instinct.GoingDarkInstinctClientHooks;
+import dev.caecorthus.sparktraits.client.instinct.ImpostorKillerView;
 import dev.caecorthus.sparktraits.client.instinct.InstinctViewerContext;
 import dev.caecorthus.sparktraits.client.instinct.PartyAnimalInstinctClientHooks;
-import dev.caecorthus.sparktraits.compat.SparkStrengthCoronerBridge;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerialKillerService;
@@ -15,6 +17,7 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalM
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.Role;
+import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
 import dev.doctor4t.wathe.client.WatheClient;
@@ -44,6 +47,36 @@ public abstract class WatheClientMixin {
         if (InstinctViewerContext.viewerHasImpostor(player)) {
             cir.setReturnValue(true);
         }
+    }
+
+    /**
+     * The Impostor's instinct takes the killer's path ({@link ImpostorKillerView}): while a living Impostor holds the
+     * instinct key, the event is asked as if the viewer were a plain killer, and Wathe's native killer colours follow
+     * when no listener answers. Without the key the Impostor sees what its civilian role sees.
+     * 内鬼本能走杀手的路径（{@link ImpostorKillerView}）：存活内鬼按住本能键时，以普通杀手身份询问事件；没有监听器作答时
+     * 由 Wathe 原生杀手颜色接手。不按键时内鬼看到的与其平民职业相同。
+     */
+    @WrapOperation(
+            method = "getInstinctHighlight",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/doctor4t/wathe/api/event/GetInstinctHighlight;getHighlight(Lnet/minecraft/entity/Entity;)Ldev/doctor4t/wathe/api/event/GetInstinctHighlight$HighlightResult;"
+            )
+    )
+    private static GetInstinctHighlight.HighlightResult sparktraits$impostorAsksTheEventAsAKiller(
+            GetInstinctHighlight event,
+            Entity target,
+            Operation<GetInstinctHighlight.HighlightResult> original
+    ) {
+        PlayerEntity viewer = MinecraftClient.getInstance().player;
+        if (viewer == null
+                || !SparkTraitsServerConnection.isConfirmedServer()
+                || !WatheClient.isInstinctEnabled()
+                || !WatheClient.isPlayerPlayingAndAlive()
+                || !InstinctViewerContext.viewerHasImpostor(viewer)) {
+            return original.call(event, target);
+        }
+        return ImpostorKillerView.during(viewer.getUuid(), () -> original.call(event, target));
     }
 
     @Inject(method = "getInstinctHighlight", at = @At("HEAD"), cancellable = true)
@@ -240,17 +273,11 @@ public abstract class WatheClientMixin {
         if (!context.isEffectiveKiller()) {
             return;
         }
-        // SparkTraits answers before NoellesRoles' event skip, so mirror sight-gated target skips here.
-        // SparkTraits 会先于 NoellesRoles 的事件 skip 返回，因此这里同步只阻止遮挡透视的目标规则。
-        // canSee is a block raycast per target per frame; it only matters when the rule would otherwise skip,
-        // so ask the rule with the target unseen first and raycast only then.
-        // canSee 是每帧对每个目标的方块射线；只有规则在目标不可见时会跳过才需要它，因此先按不可见询问，再做射线。
-        if (EffectiveTraitService.isHiddenFromKillerInstinct(playerTarget)
-                || (EffectiveTraitService.shouldSkipSurvivalMasterForImpostorInstinct(
-                        game.getRole(playerTarget),
-                        context.hasImpostor(),
-                        false
-                ) && !viewer.canSee(playerTarget))) {
+        // Sight-gated hides such as the Survival Master's reach an Impostor through the event, which it now asks as a
+        // killer (sparktraits$impostorAsksTheEventAsAKiller), so they are no longer mirrored here.
+        // 生存大师等视线类隐藏现在经由事件作用于内鬼（内鬼以杀手身份询问事件，见 sparktraits$impostorAsksTheEventAsAKiller），
+        // 因此这里不再逐个同步。
+        if (EffectiveTraitService.isHiddenFromKillerInstinct(playerTarget)) {
             cir.setReturnValue(-1);
             return;
         }
@@ -271,17 +298,9 @@ public abstract class WatheClientMixin {
                 cir.setReturnValue(coronerDisguiseColor);
                 return;
             }
-            if (context.hasImpostor()) {
-                cir.setReturnValue(EffectiveTraitService.effectiveKillerInstinctColor(
-                        EffectiveTraitService.appearsAsKillerToKillerInstinct(
-                                game.getRole(playerTarget),
-                                game.canUseKillerFeatures(playerTarget),
-                                SparkStrengthCoronerBridge.appearsAsKillerCohort(playerTarget)
-                        ),
-                        false,
-                        false
-                ));
-            } else if (PartyAnimalInstinctClientHooks.ownKeylessHighlight(context, playerTarget) != null) {
+            // An Impostor's ordinary targets are left to the event and Wathe's native killer colours (see above).
+            // 内鬼的普通目标交给事件与 Wathe 原生杀手颜色（见上方）。
+            if (PartyAnimalInstinctClientHooks.ownKeylessHighlight(context, playerTarget) != null) {
                 // The helium and balloon outlines are keyless overlays; while the key is held the instinct colour wins.
                 // 氦气与气球描边是免按键叠加层；按住本能键时以本能颜色为准。
                 cir.setReturnValue(PartyAnimalInstinctClientHooks.nativeKillerInstinctColor(context, playerTarget));

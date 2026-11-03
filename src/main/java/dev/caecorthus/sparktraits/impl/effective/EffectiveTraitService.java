@@ -247,19 +247,6 @@ public final class EffectiveTraitService {
                 && !killerInstinctHidden;
     }
 
-    /** Keeps Impostor instinct from seeing Survival Master through walls while preserving visible highlights.
-     *  防止内鬼本能穿墙透视生存大师，同时保留视野内的正常描边。 */
-    public static boolean shouldSkipSurvivalMasterForImpostorInstinct(
-            Role targetRole,
-            boolean viewerHasImpostor,
-            boolean targetVisibleToViewer
-    ) {
-        return targetRole != null
-                && targetRole.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
-                && viewerHasImpostor
-                && !targetVisibleToViewer;
-    }
-
     /** Mirrors NoellesRoles' Jester Moment skip: other players cannot highlight the active Jester, except Demon Hunter.
      *  同步 NoellesRoles 的小丑时刻规则：除猎魔人外，其他玩家不能高亮小丑时刻中的小丑。 */
     public static boolean shouldSkipJesterMomentHighlight(
