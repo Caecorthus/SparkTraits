@@ -24,8 +24,8 @@ public final class TraitRules {
         return trait == null || trait.occupiesTraitSlot();
     }
 
-    /** Traits counted against TraitPlayerComponent.MAX_TRAITS; free traits such as Well Supplied are left out.
-     *  计入 TraitPlayerComponent.MAX_TRAITS 的天赋数量；物资充沛等免费天赋不计入。 */
+    /** Traits counted against TraitPlayerComponent.MAX_TRAITS; free traits such as Well Supplied and hidden traits are left out.
+     *  计入 TraitPlayerComponent.MAX_TRAITS 的天赋数量；物资充沛等免费天赋与隐藏天赋不计入。 */
     public static int occupiedTraitSlots(Collection<Identifier> traitIds) {
         int occupied = 0;
         for (Identifier traitId : traitIds) {
