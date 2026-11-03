@@ -14,6 +14,7 @@ import dev.caecorthus.sparktraits.impl.traits.global.TaskMasterTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.WellSuppliedTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.jester.JesterTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraits;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTrait;
@@ -29,6 +30,7 @@ public final class SparkTraitsBuiltInTraits {
 
     public static void register() {
         TraitRegistry.register(new LastStandTrait());
+        TraitRegistry.register(new JesterTrait());
         TraitRegistry.register(new ConscienceTrait());
         TraitRegistry.register(new ImpostorTrait());
         TraitRegistry.register(new CautiousTrait());

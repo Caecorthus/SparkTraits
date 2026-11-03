@@ -8,6 +8,7 @@ import dev.caecorthus.sparktraits.api.TraitSelectionContext;
 import dev.caecorthus.sparkfactionapi.api.settlement.SettlementExclusions;
 import dev.doctor4t.wathe.api.Faction;
 import dev.doctor4t.wathe.api.Role;
+import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.Noellesroles;
@@ -63,11 +64,21 @@ public final class LastStandTrait implements Trait {
     @Override
     public boolean canApply(TraitSelectionContext context) {
         return Trait.super.canApply(context)
+                && canSelectHiddenCivilianTrait(context.role(), context.gameComponent());
+    }
+
+    /**
+     * Shared eligibility of the hidden civilian comeback traits (Last Stand and Jester): an original civilian that is
+     * not the Survival Master or settlement-excluded, with at least two threat players.
+     * 隐藏平民翻盘词条（背水一战与小丑）共用的资格：原始平民、非生存大师、非结算排除身份，且至少两名威胁玩家。
+     */
+    public static boolean canSelectHiddenCivilianTrait(Role role, GameWorldComponent gameComponent) {
+        return gameComponent != null
                 && canSelectLastStand(
-                        context.role(),
+                        role,
                         countLastStandThreatPlayers(
-                                context.gameComponent().getAllKillerTeamPlayers(),
-                                context.gameComponent().getRoles()
+                                gameComponent.getAllKillerTeamPlayers(),
+                                gameComponent.getRoles()
                         )
                 );
     }

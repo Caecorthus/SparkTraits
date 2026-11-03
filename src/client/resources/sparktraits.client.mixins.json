@@ -24,6 +24,7 @@
     "DepressionInGameHudMixin",
     "DepressionPsychoSkinMixin",
     "GameWorldComponentImpostorKillerViewMixin",
+    "JesterInventoryLockMixin",
     "LastStandHeldItemRendererMixin",
     "MarksmanCrosshairMixin",
     "MarksmanDerringerMixin",
