@@ -144,6 +144,9 @@ public abstract class WatheClientMixin {
             return;
         }
 
+        // A corpse-mode Morphling, Conscience or not, is cloaked from keyed instinct for every viewer by SparkStrength
+        // (MorphlingCorpseInstinctClient), so corpse mode needs no branch here.
+        // 尸体模式的变形者（无论是否善良）由 SparkStrength 对所有观察者隐藏按键本能（MorphlingCorpseInstinctClient），这里无需分支。
         MorphlingPlayerComponent morphling = MorphlingPlayerComponent.KEY.get(playerTarget);
 
         // Phantom invisibility must beat SparkTraits' effective-alignment instinct overlays.
@@ -155,18 +158,6 @@ public abstract class WatheClientMixin {
                 EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget),
                 targetTraits.isLastStandPending(),
                 targetTraits.isKillerInstinctHidden()
-        )) {
-            cir.setReturnValue(-1);
-            return;
-        }
-
-        // Corpse mode has priority over every effective-killer instinct overlay; other viewers never receive the
-        // Conscience flag, so they treat the target like any Morphling.
-        // 尸体模式优先于所有有效杀手本能描边；其他观察者收不到善良标记，因此把目标当作普通变形者处理。
-        if (EffectiveTraitService.shouldHideConscienceMorphlingFromInstinct(
-                EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget),
-                game.isRole(playerTarget, Noellesroles.MORPHLING),
-                morphling.corpseMode
         )) {
             cir.setReturnValue(-1);
             return;
