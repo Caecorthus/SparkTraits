@@ -3,8 +3,6 @@ package dev.caecorthus.sparktraits.impl.traits.civilian.jester;
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
-import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
@@ -49,9 +47,12 @@ public final class JesterTraitService {
             return;
         }
         registered = true;
-        // The trait is the only source of the Jester role in a SparkTraits round.
-        // 小丑词条是 SparkTraits 局内唯一的小丑来源。
-        WatheRoles.ROLES.removeIf(role -> Noellesroles.JESTER_ID.equals(role.identifier()));
+        // The trait is the only natural source of the Jester role in a SparkTraits round. The role must stay in
+        // WatheRoles.ROLES: GameWorldComponent writes and reads role assignments by iterating that list, so removing
+        // it would keep the Jester role (and Shadow Jester promotions) from ever reaching clients.
+        // 小丑词条是 SparkTraits 局内唯一的自然小丑来源。小丑身份必须保留在 WatheRoles.ROLES 中：GameWorldComponent
+        // 按该列表读写身份分配，移除后小丑身份（以及影子小丑晋升）永远无法同步到客户端。
+        Noellesroles.JESTER.setAppearanceCondition(context -> false);
         KillPlayer.BEFORE.register(JesterTraitService::beforeKill);
         ReplayRegistry.registerGlobalEventFormatter(REPLAY_EVENT, JesterTraitService::formatReplay);
     }
@@ -76,9 +77,11 @@ public final class JesterTraitService {
         if (game.isRole(killer, Noellesroles.DEMON_HUNTER)) {
             return null;
         }
-        Role killerRole = game.getRole(killer);
-        if (killerRole == null || !EffectiveTraitService.isEffectiveCivilian(
-                killerRole,
+        // Same shooter rule as the real Jester's moment: original innocents only, so Impostors and Conscience killers
+        // never trigger it, before or after the conversion.
+        // 与真正小丑的时刻使用同一开枪者规则：只有原始好人，内鬼和善良杀手在转化前后都不会触发。
+        if (!EffectiveTraitService.shouldTriggerJesterMoment(
+                game.getRole(killer),
                 TraitPlayerComponent.KEY.get(killer).getActiveTraitIds()
         )) {
             return null;
