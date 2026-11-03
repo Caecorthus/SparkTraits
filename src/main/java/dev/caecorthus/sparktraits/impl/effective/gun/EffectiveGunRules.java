@@ -18,19 +18,16 @@ public final class EffectiveGunRules {
         return EffectiveAlignment.isEffectiveCivilian(victimRole, victimTraits);
     }
 
-    /** Cancels Wathe's innocent-shot punishment for Impostor shots and for the neutral hidden Jester.
-     *  内鬼射击有效好人、以及中立的隐藏小丑射击好人时，取消 Wathe 的误杀惩罚。 */
+    /** Cancels Wathe's innocent-shot punishment only for Impostor shots at effective innocents.
+     *  只在内鬼射击有效好人时取消 Wathe 的好人枪击惩罚。 */
     public static boolean shouldCancelInnocentShotPunishment(
             Role shooterRole,
             Collection<Identifier> shooterTraits,
             Role victimRole,
             Collection<Identifier> victimTraits
     ) {
-        if (!shouldTreatGunVictimAsInnocent(victimRole, victimTraits)) {
-            return false;
-        }
-        return EffectiveAlignment.hasJester(shooterTraits)
-                || (EffectiveAlignment.isEffectiveKiller(shooterRole, shooterTraits)
-                && EffectiveAlignment.hasImpostor(shooterTraits));
+        return EffectiveAlignment.isEffectiveKiller(shooterRole, shooterTraits)
+                && EffectiveAlignment.hasImpostor(shooterTraits)
+                && shouldTreatGunVictimAsInnocent(victimRole, victimTraits);
     }
 }
