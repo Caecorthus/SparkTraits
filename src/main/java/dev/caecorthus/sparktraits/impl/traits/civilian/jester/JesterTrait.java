@@ -13,9 +13,9 @@ import java.util.Set;
 /**
  * Hidden civilian trait that turns one qualifying good-player gunshot into NoellesRoles' real Jester. It is invisible
  * to its owner at start, unique per game, incompatible with Last Stand and Impostor, and uses Last Stand's exact
- * eligibility gate and roll weight. Until triggered it is neutral in-round but settles with the passenger side.
+ * eligibility gate and roll weight. Until triggered it keeps its original civilian alignment.
  * 隐藏平民天赋：被好人用枪击中时转化为 NoellesRoles 的真正小丑。开局对本人隐藏、每局唯一、与背水一战和内鬼互斥，
- * 并沿用背水一战的资格门槛与抽取权重。触发前局内算中立，但结算仍归好人。
+ * 并沿用背水一战的资格门槛与抽取权重。触发前保持原本的好人阵营。
  */
 public final class JesterTrait implements Trait {
     public static final Identifier ID = SparkTraits.id("jester");

@@ -2,7 +2,6 @@ package dev.caecorthus.sparktraits.impl.effective.alignment;
 
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
-import dev.caecorthus.sparktraits.impl.traits.civilian.jester.JesterTrait;
 import dev.doctor4t.wathe.api.Role;
 import net.minecraft.util.Identifier;
 
@@ -22,10 +21,6 @@ public final class EffectiveAlignment {
         return traits.contains(ImpostorTrait.ID);
     }
 
-    public static boolean hasJester(Collection<Identifier> traits) {
-        return traits != null && traits.contains(JesterTrait.ID);
-    }
-
     public static boolean isOriginalKiller(Role role) {
         return role != null && role.canUseKiller();
     }
@@ -37,10 +32,6 @@ public final class EffectiveAlignment {
     /** Resolves killer-team membership after SparkTraits alignment flips.
      *  在 SparkTraits 阵营翻转后判断是否属于杀手阵营。 */
     public static boolean isEffectiveKiller(Role role, Collection<Identifier> traits) {
-        if (hasJester(traits)) {
-            // The hidden Jester is a neutral, not a killer. / 隐藏小丑是中立，不是杀手。
-            return false;
-        }
         if (hasImpostor(traits)) {
             return true;
         }
@@ -53,11 +44,6 @@ public final class EffectiveAlignment {
     /** Resolves civilian-team membership after SparkTraits alignment flips.
      *  在 SparkTraits 阵营翻转后判断是否属于好人阵营。 */
     public static boolean isEffectiveCivilian(Role role, Collection<Identifier> traits) {
-        if (hasJester(traits)) {
-            // Out of the passenger team while untriggered; settlement is handled separately.
-            // 未触发期间不再属于好人数；结算另行处理。
-            return false;
-        }
         if (hasConscience(traits)) {
             return true;
         }
@@ -65,15 +51,5 @@ public final class EffectiveAlignment {
             return false;
         }
         return isOriginalCivilian(role);
-    }
-
-    /**
-     * Round-end settlement membership: an untriggered hidden Jester still settles with the passenger side even though
-     * it is neutral for every in-round rule. Once triggered the role itself is Jester, so this is false.
-     * 回合结算归属：未触发的隐藏小丑在局内规则中是中立，但仍与好人一起结算；触发后身份已是小丑，返回 false。
-     */
-    public static boolean isSettlementCivilian(Role role, Collection<Identifier> traits) {
-        return isEffectiveCivilian(role, traits)
-                || (isOriginalCivilian(role) && hasJester(traits));
     }
 }

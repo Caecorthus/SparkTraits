@@ -1,7 +1,6 @@
 package dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi;
 
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
-import dev.caecorthus.sparkfactionapi.api.FactionIds;
 import dev.caecorthus.sparkfactionapi.api.SparkFactionApi;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.entity.player.PlayerEntity;
@@ -40,11 +39,6 @@ public final class SparkFactionApiEffectiveFactionBridge {
     public static Identifier resolveEffectiveFaction(Collection<Identifier> traits, Identifier currentFaction) {
         if (traits == null || currentFaction == null) {
             return null;
-        }
-        // The hidden Jester leaves the passenger faction for the neutral faction, not the killer faction.
-        // 隐藏小丑离开好人阵营后加入中立，而不是杀手阵营。
-        if (EffectiveTraitService.hasJester(traits)) {
-            return CIVILIAN_FACTION.equals(currentFaction) ? FactionIds.NEUTRAL : null;
         }
         if (EffectiveTraitService.hasImpostor(traits)) {
             return CIVILIAN_FACTION.equals(currentFaction) ? KILLER_FACTION : null;
