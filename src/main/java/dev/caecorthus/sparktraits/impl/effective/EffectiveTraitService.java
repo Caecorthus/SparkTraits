@@ -327,14 +327,6 @@ public final class EffectiveTraitService {
 
     /** Conscience Morphling copies only the disguise target's effective alignment.
      *  善良变形者只复制伪装目标的有效阵营，不复制临时高亮或隐藏状态。 */
-    public static boolean shouldHideConscienceMorphlingFromInstinct(
-            boolean targetHasConscience,
-            boolean targetIsMorphling,
-            boolean targetCorpseMode
-    ) {
-        return targetHasConscience && targetIsMorphling && targetCorpseMode;
-    }
-
     public static boolean shouldUseConscienceMorphlingDisguiseInstinct(
             boolean targetHasConscience,
             boolean targetIsMorphling,
@@ -456,9 +448,6 @@ public final class EffectiveTraitService {
             boolean disguiseHasConscience,
             boolean disguiseHasImpostor
     ) {
-        if (shouldHideConscienceMorphlingFromInstinct(targetHasConscience, targetIsMorphling, targetCorpseMode)) {
-            return Boolean.FALSE;
-        }
         if (!shouldUseConscienceMorphlingDisguiseInstinct(
                 targetHasConscience,
                 targetIsMorphling,
