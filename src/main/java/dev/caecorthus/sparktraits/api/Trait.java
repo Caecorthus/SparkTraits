@@ -37,10 +37,11 @@ public interface Trait {
 
     /**
      * Whether the trait takes one of the normal trait slots; a free trait rides along without counting toward the cap.
-     * 天赋是否占用普通天赋槽位；免费天赋随附获得，不计入上限。
+     * Hidden traits are free by default, so a missing slot never gives one away.
+     * 天赋是否占用普通天赋槽位；免费天赋随附获得，不计入上限。隐藏天赋默认免费，避免空出的槽位暴露它。
      */
     default boolean occupiesTraitSlot() {
-        return true;
+        return !hiddenFromOwnerAtStart();
     }
 
     default TraitAudience audience() {
