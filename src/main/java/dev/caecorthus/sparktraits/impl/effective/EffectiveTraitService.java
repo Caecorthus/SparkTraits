@@ -77,6 +77,9 @@ public final class EffectiveTraitService {
     // SparkWitch's Blind sees only through sounds, so Impostor instinct and night vision would void the role.
     // SparkWitch 盲人只能靠声音感知，内鬼的本能透视与夜视会让该职业失效。
     private static final Identifier SPARKWITCH_BLIND_ID = Identifier.of("sparkwitch", "blind");
+    // Owner 2026-11-04: SparkWitch's Noa paints from her real Wathe mood, which Impostor's fake mood would pin at 1.0.
+    // 所有者 2026-11-04：SparkWitch 城崎诺亚按真实 Wathe 心情作画，内鬼的虚假心情会把它固定在 1.0。
+    private static final Identifier SPARKWITCH_NOA_ID = Identifier.of("sparkwitch", "noa");
     private static final Identifier SPARKWITCH_BELL_RINGER_ID = Identifier.of("sparkwitch", "bell_ringer");
     private static final Identifier NOELLES_SHADOW_JESTER_ID = Identifier.of("noellesroles", "shadow_jester");
 
@@ -661,7 +664,8 @@ public final class EffectiveTraitService {
                 || role.identifier().equals(Noellesroles.TOXICOLOGIST_ID)
                 || role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
                 || role.identifier().equals(SPARKWITCH_SAINT_ID)
-                || role.identifier().equals(SPARKWITCH_BLIND_ID));
+                || role.identifier().equals(SPARKWITCH_BLIND_ID)
+                || role.identifier().equals(SPARKWITCH_NOA_ID));
     }
 
     public static boolean countsAsPublicKiller(Role role, Collection<Identifier> traits) {
