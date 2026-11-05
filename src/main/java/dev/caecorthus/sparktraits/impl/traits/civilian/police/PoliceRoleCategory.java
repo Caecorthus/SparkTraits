@@ -21,6 +21,9 @@ public final class PoliceRoleCategory {
     // SparkWitch's USEC carries only a sniper rifle, never a revolver; matched by full id so SparkTraits keeps no
     // SparkWitch dependency. SparkWitch 的 USEC 只带狙击枪、从不持左轮；按完整身份 ID 匹配，SparkTraits 不依赖 SparkWitch。
     private static final Identifier SPARKWITCH_USEC_ID = Identifier.of("sparkwitch", "usec");
+    // The Savior's custom pistol is not a revolver/derringer; Niko must not roll or run for it.
+    // 救世主使用自定义手枪而非左轮/德林加；Niko 不得抽取或生效。
+    private static final Identifier SPARKWITCH_SAVIOR_ID = Identifier.of("sparkwitch", "savior");
 
     private PoliceRoleCategory() {
     }
@@ -49,6 +52,8 @@ public final class PoliceRoleCategory {
      * 但保留精确枪手、快速装填与重炮（所有者 2026-10-07 决定）。
      */
     public static boolean canReceiveNikoTrait(Role role) {
-        return canReceiveGunPoliceTraits(role) && !SPARKWITCH_USEC_ID.equals(role.identifier());
+        return canReceiveGunPoliceTraits(role)
+                && !SPARKWITCH_USEC_ID.equals(role.identifier())
+                && !SPARKWITCH_SAVIOR_ID.equals(role.identifier());
     }
 }
