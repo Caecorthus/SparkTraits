@@ -28,6 +28,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.item.Item;
+import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -152,8 +153,16 @@ public final class VigilanteVeteranTraitService {
         return marksmanRangeMultiplier(roleOf(player), traitsOf(player));
     }
 
+    /** Fast Reload applies to the revolver and to SparkWitch's Savior pistol. / 快速装填作用于左轮与救世主手枪。 */
+    private static final Identifier SAVIOR_PISTOL_ID = Identifier.of("sparkwitch", "savior_pistol");
+
+    private static boolean isFastReloadGun(Item item) {
+        return item != null
+                && (item == WatheItems.REVOLVER || SAVIOR_PISTOL_ID.equals(Registries.ITEM.getId(item)));
+    }
+
     public static int fastReloadCooldown(Item item, int duration, Role role, Collection<Identifier> traits) {
-        return fastReloadCooldown(item == WatheItems.REVOLVER, duration, role, traits, false);
+        return fastReloadCooldown(isFastReloadGun(item), duration, role, traits, false);
     }
 
     public static int fastReloadCooldown(
@@ -185,7 +194,7 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static int fastReloadCooldown(Item item, int duration, PlayerEntity player) {
-        return fastReloadCooldown(item == WatheItems.REVOLVER, duration, roleOf(player), traitsOf(player), isSneaking(player));
+        return fastReloadCooldown(isFastReloadGun(item), duration, roleOf(player), traitsOf(player), isSneaking(player));
     }
 
     public static boolean shouldPreserveNikoRevolverCooldown(int duration, Role role, Collection<Identifier> traits, boolean sneaking) {
