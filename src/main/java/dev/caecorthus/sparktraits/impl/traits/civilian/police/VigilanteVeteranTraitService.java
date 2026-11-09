@@ -138,10 +138,9 @@ public final class VigilanteVeteranTraitService {
     }
 
     /**
-     * Niko's fixed range belongs to the revolver and derringer only ({@code nikoGun}); any other gun aimed through
-     * Wathe's revolver ray, such as SparkWitch's Savior pistol, keeps Marksman alone.
-     * Niko 的固定射程只属于左轮与德林加（{@code nikoGun}）；其他借用 Wathe 左轮射线瞄准的枪（如 SparkWitch 的救世主手枪）
-     * 只保留精确枪手。
+     * Niko's fixed range belongs to the guns in {@link #isNikoGun} ({@code nikoGun}); any other gun aimed through
+     * Wathe's revolver ray keeps Marksman alone.
+     * Niko 的固定射程只属于 {@link #isNikoGun} 中的枪（{@code nikoGun}）；其他借用 Wathe 左轮射线瞄准的枪只保留精确枪手。
      */
     public static double gunRange(
             double baseRange,
@@ -166,8 +165,24 @@ public final class VigilanteVeteranTraitService {
         return gunRange(baseRange, roleOf(player), traitsOf(player), isSneaking(player), nikoGun);
     }
 
+    /**
+     * Guns that take Niko's sneaking range: the revolver, the derringer and SparkWitch's Savior pistol. The pistol
+     * checks its target on SparkWitch's server, which asks {@link #serverGunTargetRange} through the public facade.
+     * 享有 Niko 潜行射程的枪：左轮、德林加与 SparkWitch 的救世主手枪。手枪的目标校验在 SparkWitch 服务端进行，
+     * 由其经公共门面查询 {@link #serverGunTargetRange}。
+     */
     private static boolean isNikoGun(Item item) {
-        return item == WatheItems.REVOLVER || item == WatheItems.DERRINGER;
+        return item == WatheItems.REVOLVER || item == WatheItems.DERRINGER || isSaviorPistol(item);
+    }
+
+    /**
+     * Guns on the revolver's cooldown rule (sneaking Niko pins 60 s, otherwise Fast Reload): the revolver and the
+     * Savior pistol. The pistol never bursts, so a sneaking Niko shot is one 300-block shot for the same cooldown.
+     * 适用左轮冷却规则（潜行 Niko 固定 60 秒，否则快速装填）的枪：左轮与救世主手枪。手枪不会连发，因此潜行 Niko
+     * 的一枪是单发 300 格射击，冷却相同。
+     */
+    private static boolean hasRevolverCooldownRule(Item item) {
+        return item == WatheItems.REVOLVER || isSaviorPistol(item);
     }
 
     /** Marksman-only range multiplier for downstream police weapons; never Niko's fixed range.
@@ -187,10 +202,7 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static int fastReloadCooldown(Item item, int duration, Role role, Collection<Identifier> traits) {
-        if (item == WatheItems.REVOLVER) {
-            return fastReloadCooldown(true, duration, role, traits, false);
-        }
-        return isSaviorPistol(item) ? fastReloadOnlyCooldown(duration, role, traits) : duration;
+        return fastReloadCooldown(hasRevolverCooldownRule(item), duration, role, traits, false);
     }
 
     public static int fastReloadCooldown(
@@ -202,8 +214,8 @@ public final class VigilanteVeteranTraitService {
         return fastReloadCooldown(revolver, duration, role, traits, false);
     }
 
-    /** Revolver cooldown: sneaking Niko pins it to the burst cooldown, otherwise Fast Reload shortens it.
-     *  左轮冷却：潜行 Niko 固定为连发冷却，否则由快速装填缩短。 */
+    /** Revolver and Savior pistol cooldown: sneaking Niko pins it to 60 s, otherwise Fast Reload shortens it.
+     *  左轮与救世主手枪冷却：潜行 Niko 固定为 60 秒，否则由快速装填缩短。 */
     public static int fastReloadCooldown(
             boolean revolver,
             int duration,
@@ -217,27 +229,17 @@ public final class VigilanteVeteranTraitService {
         if (canUseNikoTrait(role, traits, sneaking)) {
             return NIKO_REVOLVER_COOLDOWN_TICKS;
         }
-        return fastReloadOnlyCooldown(duration, role, traits);
-    }
-
-    /**
-     * Fast Reload alone, never Niko: the whole rule for the Savior pistol. Any living player may fire a picked-up
-     * pistol, so a sneaking Niko holder must not get the revolver's burst cooldown on a gun that never bursts.
-     * 只算快速装填、绝不算 Niko：救世主手枪的全部规则。任何存活玩家都能使用捡到的手枪，因此潜行的 Niko 持有者不能在
-     * 这把不会连发的枪上吃到左轮的连发冷却。
-     */
-    public static int fastReloadOnlyCooldown(int duration, Role role, Collection<Identifier> traits) {
-        if (duration <= 0 || !canUseVigilanteTrait(role, traits, PoliceTraits.FAST_RELOAD)) {
+        if (!canUseVigilanteTrait(role, traits, PoliceTraits.FAST_RELOAD)) {
             return duration;
         }
         return Math.max(1, (int) (duration * FAST_RELOAD_MULTIPLIER));
     }
 
     public static int fastReloadCooldown(Item item, int duration, PlayerEntity player) {
-        if (item == WatheItems.REVOLVER) {
-            return fastReloadCooldown(true, duration, roleOf(player), traitsOf(player), isSneaking(player));
+        if (!hasRevolverCooldownRule(item)) {
+            return duration;
         }
-        return isSaviorPistol(item) ? fastReloadOnlyCooldown(duration, roleOf(player), traitsOf(player)) : duration;
+        return fastReloadCooldown(true, duration, roleOf(player), traitsOf(player), isSneaking(player));
     }
 
     public static boolean shouldPreserveNikoRevolverCooldown(int duration, Role role, Collection<Identifier> traits, boolean sneaking) {
@@ -249,9 +251,17 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static boolean shouldPreserveNikoRevolverCooldown(Item item, int duration, PlayerEntity player) {
-        return item == WatheItems.REVOLVER && shouldPreserveNikoRevolverCooldown(duration, player);
+        return hasRevolverCooldownRule(item) && shouldPreserveNikoRevolverCooldown(duration, player);
     }
 
+    /**
+     * Server-side target range of a shot with {@code item}: Niko's 300 blocks for a sneaking holder firing a gun in
+     * {@link #isNikoGun}, otherwise the gun's own tolerance. Wathe's receiver gets it from {@code GunShootPayloadMixin};
+     * downstream receivers ask {@code SparkTraitsApi.getServerGunTargetRange}.
+     * 用 {@code item} 开枪时的服务端目标距离：潜行的 Niko 持有者使用 {@link #isNikoGun} 中的枪时为 300 格，否则为该枪自身
+     * 的容差。Wathe 的接收器经 {@code GunShootPayloadMixin} 取得；下游接收器调用
+     * {@code SparkTraitsApi.getServerGunTargetRange}。
+     */
     public static double serverGunTargetRange(double originalRange, PlayerEntity player, Item item) {
         if (isNikoGun(item) && canUseNikoTrait(player)) {
             return NIKO_GUN_RANGE;
