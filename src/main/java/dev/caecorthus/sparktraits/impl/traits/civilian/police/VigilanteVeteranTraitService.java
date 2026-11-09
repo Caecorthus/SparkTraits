@@ -65,6 +65,9 @@ public final class VigilanteVeteranTraitService {
     private static final int NIKO_REPEAT_SHOT_PUNISHMENT_DELAY_TICKS = 4;
     private static final int NIKO_NIGHT_VISION_AMPLIFIER = 0;
     private static final int NIKO_NIGHT_VISION_TOLERANCE_TICKS = 5;
+    /** SparkWitch's Savior pistol, matched by id so SparkWitch stays an optional dependency.
+     *  SparkWitch 的救世主手枪，按 id 匹配，保持 SparkWitch 为可选依赖。 */
+    private static final Identifier SAVIOR_PISTOL_ID = Identifier.of("sparkwitch", "savior_pistol");
     private static final Map<UUID, NikoNightVisionState> NIKO_NIGHT_VISION = new HashMap<>();
 
     private VigilanteVeteranTraitService() {
@@ -109,8 +112,8 @@ public final class VigilanteVeteranTraitService {
         return PoliceRoleCategory.canReceiveGunPoliceTraits(role);
     }
 
-    /** Selection and runtime gate for Niko: the gun police gate minus revolver-less police such as USEC.
-     *  Niko 的抽取与运行时判定入口：枪械警职判定再排除不持左轮的警职（如 USEC）。 */
+    /** Selection and runtime gate for Niko: the gun police gate minus police that never fire a revolver (USEC, Savior).
+     *  Niko 的抽取与运行时判定入口：枪械警职判定再排除不用左轮开火的警职（USEC、救世主）。 */
     public static boolean canSelectNikoTrait(Role role) {
         return PoliceRoleCategory.canReceiveNikoTrait(role);
     }
@@ -153,16 +156,15 @@ public final class VigilanteVeteranTraitService {
         return marksmanRangeMultiplier(roleOf(player), traitsOf(player));
     }
 
-    /** Fast Reload applies to the revolver and to SparkWitch's Savior pistol. / 快速装填作用于左轮与救世主手枪。 */
-    private static final Identifier SAVIOR_PISTOL_ID = Identifier.of("sparkwitch", "savior_pistol");
-
-    private static boolean isFastReloadGun(Item item) {
-        return item != null
-                && (item == WatheItems.REVOLVER || SAVIOR_PISTOL_ID.equals(Registries.ITEM.getId(item)));
+    private static boolean isSaviorPistol(Item item) {
+        return item != null && SAVIOR_PISTOL_ID.equals(Registries.ITEM.getId(item));
     }
 
     public static int fastReloadCooldown(Item item, int duration, Role role, Collection<Identifier> traits) {
-        return fastReloadCooldown(isFastReloadGun(item), duration, role, traits, false);
+        if (item == WatheItems.REVOLVER) {
+            return fastReloadCooldown(true, duration, role, traits, false);
+        }
+        return isSaviorPistol(item) ? fastReloadOnlyCooldown(duration, role, traits) : duration;
     }
 
     public static int fastReloadCooldown(
@@ -174,6 +176,8 @@ public final class VigilanteVeteranTraitService {
         return fastReloadCooldown(revolver, duration, role, traits, false);
     }
 
+    /** Revolver cooldown: sneaking Niko pins it to the burst cooldown, otherwise Fast Reload shortens it.
+     *  左轮冷却：潜行 Niko 固定为连发冷却，否则由快速装填缩短。 */
     public static int fastReloadCooldown(
             boolean revolver,
             int duration,
@@ -187,14 +191,27 @@ public final class VigilanteVeteranTraitService {
         if (canUseNikoTrait(role, traits, sneaking)) {
             return NIKO_REVOLVER_COOLDOWN_TICKS;
         }
-        if (!canUseVigilanteTrait(role, traits, PoliceTraits.FAST_RELOAD)) {
+        return fastReloadOnlyCooldown(duration, role, traits);
+    }
+
+    /**
+     * Fast Reload alone, never Niko: the whole rule for the Savior pistol. Any living player may fire a picked-up
+     * pistol, so a sneaking Niko holder must not get the revolver's burst cooldown on a gun that never bursts.
+     * 只算快速装填、绝不算 Niko：救世主手枪的全部规则。任何存活玩家都能使用捡到的手枪，因此潜行的 Niko 持有者不能在
+     * 这把不会连发的枪上吃到左轮的连发冷却。
+     */
+    public static int fastReloadOnlyCooldown(int duration, Role role, Collection<Identifier> traits) {
+        if (duration <= 0 || !canUseVigilanteTrait(role, traits, PoliceTraits.FAST_RELOAD)) {
             return duration;
         }
         return Math.max(1, (int) (duration * FAST_RELOAD_MULTIPLIER));
     }
 
     public static int fastReloadCooldown(Item item, int duration, PlayerEntity player) {
-        return fastReloadCooldown(isFastReloadGun(item), duration, roleOf(player), traitsOf(player), isSneaking(player));
+        if (item == WatheItems.REVOLVER) {
+            return fastReloadCooldown(true, duration, roleOf(player), traitsOf(player), isSneaking(player));
+        }
+        return isSaviorPistol(item) ? fastReloadOnlyCooldown(duration, roleOf(player), traitsOf(player)) : duration;
     }
 
     public static boolean shouldPreserveNikoRevolverCooldown(int duration, Role role, Collection<Identifier> traits, boolean sneaking) {
