@@ -10,8 +10,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 /**
- * Applies Fast Reload only to police-category roles' revolver cooldown.
- * 只把快速装填作用到警职类别身份的左轮手枪冷却上。
+ * Applies Fast Reload only to police-category roles' revolver and Savior pistol cooldowns.
+ * 只把快速装填作用到警职类别身份的左轮手枪与救世主手枪冷却上。
  */
 @Mixin(value = ItemCooldownManager.class, priority = 925)
 public abstract class FastReloadCooldownMixin {
