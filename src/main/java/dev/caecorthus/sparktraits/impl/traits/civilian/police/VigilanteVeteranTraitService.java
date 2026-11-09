@@ -68,6 +68,9 @@ public final class VigilanteVeteranTraitService {
     /** SparkWitch's Savior pistol, matched by id so SparkWitch stays an optional dependency.
      *  SparkWitch 的救世主手枪，按 id 匹配，保持 SparkWitch 为可选依赖。 */
     private static final Identifier SAVIOR_PISTOL_ID = Identifier.of("sparkwitch", "savior_pistol");
+    /** The pistol kills with its own death reason instead of {@code wathe:gun_shot}; Heavy Artillery counts both.
+     *  手枪用自己的死因而非 {@code wathe:gun_shot} 击杀；重炮手对两者都算数。 */
+    private static final Identifier SAVIOR_PISTOL_DEATH_REASON = Identifier.of("sparkwitch", "savior_pistol_kill");
     private static final Map<UUID, NikoNightVisionState> NIKO_NIGHT_VISION = new HashMap<>();
 
     private VigilanteVeteranTraitService() {
@@ -131,7 +134,23 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static double gunRange(double baseRange, Role role, Collection<Identifier> traits, boolean sneaking) {
-        if (canUseNikoTrait(role, traits, sneaking)) {
+        return gunRange(baseRange, role, traits, sneaking, true);
+    }
+
+    /**
+     * Niko's fixed range belongs to the revolver and derringer only ({@code nikoGun}); any other gun aimed through
+     * Wathe's revolver ray, such as SparkWitch's Savior pistol, keeps Marksman alone.
+     * Niko 的固定射程只属于左轮与德林加（{@code nikoGun}）；其他借用 Wathe 左轮射线瞄准的枪（如 SparkWitch 的救世主手枪）
+     * 只保留精确枪手。
+     */
+    public static double gunRange(
+            double baseRange,
+            Role role,
+            Collection<Identifier> traits,
+            boolean sneaking,
+            boolean nikoGun
+    ) {
+        if (nikoGun && canUseNikoTrait(role, traits, sneaking)) {
             return NIKO_GUN_RANGE;
         }
         if (canUseVigilanteTrait(role, traits, PoliceTraits.MARKSMAN)) {
@@ -140,8 +159,15 @@ public final class VigilanteVeteranTraitService {
         return baseRange;
     }
 
+    /** Client aim and crosshair range; reads the held gun like the server check in {@link #serverGunTargetRange}.
+     *  客户端瞄准与准星射程；与服务端校验 {@link #serverGunTargetRange} 一样按手持枪械判定。 */
     public static double gunRange(PlayerEntity player, double baseRange) {
-        return gunRange(baseRange, roleOf(player), traitsOf(player), isSneaking(player));
+        boolean nikoGun = player != null && isNikoGun(player.getMainHandStack().getItem());
+        return gunRange(baseRange, roleOf(player), traitsOf(player), isSneaking(player), nikoGun);
+    }
+
+    private static boolean isNikoGun(Item item) {
+        return item == WatheItems.REVOLVER || item == WatheItems.DERRINGER;
     }
 
     /** Marksman-only range multiplier for downstream police weapons; never Niko's fixed range.
@@ -227,7 +253,7 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static double serverGunTargetRange(double originalRange, PlayerEntity player, Item item) {
-        if ((item == WatheItems.REVOLVER || item == WatheItems.DERRINGER) && canUseNikoTrait(player)) {
+        if (isNikoGun(item) && canUseNikoTrait(player)) {
             return NIKO_GUN_RANGE;
         }
         return originalRange;
@@ -351,7 +377,7 @@ public final class VigilanteVeteranTraitService {
             Identifier deathReason,
             double distanceSquared
     ) {
-        return GameConstants.DeathReasons.GUN.equals(deathReason)
+        return (GameConstants.DeathReasons.GUN.equals(deathReason) || SAVIOR_PISTOL_DEATH_REASON.equals(deathReason))
                 && distanceSquared <= HEAVY_ARTILLERY_RANGE * HEAVY_ARTILLERY_RANGE
                 && canUseVigilanteTrait(role, traits, PoliceTraits.HEAVY_ARTILLERY);
     }
