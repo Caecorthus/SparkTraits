@@ -55,6 +55,8 @@
   "trait.sparktraits.anxiety.description": "Tasks appear 150% faster, but completing one fully restores your sanity.",
   "trait.sparktraits.minimalism.name": "Minimalism",
   "trait.sparktraits.minimalism.description": "You never have more than 2 tasks at a time.",
+  "trait.sparktraits.dopamine.name": "Dopamine",
+  "trait.sparktraits.dopamine.description": "For 10 seconds after completing a task, your sanity drains 30% slower and tasks appear 30% faster.",
   "trait.sparktraits.marksman.name": "Marksman",
   "trait.sparktraits.marksman.description": "Your revolver, derringer, and supported police weapons (such as the Taser) reach thirty percent farther.",
   "trait.sparktraits.fast_reload.name": "Fast Reload",
