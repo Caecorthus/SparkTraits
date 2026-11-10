@@ -5,8 +5,9 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 
 /**
- * Task pacing for the civilian task traits: 焦虑症 speeds up Wathe's next-task countdown.
- * 平民任务类词条的任务节奏：焦虑症加快 Wathe 的下一个任务倒计时。
+ * Task pacing for the civilian task traits: 焦虑症 speeds up Wathe's next-task countdown, 极简主义 caps how many
+ * tasks can be open at once.
+ * 平民任务类词条的任务节奏：焦虑症加快 Wathe 的下一个任务倒计时，极简主义限制同时存在的任务数量。
  */
 public final class TaskPacing {
 
@@ -37,5 +38,15 @@ public final class TaskPacing {
             return 0;
         }
         return (int) (Math.floor((worldTime + 1) * extraPerTick) - Math.floor(worldTime * extraPerTick));
+    }
+
+    /**
+     * Whether a 极简主义 holder already has as many open tasks as the trait allows.
+     * 极简主义持有者当前的任务数是否已达到词条允许的上限。
+     */
+    public static boolean atTaskCap(PlayerEntity player, int activeTasks) {
+        return activeTasks >= MinimalismTrait.TASK_CAP
+                && player != null
+                && TraitPlayerComponent.KEY.get(player).hasActiveTrait(MinimalismTrait.ID);
     }
 }

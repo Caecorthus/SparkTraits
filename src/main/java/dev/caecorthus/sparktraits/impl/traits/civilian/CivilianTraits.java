@@ -59,6 +59,7 @@ public final class CivilianTraits {
                 .build());
         TraitRegistry.register(new DepressionTrait());
         TraitRegistry.register(new AnxietyTrait());
+        TraitRegistry.register(new MinimalismTrait());
     }
 
     private static TraitDefinition.Builder base(Identifier id, int color) {
