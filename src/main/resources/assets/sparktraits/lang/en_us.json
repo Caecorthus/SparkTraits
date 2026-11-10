@@ -39,6 +39,8 @@
   "trait.sparktraits.well_supplied.description": "Start the game with 1.2 times your starting money. Does not take a trait slot.",
   "trait.sparktraits.economy.name": "Economy",
   "trait.sparktraits.economy.description": "Purchases above 100 money refund 10% of the price you paid.",
+  "trait.sparktraits.sensitive.name": "Sensitive",
+  "trait.sparktraits.sensitive.description": "You can always see the time left in the round. On the killer side, killing a civilian adds 60 seconds and killing a neutral adds 30 seconds.",
   "trait.sparktraits.extroverted.name": "Extroverted",
   "trait.sparktraits.extroverted.description": "Your sanity does not drain while at least two other living players are within eight blocks.",
   "trait.sparktraits.introverted.name": "Introverted",
