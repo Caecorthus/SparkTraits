@@ -30,6 +30,22 @@ public final class TraitRoleEligibility {
             Identifier.of(SPARKWITCH_MOD_ID, "fiend")
     );
 
+    // Owner request 2026-11-05: the Savior's sanity bar is pinned full, so sanity-related good traits are never
+    // offered to that role. Matched by full trait id; other roles keep their pools unchanged.
+    // 所有者 2026-11-05：救世主理智恒满，因此该身份永远不获得与理智相关的好人词条；按完整词条 id 匹配，
+    // 其他身份的天赋池不变。
+    private static final Identifier SAVIOR_ROLE_ID = Identifier.of(SPARKWITCH_MOD_ID, "savior");
+    private static final Set<Identifier> SAVIOR_EXCLUDED_SANITY_TRAITS = Set.of(
+            Identifier.of("sparktraits", "task_master"),
+            Identifier.of("sparktraits", "steady"),
+            Identifier.of("sparktraits", "extroverted"),
+            Identifier.of("sparktraits", "introverted"),
+            Identifier.of("sparktraits", "focus"),
+            Identifier.of("sparktraits", "depression"),
+            Identifier.of("sparktraits", "well_trained"),
+            Identifier.of("sparktraits", "oppressive")
+    );
+
     private TraitRoleEligibility() {
     }
 
@@ -41,6 +57,10 @@ public final class TraitRoleEligibility {
      * 因此重写了谓词的天赋（内鬼、善良）无法绕过该限制。
      */
     public static boolean canReceiveTrait(Role role, Trait candidate) {
+        if (role != null && SAVIOR_ROLE_ID.equals(role.identifier())
+                && SAVIOR_EXCLUDED_SANITY_TRAITS.contains(candidate.id())) {
+            return false;
+        }
         return role == null || !UNIVERSAL_ONLY_ROLE_IDS.contains(role.identifier())
                 || candidate.audience() == TraitAudience.UNIVERSAL;
     }
