@@ -51,6 +51,8 @@
   "trait.sparktraits.depression.description": "Sanity drains faster and stamina is weaker. At low sanity, a countdown may push you toward self-destruction, or an opposing-faction kill may send you into a frenzied counterattack.",
   "trait.sparktraits.anxiety.name": "Anxiety",
   "trait.sparktraits.anxiety.description": "Tasks appear 150% faster, but completing one fully restores your sanity.",
+  "trait.sparktraits.minimalism.name": "Minimalism",
+  "trait.sparktraits.minimalism.description": "You never have more than 2 tasks at a time.",
   "trait.sparktraits.marksman.name": "Marksman",
   "trait.sparktraits.marksman.description": "Your revolver, derringer, and supported police weapons (such as the Taser) reach thirty percent farther.",
   "trait.sparktraits.fast_reload.name": "Fast Reload",

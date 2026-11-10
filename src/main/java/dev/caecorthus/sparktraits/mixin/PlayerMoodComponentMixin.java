@@ -28,6 +28,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.Map;
+
 @Mixin(value = PlayerMoodComponent.class, remap = false)
 public abstract class PlayerMoodComponentMixin {
     @Shadow
@@ -36,6 +38,10 @@ public abstract class PlayerMoodComponentMixin {
 
     @Shadow
     private float mood;
+
+    @Shadow
+    @Final
+    public Map<PlayerMoodComponent.Task, PlayerMoodComponent.TrainTask> tasks;
 
     @Shadow
     public abstract void setMood(float mood);
@@ -104,6 +110,15 @@ public abstract class PlayerMoodComponentMixin {
     )
     private int sparktraits$speedUpTaskCountdown(int nextTaskTimer) {
         return nextTaskTimer - TaskPacing.extraTimerTicks(this.player);
+    }
+
+    // Wathe already treats a null task as "nothing to hand out" and simply rolls the next interval.
+    // Wathe 本来就把 null 任务当作“这次不发任务”，随后照常抽取下一次间隔。
+    @Inject(method = "generateTask", at = @At("HEAD"), cancellable = true)
+    private void sparktraits$capMinimalismTasks(CallbackInfoReturnable<PlayerMoodComponent.TrainTask> cir) {
+        if (TaskPacing.atTaskCap(this.player, this.tasks.size())) {
+            cir.setReturnValue(null);
+        }
     }
 
     @Redirect(

@@ -4,8 +4,11 @@ import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.api.Trait;
 import dev.caecorthus.sparktraits.api.TraitAudience;
 import dev.caecorthus.sparktraits.api.TraitSelectionContext;
+import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import net.minecraft.util.Identifier;
+
+import java.util.Set;
 
 /**
  * 极简主义 / Minimalism: caps simultaneous tasks at two. Innocent-only, and only for roles that actually earn money
@@ -34,6 +37,11 @@ public final class MinimalismTrait implements Trait {
         return TraitAudience.INNOCENT_ONLY;
     }
 
+    @Override
+    public Set<Identifier> incompatibleTraits() {
+        return Set.of(ImpostorTrait.ID);
+    }
+
     /**
      * Roles that cannot earn coins from tasks cannot hold this trait: the cap would be a pure downside with no
      * economy to trade against. Reuses the same money-visibility gate as Task Master.
@@ -49,7 +57,12 @@ public final class MinimalismTrait implements Trait {
         // 因此能赚金币的乘客不会被分配到这个词条。
         // Passenger-only: the cap only means something for a role that actually runs on the mood/shop loop, and a
         // neutral (or killer) must never roll it. 乘客专属：这条限制只对走理智/商店循环的角色有意义，中立的身份不该拿到。
+        // Like the other civilian traits it also needs an original civilian with a real mood bar: without one
+        // there are no real tasks to cap.
+        // 与其他平民词条一样，还要求原始好人身份且拥有真理智：没有真理智就没有真正的任务可限制。
         return Trait.super.canApply(context)
+                && CivilianTraitService.canSelectCivilianTrait(context.role(), context.selectedTraitIds())
+                && GlobalTraitService.hasEffectiveRealMood(context.role(), context.selectedTraitIds())
                 && !GlobalTraitService.usesMoneySystem(
                         context.player(),
                         context.gameComponent(),
