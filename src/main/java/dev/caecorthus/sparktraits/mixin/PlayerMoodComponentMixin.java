@@ -1,9 +1,11 @@
 package dev.caecorthus.sparktraits.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.TaskPacing;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
@@ -15,6 +17,7 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -84,6 +87,23 @@ public abstract class PlayerMoodComponentMixin {
                 DepressionTraitService.isPsychoActive(this.player)
                         || DepressionTraitService.isWathePsychoActive(this.player)
         );
+    }
+
+    // The first read of nextTaskTimer in serverTick is the per-tick countdown; lowering the value it reads makes the
+    // countdown run faster without touching the interval Wathe rolls for the next task.
+    // serverTick 中对 nextTaskTimer 的第一次读取就是每 tick 的倒计时；调低读到的值即可加快倒计时，
+    // 不会改动 Wathe 为下一个任务抽取的间隔。
+    @ModifyExpressionValue(
+            method = "serverTick",
+            at = @At(
+                    value = "FIELD",
+                    target = "Ldev/doctor4t/wathe/cca/PlayerMoodComponent;nextTaskTimer:I",
+                    opcode = Opcodes.GETFIELD,
+                    ordinal = 0
+            )
+    )
+    private int sparktraits$speedUpTaskCountdown(int nextTaskTimer) {
+        return nextTaskTimer - TaskPacing.extraTimerTicks(this.player);
     }
 
     @Redirect(
