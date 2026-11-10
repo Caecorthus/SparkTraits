@@ -41,6 +41,8 @@
   "trait.sparktraits.economy.description": "单笔消费超过 100 金币时，返还实付金额的百分之十。",
   "trait.sparktraits.sensitive.name": "敏感",
   "trait.sparktraits.sensitive.description": "你始终能看到本局剩余时间。身为杀手阵营时，击杀好人延长 60 秒，击杀中立延长 30 秒。",
+  "trait.sparktraits.stands_firm.name": "立场坚定",
+  "trait.sparktraits.stands_firm.description": "同阵营的玩家无法杀死你。",
   "trait.sparktraits.extroverted.name": "外向",
   "trait.sparktraits.extroverted.description": "8格内至少有另外两名存活玩家时，你的理智不会自然流失。",
   "trait.sparktraits.introverted.name": "内向",

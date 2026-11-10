@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl.traits.global;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules;
 import dev.doctor4t.wathe.api.Faction;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.KillPlayer;
@@ -29,7 +30,9 @@ public final class StandsFirmService {
         // 返回 null 才是“交给下一个监听器”；返回 KillResult.allow() 会直接终止 BEFORE 链，
         // 让后面的保护（背水一战、抑郁、小丑、其他模组的护盾）全部失效。
         KillPlayer.BEFORE.register((victim, killer, deathReason) -> {
-            if (killer == null || killer == victim) {
+            // Terminal penalties are not combat attempts, so no kill protection applies to them.
+            // 终结惩罚不是战斗攻击，任何击杀保护都不对其生效。
+            if (killer == null || killer == victim || TerminalDeathRules.contains(deathReason)) {
                 return null;
             }
             if (!TraitPlayerComponent.KEY.get(victim).hasActiveTrait(StandsFirmTrait.ID)) {
