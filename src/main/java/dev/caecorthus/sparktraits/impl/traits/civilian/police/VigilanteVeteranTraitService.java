@@ -28,6 +28,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.item.Item;
+import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -64,6 +65,12 @@ public final class VigilanteVeteranTraitService {
     private static final int NIKO_REPEAT_SHOT_PUNISHMENT_DELAY_TICKS = 4;
     private static final int NIKO_NIGHT_VISION_AMPLIFIER = 0;
     private static final int NIKO_NIGHT_VISION_TOLERANCE_TICKS = 5;
+    /** SparkWitch's Savior pistol, matched by id so SparkWitch stays an optional dependency.
+     *  SparkWitch 的救世主手枪，按 id 匹配，保持 SparkWitch 为可选依赖。 */
+    private static final Identifier SAVIOR_PISTOL_ID = Identifier.of("sparkwitch", "savior_pistol");
+    /** The pistol kills with its own death reason instead of {@code wathe:gun_shot}; Heavy Artillery counts both.
+     *  手枪用自己的死因而非 {@code wathe:gun_shot} 击杀；重炮手对两者都算数。 */
+    private static final Identifier SAVIOR_PISTOL_DEATH_REASON = Identifier.of("sparkwitch", "savior_pistol_kill");
     private static final Map<UUID, NikoNightVisionState> NIKO_NIGHT_VISION = new HashMap<>();
 
     private VigilanteVeteranTraitService() {
@@ -108,8 +115,8 @@ public final class VigilanteVeteranTraitService {
         return PoliceRoleCategory.canReceiveGunPoliceTraits(role);
     }
 
-    /** Selection and runtime gate for Niko: the gun police gate minus revolver-less police such as USEC.
-     *  Niko 的抽取与运行时判定入口：枪械警职判定再排除不持左轮的警职（如 USEC）。 */
+    /** Selection and runtime gate for Niko: the gun police gate minus police that never fire a revolver (USEC, Savior).
+     *  Niko 的抽取与运行时判定入口：枪械警职判定再排除不用左轮开火的警职（USEC、救世主）。 */
     public static boolean canSelectNikoTrait(Role role) {
         return PoliceRoleCategory.canReceiveNikoTrait(role);
     }
@@ -127,7 +134,22 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static double gunRange(double baseRange, Role role, Collection<Identifier> traits, boolean sneaking) {
-        if (canUseNikoTrait(role, traits, sneaking)) {
+        return gunRange(baseRange, role, traits, sneaking, true);
+    }
+
+    /**
+     * Niko's fixed range belongs to the guns in {@link #isNikoGun} ({@code nikoGun}); any other gun aimed through
+     * Wathe's revolver ray keeps Marksman alone.
+     * Niko 的固定射程只属于 {@link #isNikoGun} 中的枪（{@code nikoGun}）；其他借用 Wathe 左轮射线瞄准的枪只保留精确枪手。
+     */
+    public static double gunRange(
+            double baseRange,
+            Role role,
+            Collection<Identifier> traits,
+            boolean sneaking,
+            boolean nikoGun
+    ) {
+        if (nikoGun && canUseNikoTrait(role, traits, sneaking)) {
             return NIKO_GUN_RANGE;
         }
         if (canUseVigilanteTrait(role, traits, PoliceTraits.MARKSMAN)) {
@@ -136,8 +158,31 @@ public final class VigilanteVeteranTraitService {
         return baseRange;
     }
 
+    /** Client aim and crosshair range; reads the held gun like the server check in {@link #serverGunTargetRange}.
+     *  客户端瞄准与准星射程；与服务端校验 {@link #serverGunTargetRange} 一样按手持枪械判定。 */
     public static double gunRange(PlayerEntity player, double baseRange) {
-        return gunRange(baseRange, roleOf(player), traitsOf(player), isSneaking(player));
+        boolean nikoGun = player != null && isNikoGun(player.getMainHandStack().getItem());
+        return gunRange(baseRange, roleOf(player), traitsOf(player), isSneaking(player), nikoGun);
+    }
+
+    /**
+     * Guns that take Niko's sneaking range: the revolver, the derringer and SparkWitch's Savior pistol. The pistol
+     * checks its target on SparkWitch's server, which asks {@link #serverGunTargetRange} through the public facade.
+     * 享有 Niko 潜行射程的枪：左轮、德林加与 SparkWitch 的救世主手枪。手枪的目标校验在 SparkWitch 服务端进行，
+     * 由其经公共门面查询 {@link #serverGunTargetRange}。
+     */
+    private static boolean isNikoGun(Item item) {
+        return item == WatheItems.REVOLVER || item == WatheItems.DERRINGER || isSaviorPistol(item);
+    }
+
+    /**
+     * Guns on the revolver's cooldown rule (sneaking Niko pins 60 s, otherwise Fast Reload): the revolver and the
+     * Savior pistol. The pistol never bursts, so a sneaking Niko shot is one 300-block shot for the same cooldown.
+     * 适用左轮冷却规则（潜行 Niko 固定 60 秒，否则快速装填）的枪：左轮与救世主手枪。手枪不会连发，因此潜行 Niko
+     * 的一枪是单发 300 格射击，冷却相同。
+     */
+    private static boolean hasRevolverCooldownRule(Item item) {
+        return item == WatheItems.REVOLVER || isSaviorPistol(item);
     }
 
     /** Marksman-only range multiplier for downstream police weapons; never Niko's fixed range.
@@ -152,8 +197,12 @@ public final class VigilanteVeteranTraitService {
         return marksmanRangeMultiplier(roleOf(player), traitsOf(player));
     }
 
+    private static boolean isSaviorPistol(Item item) {
+        return item != null && SAVIOR_PISTOL_ID.equals(Registries.ITEM.getId(item));
+    }
+
     public static int fastReloadCooldown(Item item, int duration, Role role, Collection<Identifier> traits) {
-        return fastReloadCooldown(item == WatheItems.REVOLVER, duration, role, traits, false);
+        return fastReloadCooldown(hasRevolverCooldownRule(item), duration, role, traits, false);
     }
 
     public static int fastReloadCooldown(
@@ -165,6 +214,8 @@ public final class VigilanteVeteranTraitService {
         return fastReloadCooldown(revolver, duration, role, traits, false);
     }
 
+    /** Revolver and Savior pistol cooldown: sneaking Niko pins it to 60 s, otherwise Fast Reload shortens it.
+     *  左轮与救世主手枪冷却：潜行 Niko 固定为 60 秒，否则由快速装填缩短。 */
     public static int fastReloadCooldown(
             boolean revolver,
             int duration,
@@ -185,7 +236,10 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static int fastReloadCooldown(Item item, int duration, PlayerEntity player) {
-        return fastReloadCooldown(item == WatheItems.REVOLVER, duration, roleOf(player), traitsOf(player), isSneaking(player));
+        if (!hasRevolverCooldownRule(item)) {
+            return duration;
+        }
+        return fastReloadCooldown(true, duration, roleOf(player), traitsOf(player), isSneaking(player));
     }
 
     public static boolean shouldPreserveNikoRevolverCooldown(int duration, Role role, Collection<Identifier> traits, boolean sneaking) {
@@ -197,11 +251,19 @@ public final class VigilanteVeteranTraitService {
     }
 
     public static boolean shouldPreserveNikoRevolverCooldown(Item item, int duration, PlayerEntity player) {
-        return item == WatheItems.REVOLVER && shouldPreserveNikoRevolverCooldown(duration, player);
+        return hasRevolverCooldownRule(item) && shouldPreserveNikoRevolverCooldown(duration, player);
     }
 
+    /**
+     * Server-side target range of a shot with {@code item}: Niko's 300 blocks for a sneaking holder firing a gun in
+     * {@link #isNikoGun}, otherwise the gun's own tolerance. Wathe's receiver gets it from {@code GunShootPayloadMixin};
+     * downstream receivers ask {@code SparkTraitsApi.getServerGunTargetRange}.
+     * 用 {@code item} 开枪时的服务端目标距离：潜行的 Niko 持有者使用 {@link #isNikoGun} 中的枪时为 300 格，否则为该枪自身
+     * 的容差。Wathe 的接收器经 {@code GunShootPayloadMixin} 取得；下游接收器调用
+     * {@code SparkTraitsApi.getServerGunTargetRange}。
+     */
     public static double serverGunTargetRange(double originalRange, PlayerEntity player, Item item) {
-        if ((item == WatheItems.REVOLVER || item == WatheItems.DERRINGER) && canUseNikoTrait(player)) {
+        if (isNikoGun(item) && canUseNikoTrait(player)) {
             return NIKO_GUN_RANGE;
         }
         return originalRange;
@@ -325,7 +387,7 @@ public final class VigilanteVeteranTraitService {
             Identifier deathReason,
             double distanceSquared
     ) {
-        return GameConstants.DeathReasons.GUN.equals(deathReason)
+        return (GameConstants.DeathReasons.GUN.equals(deathReason) || SAVIOR_PISTOL_DEATH_REASON.equals(deathReason))
                 && distanceSquared <= HEAVY_ARTILLERY_RANGE * HEAVY_ARTILLERY_RANGE
                 && canUseVigilanteTrait(role, traits, PoliceTraits.HEAVY_ARTILLERY);
     }

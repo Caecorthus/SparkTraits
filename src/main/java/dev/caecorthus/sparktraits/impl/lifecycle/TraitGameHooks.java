@@ -23,7 +23,9 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerial
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceWalkieTalkieService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.AnxietyService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
+import dev.caecorthus.sparktraits.impl.traits.global.EconomyService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorBodyguardService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorRevolverService;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
@@ -55,6 +57,8 @@ public final class TraitGameHooks {
         ConscienceWalkieTalkieService.register();
         SilencedKillerRestrictionService.register();
         DepressionTraitService.register();
+        EconomyService.register();
+        AnxietyService.register();
         ResetPlayer.EVENT.register(player -> {
             boolean wraithActive = SparkTraitsApi.isWraithActive(player);
             ConscienceBombService.clearTimedBomb(player);
