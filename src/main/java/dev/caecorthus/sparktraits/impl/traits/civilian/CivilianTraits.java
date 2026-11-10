@@ -60,6 +60,7 @@ public final class CivilianTraits {
         TraitRegistry.register(new DepressionTrait());
         TraitRegistry.register(new AnxietyTrait());
         TraitRegistry.register(new MinimalismTrait());
+        TraitRegistry.register(new DopamineTrait());
     }
 
     private static TraitDefinition.Builder base(Identifier id, int color) {

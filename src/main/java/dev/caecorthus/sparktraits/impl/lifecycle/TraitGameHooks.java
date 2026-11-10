@@ -25,6 +25,7 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTrai
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.AnxietyService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.DopamineService;
 import dev.caecorthus.sparktraits.impl.traits.global.EconomyService;
 import dev.caecorthus.sparktraits.impl.traits.global.SensitiveService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorBodyguardService;
@@ -60,6 +61,7 @@ public final class TraitGameHooks {
         DepressionTraitService.register();
         EconomyService.register();
         AnxietyService.register();
+        DopamineService.register();
         SensitiveService.register();
         ResetPlayer.EVENT.register(player -> {
             boolean wraithActive = SparkTraitsApi.isWraithActive(player);
@@ -67,6 +69,7 @@ public final class TraitGameHooks {
             ConscienceSerialKillerService.clearPlayer(player);
             LastStandService.clearPlayer(player);
             DepressionTraitService.clearPlayer(player);
+            DopamineService.clear(player);
             if (shouldClearTraitsOnReset(wraithActive)) {
                 TraitPlayerComponent.KEY.get(player).clearActiveTraits(TraitRemovalReason.RESET);
             }
@@ -115,6 +118,7 @@ public final class TraitGameHooks {
             ConscienceSerialKillerService.clearAll();
             LastStandService.clearRoundState(serverWorld);
             DepressionTraitService.clearRoundState(serverWorld);
+            DopamineService.clearAll();
             // Attributions for victims who never died this round must not reach a death in the next one.
             // 本局未死亡受害者的毒源归因不能带到下一局的死亡判定。
             EffectiveDeathConsequenceRules.clearPoisonSources();

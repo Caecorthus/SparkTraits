@@ -55,6 +55,8 @@
   "trait.sparktraits.anxiety.description": "任务出现的速度提高百分之一百五十，但每完成一个任务都会直接回满理智。",
   "trait.sparktraits.minimalism.name": "极简主义",
   "trait.sparktraits.minimalism.description": "你同时最多只会有 2 个任务。",
+  "trait.sparktraits.dopamine.name": "多巴胺",
+  "trait.sparktraits.dopamine.description": "完成任务后的 10 秒内，理智流失速度降低百分之三十，任务出现的速度提高百分之三十。",
   "trait.sparktraits.marksman.name": "精确枪手",
   "trait.sparktraits.marksman.description": "你的左轮手枪、德林加以及支持该效果的警用武器（如电击枪）射程提高百分之三十。",
   "trait.sparktraits.fast_reload.name": "快速装填",

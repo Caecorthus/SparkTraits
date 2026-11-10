@@ -5,9 +5,9 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 
 /**
- * Task pacing for the civilian task traits: 焦虑症 speeds up Wathe's next-task countdown, 极简主义 caps how many
- * tasks can be open at once.
- * 平民任务类词条的任务节奏：焦虑症加快 Wathe 的下一个任务倒计时，极简主义限制同时存在的任务数量。
+ * Task pacing for the civilian task traits: 焦虑症 and 多巴胺 speed up Wathe's next-task countdown, 极简主义 caps how
+ * many tasks can be open at once.
+ * 平民任务类词条的任务节奏：焦虑症与多巴胺加快 Wathe 的下一个任务倒计时，极简主义限制同时存在的任务数量。
  */
 public final class TaskPacing {
 
@@ -19,11 +19,27 @@ public final class TaskPacing {
      * 本 tick 在 Wathe 自身减去的 1 tick 之外，额外从“下一个任务倒计时”里扣除的 tick 数。
      */
     public static int extraTimerTicks(PlayerEntity player) {
-        if (!(player instanceof ServerPlayerEntity)
-                || !TraitPlayerComponent.KEY.get(player).hasActiveTrait(AnxietyTrait.ID)) {
+        if (!(player instanceof ServerPlayerEntity)) {
             return 0;
         }
-        return extraTimerTicks(AnxietyTrait.REFRESH_MULTIPLIER, player.getWorld().getTime());
+        TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
+        boolean anxiety = traits.hasActiveTrait(AnxietyTrait.ID);
+        boolean dopamineWindow = traits.hasActiveTrait(DopamineTrait.ID) && DopamineService.isActive(player);
+        if (!anxiety && !dopamineWindow) {
+            return 0;
+        }
+        return extraTimerTicks(speedMultiplier(anxiety, dopamineWindow), player.getWorld().getTime());
+    }
+
+    static float speedMultiplier(boolean anxiety, boolean dopamineWindow) {
+        float multiplier = 1.0F;
+        if (anxiety) {
+            multiplier *= AnxietyTrait.REFRESH_MULTIPLIER;
+        }
+        if (dopamineWindow) {
+            multiplier *= DopamineTrait.TASK_REFRESH_MULTIPLIER;
+        }
+        return multiplier;
     }
 
     /**
