@@ -1,9 +1,12 @@
 package dev.caecorthus.sparktraits.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.DopamineService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.TaskPacing;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
@@ -15,6 +18,7 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -25,6 +29,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.Map;
+
 @Mixin(value = PlayerMoodComponent.class, remap = false)
 public abstract class PlayerMoodComponentMixin {
     @Shadow
@@ -33,6 +39,10 @@ public abstract class PlayerMoodComponentMixin {
 
     @Shadow
     private float mood;
+
+    @Shadow
+    @Final
+    public Map<PlayerMoodComponent.Task, PlayerMoodComponent.TrainTask> tasks;
 
     @Shadow
     public abstract void setMood(float mood);
@@ -77,6 +87,7 @@ public abstract class PlayerMoodComponentMixin {
         float adjustedMood = KillerTraitService.oppressiveAdjustedMood(this.mood, proposedMood, this.player);
         adjustedMood = VigilanteVeteranTraitService.wellTrainedAdjustedMood(this.mood, adjustedMood, this.player);
         adjustedMood = CivilianTraitService.socialMoodAdjustedMood(this.mood, adjustedMood, this.player);
+        adjustedMood = DopamineService.adjustedMood(this.mood, adjustedMood, this.player);
         return DepressionTraitService.depressionAdjustedMood(
                 this.mood,
                 adjustedMood,
@@ -84,6 +95,32 @@ public abstract class PlayerMoodComponentMixin {
                 DepressionTraitService.isPsychoActive(this.player)
                         || DepressionTraitService.isWathePsychoActive(this.player)
         );
+    }
+
+    // The first read of nextTaskTimer in serverTick is the per-tick countdown; lowering the value it reads makes the
+    // countdown run faster without touching the interval Wathe rolls for the next task.
+    // serverTick 中对 nextTaskTimer 的第一次读取就是每 tick 的倒计时；调低读到的值即可加快倒计时，
+    // 不会改动 Wathe 为下一个任务抽取的间隔。
+    @ModifyExpressionValue(
+            method = "serverTick",
+            at = @At(
+                    value = "FIELD",
+                    target = "Ldev/doctor4t/wathe/cca/PlayerMoodComponent;nextTaskTimer:I",
+                    opcode = Opcodes.GETFIELD,
+                    ordinal = 0
+            )
+    )
+    private int sparktraits$speedUpTaskCountdown(int nextTaskTimer) {
+        return nextTaskTimer - TaskPacing.extraTimerTicks(this.player);
+    }
+
+    // Wathe already treats a null task as "nothing to hand out" and simply rolls the next interval.
+    // Wathe 本来就把 null 任务当作“这次不发任务”，随后照常抽取下一次间隔。
+    @Inject(method = "generateTask", at = @At("HEAD"), cancellable = true)
+    private void sparktraits$capMinimalismTasks(CallbackInfoReturnable<PlayerMoodComponent.TrainTask> cir) {
+        if (TaskPacing.atTaskCap(this.player, this.tasks.size())) {
+            cir.setReturnValue(null);
+        }
     }
 
     @Redirect(
