@@ -30,6 +30,9 @@ public final class TraitLockValidationService {
     private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
     private static final Identifier SPARKWITCH_SAINT_ID = Identifier.of("sparkwitch", "saint");
     private static final Identifier SPARKWITCH_BLIND_ID = Identifier.of("sparkwitch", "blind");
+    // Owner 2026-11-04: Noa never holds Impostor (fake mood breaks her painting), same as round assignment.
+    // 所有者 2026-11-04：城崎诺亚永不获得内鬼（虚假心情会破坏作画），与开局分配一致。
+    private static final Identifier SPARKWITCH_NOA_ID = Identifier.of("sparkwitch", "noa");
 
     private TraitLockValidationService() {
     }
@@ -105,6 +108,7 @@ public final class TraitLockValidationService {
                 && !role.identifier().equals(Noellesroles.TOXICOLOGIST_ID)
                 && !role.identifier().equals(SPARKWITCH_SAINT_ID)
                 && !role.identifier().equals(SPARKWITCH_BLIND_ID)
+                && !role.identifier().equals(SPARKWITCH_NOA_ID)
                 && !PoliceRoleCategory.isPolice(role));
     }
 

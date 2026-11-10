@@ -21,6 +21,9 @@ public final class PoliceRoleCategory {
     // SparkWitch's USEC carries only a sniper rifle, never a revolver; matched by full id so SparkTraits keeps no
     // SparkWitch dependency. SparkWitch 的 USEC 只带狙击枪、从不持左轮；按完整身份 ID 匹配，SparkTraits 不依赖 SparkWitch。
     private static final Identifier SPARKWITCH_USEC_ID = Identifier.of("sparkwitch", "usec");
+    // The Savior's custom pistol is not a revolver/derringer; Niko must not roll or run for it.
+    // 救世主使用自定义手枪而非左轮/德林加；Niko 不得抽取或生效。
+    private static final Identifier SPARKWITCH_SAVIOR_ID = Identifier.of("sparkwitch", "savior");
 
     private PoliceRoleCategory() {
     }
@@ -44,11 +47,17 @@ public final class PoliceRoleCategory {
 
     /**
      * Gun police roles that may roll and use Niko, a revolver/derringer trait. USEC never carries a revolver, so it
-     * never rolls Niko but keeps Marksman, Fast Reload and Heavy Artillery (owner decision 2026-10-07).
+     * never rolls Niko but keeps Marksman, Fast Reload and Heavy Artillery (owner decision 2026-10-07). SparkWitch's
+     * Savior fires its own pistol instead of a revolver, so it is excluded the same way. The exclusion is about the
+     * role only: a Niko holder of another police role who fires a picked-up Savior pistol keeps Niko's range and
+     * cooldown on it (owner decision 2026-11-09).
      * 可抽取并使用 Niko（左轮/德林加天赋）的枪械警职。USEC 从不持左轮，因此永不抽到 Niko，
-     * 但保留精确枪手、快速装填与重炮（所有者 2026-10-07 决定）。
+     * 但保留精确枪手、快速装填与重炮（所有者 2026-10-07 决定）。SparkWitch 的救世主用自己的手枪而非左轮开火，同样排除。
+     * 排除的只是该身份：其他警职的 Niko 持有者使用捡到的救世主手枪时，Niko 的射程与冷却照常生效（所有者 2026-11-09 决定）。
      */
     public static boolean canReceiveNikoTrait(Role role) {
-        return canReceiveGunPoliceTraits(role) && !SPARKWITCH_USEC_ID.equals(role.identifier());
+        return canReceiveGunPoliceTraits(role)
+                && !SPARKWITCH_USEC_ID.equals(role.identifier())
+                && !SPARKWITCH_SAVIOR_ID.equals(role.identifier());
     }
 }

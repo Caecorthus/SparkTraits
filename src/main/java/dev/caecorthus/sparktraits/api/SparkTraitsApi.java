@@ -110,6 +110,21 @@ public final class SparkTraitsApi {
                 : dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService.marksmanRangeMultiplier(player);
     }
 
+    /** Target range for a downstream gun that validates its own shots (today SparkWitch's Savior pistol): Niko's
+     * fixed 300 blocks while {@code shooter} is a sneaking Niko holder and {@code gun} is one Niko covers (revolver,
+     * derringer, Savior pistol), otherwise {@code baseRange}; never below {@code baseRange}. It is the range the
+     * client already aims with, so a receiver that keeps its own tolerance rejects Niko's long shots. Null-safe,
+     * client- and server-safe.
+     * 供自行校验射击的下游枪械（目前为 SparkWitch 救世主手枪）查询目标距离：{@code shooter} 是潜行的 Niko 持有者且
+     * {@code gun} 属于 Niko 覆盖的枪（左轮、德林加、救世主手枪）时为固定 300 格，否则为 {@code baseRange}；绝不低于
+     * {@code baseRange}。这正是客户端瞄准所用的射程，接收方若沿用自身容差会拒绝 Niko 的远距离射击。支持空值，
+     * 客户端与服务端均可调用。 */
+    public static double getServerGunTargetRange(PlayerEntity shooter, net.minecraft.item.Item gun, double baseRange) {
+        return shooter == null || shooter.getWorld() == null || gun == null ? baseRange
+                : Math.max(baseRange, dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService
+                        .serverGunTargetRange(baseRange, shooter, gun));
+    }
+
     /** Server-only, null-safe: whether a downstream police gun's wathe:gun_shot kill of victim by shooter counts as a Heavy Artillery shot (active trait on a gun-police runtime role, within the trait's 5-block feet-to-feet reach, shooter != victim). Never kills or mutates anything.
      *  仅服务端、支持空值：下游警用枪械以 wathe:gun_shot 击杀时，是否算作重炮手射击（持有生效词条的警职、在 5 格内、射手不是受害者）。不击杀也不修改任何状态。 */
     public static boolean isHeavyArtilleryGunShot(ServerPlayerEntity shooter, ServerPlayerEntity victim) {
