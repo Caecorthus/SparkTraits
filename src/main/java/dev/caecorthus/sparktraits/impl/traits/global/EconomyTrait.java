@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.impl.traits.global;
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.api.Trait;
 import dev.caecorthus.sparktraits.api.TraitAudience;
+import dev.caecorthus.sparktraits.api.TraitSelectionContext;
 import net.minecraft.util.Identifier;
 
 /**
@@ -30,5 +31,15 @@ public final class EconomyTrait implements Trait {
     @Override
     public TraitAudience audience() {
         return TraitAudience.UNIVERSAL;
+    }
+
+    /**
+     * Same gate as the other money-only traits (Snowball, Well Supplied): a role with no shop balance could never
+     * trigger the refund, so the trait would only waste one of its slots.
+     * 与其他纯金钱词条（滚雪球、物资充沛）同一门槛：没有商店余额的身份永远触发不了返还，拿到只会白占一个词条位。
+     */
+    @Override
+    public boolean canApply(TraitSelectionContext context) {
+        return GlobalTraitService.usesMoneySystem(context.player(), context.gameComponent(), context.role());
     }
 }
