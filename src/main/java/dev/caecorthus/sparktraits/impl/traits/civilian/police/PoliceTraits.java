@@ -25,7 +25,11 @@ public final class PoliceTraits {
     public static void register() {
         TraitRegistry.register(vigilante(MARKSMAN, 0xD6C27A).build());
         TraitRegistry.register(vigilante(FAST_RELOAD, 0xF4A261).build());
-        TraitRegistry.register(vigilante(HEAVY_ARTILLERY, 0xD94F30).build());
+        // Narrower gate than the shared gun police predicate: the Savior never rolls Heavy Artillery.
+        // 比共享枪械警职谓词更窄：救世主永不抽取重炮。
+        TraitRegistry.register(vigilante(HEAVY_ARTILLERY, 0xD94F30)
+                .predicate(context -> VigilanteVeteranTraitService.canSelectHeavyArtilleryTrait(context.role()))
+                .build());
         // Replaces the shared gun police predicate with Niko's narrower gate (no USEC).
         // 用 Niko 更窄的判定（排除 USEC）替换共享的枪械警职谓词。
         TraitRegistry.register(vigilante(NIKO, 0x39FF14)

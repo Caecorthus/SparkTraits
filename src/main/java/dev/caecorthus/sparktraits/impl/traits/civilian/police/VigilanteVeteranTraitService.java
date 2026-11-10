@@ -121,6 +121,12 @@ public final class VigilanteVeteranTraitService {
         return PoliceRoleCategory.canReceiveNikoTrait(role);
     }
 
+    /** Selection and runtime gate for Heavy Artillery: the gun police gate minus the Savior (owner request 2026-11-10).
+     *  重炮的抽取与运行时判定入口：枪械警职判定再排除救世主（所有者 2026-11-10 决定）。 */
+    public static boolean canSelectHeavyArtilleryTrait(Role role) {
+        return PoliceRoleCategory.canReceiveHeavyArtilleryTrait(role);
+    }
+
     public static boolean canSelectVeteranTrait(Role role) {
         return role == WatheRoles.VETERAN;
     }
@@ -389,7 +395,7 @@ public final class VigilanteVeteranTraitService {
     ) {
         return (GameConstants.DeathReasons.GUN.equals(deathReason) || SAVIOR_PISTOL_DEATH_REASON.equals(deathReason))
                 && distanceSquared <= HEAVY_ARTILLERY_RANGE * HEAVY_ARTILLERY_RANGE
-                && canUseVigilanteTrait(role, traits, PoliceTraits.HEAVY_ARTILLERY);
+                && canUseHeavyArtilleryTrait(role, traits);
     }
 
     public static boolean isHeavyArtilleryShot(
@@ -804,6 +810,10 @@ public final class VigilanteVeteranTraitService {
 
     private static boolean canUseVigilanteTrait(Role role, Collection<Identifier> traits, Identifier traitId) {
         return canSelectVigilanteTrait(role) && safeTraits(traits).contains(traitId);
+    }
+
+    private static boolean canUseHeavyArtilleryTrait(Role role, Collection<Identifier> traits) {
+        return canSelectHeavyArtilleryTrait(role) && safeTraits(traits).contains(PoliceTraits.HEAVY_ARTILLERY);
     }
 
     private static boolean canUseVeteranTrait(Role role, Collection<Identifier> traits, Identifier traitId) {

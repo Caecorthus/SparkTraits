@@ -60,4 +60,12 @@ public final class PoliceRoleCategory {
                 && !SPARKWITCH_USEC_ID.equals(role.identifier())
                 && !SPARKWITCH_SAVIOR_ID.equals(role.identifier());
     }
+
+    /**
+     * Gun police roles that may roll and use Heavy Artillery. The Savior is excluded by owner request 2026-11-10.
+     * 可抽取并使用重炮的枪械警职。所有者 2026-11-10 决定：救世主排除在外。
+     */
+    public static boolean canReceiveHeavyArtilleryTrait(Role role) {
+        return canReceiveGunPoliceTraits(role) && !SPARKWITCH_SAVIOR_ID.equals(role.identifier());
+    }
 }
