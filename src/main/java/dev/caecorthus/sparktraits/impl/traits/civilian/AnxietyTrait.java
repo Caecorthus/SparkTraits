@@ -3,7 +3,12 @@ package dev.caecorthus.sparktraits.impl.traits.civilian;
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.api.Trait;
 import dev.caecorthus.sparktraits.api.TraitAudience;
+import dev.caecorthus.sparktraits.api.TraitSelectionContext;
+import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import net.minecraft.util.Identifier;
+
+import java.util.Set;
 
 /**
  * 焦虑症 / Anxiety disorder: tasks refresh 150% faster, but finishing one restores the entire mood bar.
@@ -29,5 +34,21 @@ public final class AnxietyTrait implements Trait {
     @Override
     public TraitAudience audience() {
         return TraitAudience.INNOCENT_ONLY;
+    }
+
+    @Override
+    public Set<Identifier> incompatibleTraits() {
+        return Set.of(ImpostorTrait.ID);
+    }
+
+    /**
+     * Same gate as the other civilian traits, plus a real mood bar: without one there are no real tasks to pace.
+     * 与其他平民词条相同的门槛，并要求真理智：没有真理智就没有真正的任务可言。
+     */
+    @Override
+    public boolean canApply(TraitSelectionContext context) {
+        return Trait.super.canApply(context)
+                && CivilianTraitService.canSelectCivilianTrait(context.role(), context.selectedTraitIds())
+                && GlobalTraitService.hasEffectiveRealMood(context.role(), context.selectedTraitIds());
     }
 }
