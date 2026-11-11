@@ -145,6 +145,21 @@ public final class SparkTraitsApi {
                 : dev.caecorthus.sparktraits.impl.traits.killer.HerculeanStrengthService.throwChargeTicks(player, baseTicks);
     }
 
+    /** Knife windup for downstream HUDs: the first held tick on which releasing Wathe's knife stabs. Pass Wathe's
+     * own windup as {@code baseTicks} (11: the knife needs more than 10 elapsed ticks); the result is shorter while
+     * the player holds an active Seasoned (9) or raises the knife with Close Quarters (3). It is the same rule the
+     * knife's release check uses, so a meter driven by it fills exactly when a release starts to count.
+     * {@code knife} is the stack being raised. Null-safe, both sides.
+     * 供下游 HUD 查询小刀前摇：松手即可出刀的第一个按住刻。{@code baseTicks} 传入 Wathe 自身的前摇（11：小刀要求
+     * 已用刻数超过 10）；玩家持有生效的老练时缩短为 9，以狭路相逢举刀时缩短为 3。它与小刀松手判定使用同一条规则，
+     * 因此据此绘制的进度条恰好在松手开始有效时读满。{@code knife} 为正在举起的物品。支持空值，两端均可调用。 */
+    public static int getKnifeWindupTicks(PlayerEntity player, ItemStack knife, int baseTicks) {
+        return player == null || player.getWorld() == null || knife == null || knife.isEmpty() || baseTicks <= 0
+                ? baseTicks
+                : dev.caecorthus.sparktraits.impl.traits.killer.combat.CloseQuartersService
+                        .knifeReleaseThreshold(player, knife, baseTicks - 1) + 1;
+    }
+
     public static void registerTerminalDeathReason(Identifier reason) {
         dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules.register(reason);
     }

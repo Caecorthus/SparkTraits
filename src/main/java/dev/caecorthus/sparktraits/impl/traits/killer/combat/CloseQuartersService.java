@@ -86,6 +86,20 @@ public final class CloseQuartersService {
         return player != null && TraitPlayerComponent.KEY.get(player).hasActiveTrait(TRAIT) && eligibleRole(player);
     }
 
+    /**
+     * The constant Wathe's knife compares elapsed use ticks against ({@code elapsed > threshold} stabs), after the
+     * knife traits: Close Quarters' raised knife first, otherwise Seasoned, otherwise {@code original}. The one rule
+     * behind both the release mixin and {@code SparkTraitsApi.getKnifeWindupTicks}, valid on both sides.
+     * Wathe 小刀用来比较已用刻数的常量（{@code elapsed > threshold} 时出刀），已计入小刀词条：先看狭路相逢的举刀，
+     * 否则看老练，否则为 {@code original}。松手 mixin 与 {@code SparkTraitsApi.getKnifeWindupTicks} 共用这一条规则，
+     * 两端均有效。
+     */
+    public static int knifeReleaseThreshold(PlayerEntity player, ItemStack stack, int original) {
+        // Wathe uses elapsed > threshold, not >= threshold. 2 means the first accepted tick is 3.
+        if (isRaisedKnife(stack) && hasRaisedKnifeTrait(player)) return CombatTimingRules.KNIFE_WINDUP_TICKS - 1;
+        return KillerTraitService.seasonedKnifeReleaseThreshold(player, original);
+    }
+
     public static boolean isRaisedKnife(ItemStack stack) {
         return stack != null && !stack.isEmpty() && stack.getItem().getClass() == KnifeItem.class;
     }
