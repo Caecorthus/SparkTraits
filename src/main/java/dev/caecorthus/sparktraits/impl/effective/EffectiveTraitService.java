@@ -80,6 +80,9 @@ public final class EffectiveTraitService {
     // Owner 2026-11-04: SparkWitch's Noa paints from her real Wathe mood, which Impostor's fake mood would pin at 1.0.
     // 所有者 2026-11-04：SparkWitch 城崎诺亚按真实 Wathe 心情作画，内鬼的虚假心情会把它固定在 1.0。
     private static final Identifier SPARKWITCH_NOA_ID = Identifier.of("sparkwitch", "noa");
+    // PR SparkWitch #206: SparkWitch's Sherry is the passenger-side detective (real sanity, killer deduction), so she must never roll Impostor.
+    // PR SparkWitch #206：SparkWitch 橘雪莉是乘客阵营的侦探（真实理智、推演凶手），不能被抽成内鬼。
+    private static final Identifier SPARKWITCH_SHERRY_ID = Identifier.of("sparkwitch", "sherry");
     private static final Identifier SPARKWITCH_BELL_RINGER_ID = Identifier.of("sparkwitch", "bell_ringer");
     private static final Identifier NOELLES_SHADOW_JESTER_ID = Identifier.of("noellesroles", "shadow_jester");
 
@@ -665,7 +668,8 @@ public final class EffectiveTraitService {
                 || role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
                 || role.identifier().equals(SPARKWITCH_SAINT_ID)
                 || role.identifier().equals(SPARKWITCH_BLIND_ID)
-                || role.identifier().equals(SPARKWITCH_NOA_ID));
+                || role.identifier().equals(SPARKWITCH_NOA_ID)
+                || role.identifier().equals(SPARKWITCH_SHERRY_ID));
     }
 
     public static boolean countsAsPublicKiller(Role role, Collection<Identifier> traits) {

@@ -33,6 +33,9 @@ public final class TraitLockValidationService {
     // Owner 2026-11-04: Noa never holds Impostor (fake mood breaks her painting), same as round assignment.
     // 所有者 2026-11-04：城崎诺亚永不获得内鬼（虚假心情会破坏作画），与开局分配一致。
     private static final Identifier SPARKWITCH_NOA_ID = Identifier.of("sparkwitch", "noa");
+    // PR SparkWitch #206: Sherry (passenger detective) never holds Impostor, same as round assignment.
+    // PR SparkWitch #206：橘雪莉（乘客侦探）永不获得内鬼，与开局分配一致。
+    private static final Identifier SPARKWITCH_SHERRY_ID = Identifier.of("sparkwitch", "sherry");
 
     private TraitLockValidationService() {
     }
@@ -109,6 +112,7 @@ public final class TraitLockValidationService {
                 && !role.identifier().equals(SPARKWITCH_SAINT_ID)
                 && !role.identifier().equals(SPARKWITCH_BLIND_ID)
                 && !role.identifier().equals(SPARKWITCH_NOA_ID)
+                && !role.identifier().equals(SPARKWITCH_SHERRY_ID)
                 && !PoliceRoleCategory.isPolice(role));
     }
 
