@@ -772,10 +772,6 @@ public final class TraitAssignmentService {
                     && isCompatibleWithLockedTraits(trait);
         }
 
-        void clearRandomTraits() {
-            randomTraits.clear();
-        }
-
         void replaceRandomTraits(Collection<Identifier> replacementTraits) {
             randomTraits.clear();
             if (replacementTraits == null) {

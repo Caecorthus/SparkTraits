@@ -219,6 +219,8 @@ public abstract class WatheClientMixin {
             boolean normalPoisoned = consciencePoisoner && targetHasNormalPoison;
             boolean bluePoisoned = consciencePoisoner && targetHasBluePoison;
             boolean poisonedTargetIgnoresRange = ConsciencePoisonerService.poisonStateIgnoresConscienceRange(normalPoisoned, bluePoisoned);
+            // A projecting Spirit Walker's body stays visible within the normal Conscience range, so projection is not an input.
+            // 灵界行者出窍时留下的肉身在善良的正常范围内仍可被透视，因此出窍状态不作为输入。
             boolean shouldHighlight = EffectiveTraitService.shouldConscienceInstinctHighlightTarget(
                     context.instinctEnabled(),
                     GameFunctions.isPlayerPlayingAndAlive(playerTarget),
@@ -227,9 +229,6 @@ public abstract class WatheClientMixin {
                     viewer.squaredDistanceTo(playerTarget),
                     targetTraits.isLastStandPending(),
                     targetTraits.isKillerInstinctHidden(),
-                    // A projecting Spirit Walker's body stays visible within the normal Conscience range.
-                    // 灵界行者出窍时留下的肉身在善良的正常范围内仍可被透视。
-                    false,
                     bombHolderIgnoresRange || poisonedTargetIgnoresRange
             );
             // Conscience hides the event's outlines, but a Party Animal's keyless helium and balloon outlines are its own

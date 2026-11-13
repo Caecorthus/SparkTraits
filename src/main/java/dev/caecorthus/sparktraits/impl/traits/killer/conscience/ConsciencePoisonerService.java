@@ -1,13 +1,11 @@
 package dev.caecorthus.sparktraits.impl.traits.killer.conscience;
 
-import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.BuildShopEntries;
 import dev.doctor4t.wathe.block_entity.TrimmedBedBlockEntity;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.block.BedBlock;
 import net.minecraft.block.BlockState;
@@ -39,10 +37,7 @@ public final class ConsciencePoisonerService {
     }
 
     public static final Identifier FINE_DRINK_ID = Identifier.of(Noellesroles.MOD_ID, "fine_drink");
-    public static final Identifier BLUE_POISON_SOURCE = SparkTraits.id("blue_poison");
     public static final int FINE_DRINK_PRICE = 75;
-    public static final int FINE_DRINK_MAX_STOCK = -1;
-    public static final boolean FINE_DRINK_HAS_STOCK_LIMIT = false;
     public static final int NORMAL_POISONER_INSTINCT_COLOR = 0x1E5014;
     public static final int BLUE_POISON_COLOR = 0x00BFFF;
     public static final int MIXED_POISON_COLOR = mixColors(NORMAL_POISONER_INSTINCT_COLOR, BLUE_POISON_COLOR);
@@ -121,10 +116,6 @@ public final class ConsciencePoisonerService {
         return bluePoisoned ? BLUE_POISON_COLOR : normalPoisonColor;
     }
 
-    public static int toxicologistPoisonInstinctColor(boolean bluePoisoned, int normalToxicologistColor) {
-        return bluePoisoned ? BLUE_POISON_COLOR : normalToxicologistColor;
-    }
-
     public static int bluePoisonTicksAfterTrap(int currentTicks, int rolledTicks, int reductionTicks) {
         return bluePoisonTicksAfterTrap(currentTicks, rolledTicks, reductionTicks, PlayerPoisonComponent.clampTime.getRight());
     }
@@ -142,18 +133,6 @@ public final class ConsciencePoisonerService {
             boolean spectatorOrCreative
     ) {
         return consciencePoisoner || toxicologist || spectatorOrCreative;
-    }
-
-    public static boolean canSeeHiddenBluePoisonParticles(PlayerEntity viewer) {
-        if (viewer == null) {
-            return false;
-        }
-        GameWorldComponent gameComponent = GameWorldComponent.KEY.get(viewer.getWorld());
-        return shouldShowHiddenBluePoisonParticles(
-                isConsciencePoisoner(viewer, gameComponent),
-                gameComponent.isRole(viewer, Noellesroles.TOXICOLOGIST),
-                GameFunctions.isPlayerSpectatingOrCreative(viewer)
-        );
     }
 
     public static void applyBluePoison(ServerPlayerEntity target, UUID poisoner, int ticks) {

@@ -27,10 +27,7 @@ import java.util.random.RandomGenerator;
  */
 public final class TraitSelector {
     public static final int SLOT_COUNT = 3;
-    public static final float DEFAULT_SLOT_CHANCE = TraitSlotRollChance.DEFAULT;
     private static final double FACTION_SCOPED_ROLL_MULTIPLIER = 1.5D;
-    @Deprecated(forRemoval = false)
-    public static final float SLOT_CHANCE = DEFAULT_SLOT_CHANCE;
 
     private TraitSelector() {
     }

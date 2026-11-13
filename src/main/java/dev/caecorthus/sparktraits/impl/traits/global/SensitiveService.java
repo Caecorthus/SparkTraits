@@ -4,11 +4,9 @@ import dev.caecorthus.sparkfactionapi.api.SparkFactionApi;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.doctor4t.wathe.api.Faction;
-import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.cca.GameTimeComponent;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import net.minecraft.server.network.ServerPlayerEntity;
 
 /**
  * Extends the round timer when a 敏感 holder kills an innocent or a neutral.
@@ -30,11 +28,16 @@ public final class SensitiveService {
                 return;
             }
             GameWorldComponent game = GameWorldComponent.KEY.get(victim.getWorld());
-            if (effectiveFaction(game, killer) != Faction.KILLER) {
+            // Faction after SparkTraits alignment flips: an Impostor plays for the killers and a Conscience killer for
+            // the civilians. Using the role's own faction would deny an Impostor the bonus and pay a killer for killing
+            // an Impostor teammate.
+            // SparkTraits 阵营翻转后的阵营：内鬼属于杀手方、善良杀手属于好人方。直接用身份原始阵营会让内鬼拿不到加时，
+            // 而杀手击杀内鬼队友反而能刷时间。
+            if (EffectiveTraitService.effectiveFaction(game, killer) != Faction.KILLER) {
                 return;
             }
             int seconds = bonusSeconds(
-                    effectiveFaction(game, victim),
+                    EffectiveTraitService.effectiveFaction(game, victim),
                     SparkFactionApi.isNeutralAligned(game.getRole(victim))
             );
             if (seconds <= 0) {
@@ -63,26 +66,5 @@ public final class SensitiveService {
             return 0;
         }
         return victimRoleNeutralAligned ? SensitiveTrait.NEUTRAL_KILL_SECONDS : 0;
-    }
-
-    /**
-     * Faction after SparkTraits alignment flips: an Impostor plays for the killers and a Conscience killer for the
-     * civilians. Using the role's own faction would deny an Impostor the bonus and pay a killer for killing an
-     * Impostor teammate.
-     * SparkTraits 阵营翻转后的阵营：内鬼属于杀手方、善良杀手属于好人方。直接用身份原始阵营会让内鬼拿不到加时，
-     * 而杀手击杀内鬼队友反而能刷时间。
-     */
-    private static Faction effectiveFaction(GameWorldComponent game, ServerPlayerEntity player) {
-        Role role = game.getRole(player);
-        if (role == null || role.getFaction() == Faction.NONE) {
-            return Faction.NONE;
-        }
-        if (EffectiveTraitService.isEffectiveKiller(player, game)) {
-            return Faction.KILLER;
-        }
-        if (EffectiveTraitService.isEffectiveCivilian(player, game)) {
-            return Faction.CIVILIAN;
-        }
-        return role.getFaction();
     }
 }

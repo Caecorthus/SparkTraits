@@ -26,8 +26,4 @@ public record TraitSelectionContext(
     ) {
         this(world, gameComponent, player, role, selectedTraitIds, 0, false);
     }
-
-    public boolean hasSelectedTrait(Identifier id) {
-        return selectedTraitIds.contains(id);
-    }
 }

@@ -293,10 +293,6 @@ public final class LastStandService {
         return serverPending || syncedPending;
     }
 
-    static boolean shouldHideFromKillerInstinct(boolean lastStandPending, boolean killerInstinctHidden) {
-        return EffectiveTraitService.shouldHideFromKillerInstinct(lastStandPending, killerInstinctHidden);
-    }
-
     public static boolean shouldBlockRoundEnd(boolean pendingInWorld, GameFunctions.WinStatus winStatus) {
         return pendingInWorld && winStatus != GameFunctions.WinStatus.NONE;
     }
@@ -305,21 +301,6 @@ public final class LastStandService {
         // The mixin calls this only after Wathe has a real winner ready to announce.
         // Mixin 只会在 wathe 已经准备宣布真实胜利时调用这里。
         return pendingInWorld;
-    }
-
-    public static int pendingSpectatorHighlightColor(
-            boolean canSeeSpectatorInformation,
-            boolean instinctEnabled,
-            boolean lastStandPending,
-            @Nullable Role targetRole
-    ) {
-        return spectatorLastStandHighlightColor(
-                canSeeSpectatorInformation,
-                instinctEnabled,
-                lastStandPending,
-                false,
-                targetRole
-        );
     }
 
     public static int spectatorLastStandHighlightColor(
@@ -333,10 +314,6 @@ public final class LastStandService {
             return -1;
         }
         return Objects.requireNonNullElse(targetRole, WatheRoles.CIVILIAN).color();
-    }
-
-    static Identifier noCollisionEffectId() {
-        return NOELLES_NO_COLLISION;
     }
 
     static boolean canTriggerFromKill(
@@ -790,10 +767,6 @@ public final class LastStandService {
             }
         }
         return meetsCivilianPopulationThreshold(startingCivilians, aliveCiviliansAfterDeath);
-    }
-
-    static boolean meetsCivilianPopulationThresholdAfterDeath(int startingCivilians, int aliveCiviliansBeforeDeath) {
-        return meetsCivilianPopulationThreshold(startingCivilians, Math.max(0, aliveCiviliansBeforeDeath - 1));
     }
 
     static boolean meetsCivilianPopulationThreshold(int startingCivilians, int aliveCiviliansAfterDeath) {

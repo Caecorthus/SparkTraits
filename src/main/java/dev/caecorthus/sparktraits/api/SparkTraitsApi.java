@@ -1,6 +1,7 @@
 package dev.caecorthus.sparktraits.api;
 
 import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
+import dev.caecorthus.sparktraits.component.TraitIdCodec;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.assignment.TraitRoleChangeRevalidation;
@@ -25,8 +26,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
@@ -602,13 +601,13 @@ public final class SparkTraitsApi {
             );
         }
 
+        // Spirit projection leaves a defenseless body; downstream instinct sources must still outline it, so
+        // projection is not an input here.
+        // 灵魂出窍留下的肉身毫无防备，下游本能来源仍须为其描边，因此出窍状态不参与此处判断。
         return EffectiveTraitService.shouldHideFromInstinct(
                 finalMomentActive,
                 targetTraits != null && targetTraits.isLastStandPending(),
                 targetTraits != null && targetTraits.isKillerInstinctHidden(),
-                // Spirit projection leaves a defenseless body; downstream instinct sources must still outline it.
-                // 灵魂出窍留下的肉身毫无防备，下游本能来源仍须为其描边。
-                false,
                 goingDarkSuppressed
         );
     }
@@ -702,21 +701,13 @@ public final class SparkTraitsApi {
         BluePoisonInteropService.registerBlueSanityDrainExemption(exemption);
     }
 
-    private static NbtList identifiers(Collection<Identifier> identifiers) {
-        NbtList values = new NbtList();
-        for (Identifier identifier : identifiers) {
-            values.add(NbtString.of(identifier.toString()));
-        }
-        return values;
-    }
-
     private static NbtCompound captureWraithTraitSnapshot(
             Collection<Identifier> active,
             Collection<Identifier> revealed
     ) {
         NbtCompound snapshot = new NbtCompound();
-        snapshot.put("ActiveTraits", identifiers(active));
-        snapshot.put("RevealedTraits", identifiers(revealed));
+        snapshot.put("ActiveTraits", TraitIdCodec.toNbt(active));
+        snapshot.put("RevealedTraits", TraitIdCodec.toNbt(revealed));
         return snapshot;
     }
 
@@ -740,19 +731,7 @@ public final class SparkTraitsApi {
 
     private static LinkedHashSet<Identifier> readIdentifiers(NbtCompound snapshot, String key) {
         LinkedHashSet<Identifier> identifiers = new LinkedHashSet<>();
-        NbtList values = snapshot.getList(key, NbtElement.STRING_TYPE);
-        for (int index = 0; index < values.size(); index++) {
-            Identifier identifier = Identifier.tryParse(values.getString(index));
-            if (identifier != null && !isRetiredTrait(identifier)) {
-                identifiers.add(identifier);
-            }
-        }
+        TraitIdCodec.fromNbt(snapshot.getList(key, NbtElement.STRING_TYPE), identifiers);
         return identifiers;
-    }
-
-    private static boolean isRetiredTrait(Identifier identifier) {
-        return Identifier.of("sparktraits", "arrogant_asf").equals(identifier)
-                || Identifier.of("sparktraits", "wraith").equals(identifier)
-                || Identifier.of("sparktraits", "chameleon").equals(identifier);
     }
 }

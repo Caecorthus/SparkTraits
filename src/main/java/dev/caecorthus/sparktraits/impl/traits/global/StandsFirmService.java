@@ -4,10 +4,8 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.lifecycle.TerminalDeathRules;
 import dev.doctor4t.wathe.api.Faction;
-import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import net.minecraft.server.network.ServerPlayerEntity;
 
 /**
  * Blocks same-faction kills for 立场坚定 holders.
@@ -39,30 +37,14 @@ public final class StandsFirmService {
                 return null;
             }
             GameWorldComponent game = GameWorldComponent.KEY.get(victim.getWorld());
-            Faction victimFaction = effectiveFaction(game, victim);
-            if (victimFaction == Faction.NONE || victimFaction != effectiveFaction(game, killer)) {
+            // Faction after SparkTraits alignment flips: an Impostor plays for the killers and a Conscience killer for
+            // the civilians, so the role's own faction would protect them from the wrong side.
+            // SparkTraits 阵营翻转后的阵营：内鬼属于杀手方、善良杀手属于好人方，直接用身份原始阵营会保护错对象。
+            Faction victimFaction = EffectiveTraitService.effectiveFaction(game, victim);
+            if (victimFaction == Faction.NONE || victimFaction != EffectiveTraitService.effectiveFaction(game, killer)) {
                 return null;
             }
             return KillPlayer.KillResult.cancel();
         });
-    }
-
-    /**
-     * Faction after SparkTraits alignment flips: an Impostor plays for the killers and a Conscience killer for the
-     * civilians, so the role's own faction would protect them from the wrong side.
-     * SparkTraits 阵营翻转后的阵营：内鬼属于杀手方、善良杀手属于好人方，直接用身份原始阵营会保护错对象。
-     */
-    private static Faction effectiveFaction(GameWorldComponent game, ServerPlayerEntity player) {
-        Role role = game.getRole(player);
-        if (role == null || role.getFaction() == Faction.NONE) {
-            return Faction.NONE;
-        }
-        if (EffectiveTraitService.isEffectiveKiller(player, game)) {
-            return Faction.KILLER;
-        }
-        if (EffectiveTraitService.isEffectiveCivilian(player, game)) {
-            return Faction.CIVILIAN;
-        }
-        return role.getFaction();
     }
 }

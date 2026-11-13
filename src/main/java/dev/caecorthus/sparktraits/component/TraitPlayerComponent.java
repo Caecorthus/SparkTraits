@@ -29,8 +29,6 @@ import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -49,6 +47,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.fromNbt;
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.readIdentifierSet;
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.toNbt;
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.writeIdentifierSet;
 
 /**
  * Stores per-player trait state.
@@ -79,12 +82,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Public blackout-only flag used by Going Dark's instinct suppression.
     // 仅供隐蔽行动在关灯期间压制指定本能的公开状态标记。
     private boolean goingDarkInstinctHidden;
-    // Retired relay of NoellesRoles' owner-only projection state: nothing reads it, and relaying it told every client
-    // who the Spirit Walker is and when they are out of body. The server never sets it and always sends false in
-    // sync field 18; the client still reads that slot to keep the layout.
-    // 已停用的出窍状态转发（NoellesRoles 只同步给本人）：没有任何读取方，而转发会让所有客户端得知谁是灵界行者及其何时出窍。
-    // 服务端不再设置它，并在第 18 个同步字段始终发送 false；客户端仍读取该位置以保持协议布局。
-    private boolean spiritProjectionInstinctHidden;
     // Public sound-only flag used to mute remote Cautious players without revealing trait text.
     // 仅用于声音静音的公开标记，让远端小心翼翼玩家静音但不暴露天赋文本。
     private boolean cautiousSoundSuppressed;
@@ -173,10 +170,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         return goingDarkInstinctHidden;
     }
 
-    public boolean isSpiritProjectionInstinctHidden() {
-        return spiritProjectionInstinctHidden;
-    }
-
     public boolean isConscienceInstinctVisible() {
         return activeTraits.contains(ConscienceTrait.ID) || conscienceInstinctVisible;
     }
@@ -213,10 +206,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 consciencePoisonInitialTicks = 0;
             }
         }
-    }
-
-    public UUID getConsciencePoisoner() {
-        return consciencePoisoner;
     }
 
     public int getBloodthirstyKillCount() {
@@ -329,10 +318,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             this.consciencePoisoner = normalizedTicks > 0 ? poisoner : null;
             sync();
         }
-    }
-
-    public void clearConsciencePoison() {
-        setConsciencePoisonTicks(-1, null);
     }
 
     public void extendBlueSanityDrain(int ticks) {
@@ -837,7 +822,14 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         if (buf.readableBytes() > 0) {
             buf.readBoolean();
         }
-        spiritProjectionInstinctHidden = buf.readableBytes() > 0 && buf.readBoolean();
+        // Field 18 is the retired relay of NoellesRoles' owner-only projection state: relaying it told every client who
+        // the Spirit Walker is and when they are out of body. The server always sends false; read and discard it to
+        // keep the layout.
+        // 第 18 个字段是已停用的出窍状态转发（NoellesRoles 只同步给本人）：转发会让所有客户端得知谁是灵界行者及其何时出窍。
+        // 服务端始终发送 false；此处读取并丢弃以保持协议布局。
+        if (buf.readableBytes() > 0) {
+            buf.readBoolean();
+        }
         temporaryFakeDeathPending = buf.readableBytes() > 0 && buf.readBoolean();
         consciencePoisonInitialTicks = buf.readableBytes() > 0 ? buf.readVarInt() : Math.max(0, consciencePoisonTicks);
         if (wasPigActive != isPigActive()) {
@@ -880,7 +872,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         lastStandPending = false;
         temporaryFakeDeathPending = false;
         goingDarkInstinctHidden = false;
-        spiritProjectionInstinctHidden = false;
         cautiousSoundSuppressed = false;
         consciencePoisonTicks = -1;
         consciencePoisonInitialTicks = 0;
@@ -916,23 +907,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 && tag.getBoolean("CorneredLastKillerRewardPaid");
     }
 
-    private static NbtList toNbt(Collection<Identifier> ids) {
-        NbtList list = new NbtList();
-        for (Identifier id : ids) {
-            list.add(NbtString.of(id.toString()));
-        }
-        return list;
-    }
-
-    private static void fromNbt(NbtList list, Set<Identifier> ids) {
-        for (int i = 0; i < list.size(); i++) {
-            Identifier id = Identifier.tryParse(list.getString(i));
-            if (id != null && !RetiredTraitIds.isRetired(id)) {
-                ids.add(id);
-            }
-        }
-    }
-
     private List<Identifier> visibleOwnerTraits() {
         return activeTraits.stream().filter(this::isVisibleToOwner).toList();
     }
@@ -952,24 +926,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             return consciencePoisonTicks;
         }
         return view.bluePoisonViewer() ? consciencePoisonTicks : -1;
-    }
-
-    private static void writeIdentifierSet(RegistryByteBuf buf, Collection<Identifier> ids) {
-        buf.writeVarInt(ids.size());
-        for (Identifier id : ids) {
-            buf.writeString(id.toString());
-        }
-    }
-
-    private static void readIdentifierSet(RegistryByteBuf buf, Set<Identifier> ids) {
-        ids.clear();
-        int size = buf.readVarInt();
-        for (int i = 0; i < size; i++) {
-            Identifier id = Identifier.tryParse(buf.readString());
-            if (id != null && !RetiredTraitIds.isRetired(id)) {
-                ids.add(id);
-            }
-        }
     }
 
     private static void writeOptionalIdentifier(RegistryByteBuf buf, Identifier id) {

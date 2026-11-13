@@ -449,15 +449,6 @@ public final class VigilanteVeteranTraitService {
         return jester.inPsychoMode || jester.isTransitioning();
     }
 
-    public static void killPlayerWithPoliceGunTraits(
-            ServerPlayerEntity victim,
-            boolean spawnBody,
-            ServerPlayerEntity shooter,
-            Identifier deathReason
-    ) {
-        killPlayerWithHeavyArtillery(victim, spawnBody, shooter, deathReason);
-    }
-
     public static float wellTrainedAdjustedMood(
             float currentMood,
             float proposedMood,

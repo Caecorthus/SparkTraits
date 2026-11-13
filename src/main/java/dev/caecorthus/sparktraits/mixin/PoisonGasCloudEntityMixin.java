@@ -1,7 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
-import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonGasCloud;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerStaminaComponent;
@@ -39,7 +38,7 @@ import java.util.UUID;
 /** Replaces only Conscience Poisoner gas clouds with blue-poison gas behavior.
  *  只把善良毒师创建的毒气云替换为蓝毒气逻辑。 */
 @Mixin(PoisonGasCloudEntity.class)
-public abstract class PoisonGasCloudEntityMixin extends Entity implements ConsciencePoisonGasCloud {
+public abstract class PoisonGasCloudEntityMixin extends Entity {
     @Unique
     private static final String CONSCIENCE_GAS_KEY = "sparktraitsConscienceGas";
     @Unique
@@ -83,16 +82,6 @@ public abstract class PoisonGasCloudEntityMixin extends Entity implements Consci
 
     protected PoisonGasCloudEntityMixin(EntityType<?> type, World world) {
         super(type, world);
-    }
-
-    @Override
-    public boolean sparktraits$isConscienceGas() {
-        return sparktraits$conscienceGas;
-    }
-
-    @Override
-    public void sparktraits$setConscienceGas(boolean conscienceGas) {
-        sparktraits$conscienceGas = conscienceGas;
     }
 
     @Shadow(remap = false)

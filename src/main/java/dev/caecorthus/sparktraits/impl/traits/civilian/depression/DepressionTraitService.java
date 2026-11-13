@@ -247,22 +247,6 @@ public final class DepressionTraitService {
                 / (GameConstants.MID_MOOD_THRESHOLD - FULL_GRAYSCALE_MOOD);
     }
 
-    public static float depressionScreenEffectStrength(
-            boolean hasDepression,
-            boolean psychoActive,
-            int suicideTicks,
-            float mood
-    ) {
-        return depressionScreenEffectStrength(hasDepression, psychoActive, mood);
-    }
-
-    public static int depressionStaminaMax(int maxSprintTime, boolean hasDepression) {
-        if (!hasDepression || maxSprintTime < 0) {
-            return maxSprintTime;
-        }
-        return Math.max(1, Math.round(maxSprintTime * STAMINA_MULTIPLIER));
-    }
-
     public static float depressionRecoveredStamina(float previousTicks, float proposedTicks, boolean hasDepression) {
         if (!hasDepression || proposedTicks <= previousTicks) {
             return proposedTicks;
