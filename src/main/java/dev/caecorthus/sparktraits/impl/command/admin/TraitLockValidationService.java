@@ -91,9 +91,11 @@ public final class TraitLockValidationService {
         if (trait.id().equals(LastStandTrait.ID) && LastStandTrait.isSettlementExcludedRole(role)) {
             return false;
         }
-        // Police-category and other permanently excluded roles share round assignment's Impostor block. Selection also
-        // excludes Survival Master and Undercover; locks deliberately keep accepting both (unchanged behaviour).
-        // 警职类别及其他永久排除身份与开局分配共用内鬼排除。开局抽取还排除生存大师与卧底；锁定校验目前仍有意接受这两者（行为不变）。
+        // Police-category and other permanently excluded roles share round assignment's Impostor block: the same
+        // predicate selection asks, Survival Master and Undercover included. Selection's round-state conditions
+        // (at least two original killers, no Last Stand or Conscience already selected) are not known here.
+        // 警职类别及其他永久排除身份与开局分配共用内鬼排除：与开局抽取询问的是同一个谓词，包含生存大师与卧底。
+        // 开局抽取中依赖对局状态的条件（至少两名原始杀手、尚未选中背水一战或善良）在此处未知，不做校验。
         return !trait.id().equals(ImpostorTrait.ID)
                 || isUnknownRole(role)
                 || !EffectiveTraitService.isImpostorPermanentlyExcludedRole(role);
