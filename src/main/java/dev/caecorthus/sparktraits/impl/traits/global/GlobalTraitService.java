@@ -26,6 +26,7 @@ import org.agmas.noellesroles.Noellesroles;
 
 import java.util.Collection;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveConsequenceService;
 
 /**
  * Shared rules for global SparkTraits traits.
@@ -122,7 +123,7 @@ public final class GlobalTraitService {
     public static boolean usesMoneySystem(PlayerEntity player, GameWorldComponent game, Role role) {
         return player != null
                 && game != null
-                && (canSeeMoneyForTrait(player, game, role) || EffectiveTraitService.hasNativeTaskMoneyReward(role));
+                && (canSeeMoneyForTrait(player, game, role) || EffectiveConsequenceService.hasNativeTaskMoneyReward(role));
     }
 
     static boolean canSeeMoneyForTrait(boolean eventAllowsMoney, boolean mirrorsNoellesRecallerMoney) {

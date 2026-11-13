@@ -6,7 +6,7 @@ import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.caecorthus.sparktraits.impl.assignment.TraitRoleChangeRevalidation;
 import dev.caecorthus.sparktraits.impl.presentation.OwnerInventoryPresentation;
-import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveInstinctService;
 import dev.caecorthus.sparktraits.impl.lifecycle.RoundEndTraitResolver;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
@@ -604,7 +604,7 @@ public final class SparkTraitsApi {
         // Spirit projection leaves a defenseless body; downstream instinct sources must still outline it, so
         // projection is not an input here.
         // 灵魂出窍留下的肉身毫无防备，下游本能来源仍须为其描边，因此出窍状态不参与此处判断。
-        return EffectiveTraitService.shouldHideFromInstinct(
+        return EffectiveInstinctService.shouldHideFromInstinct(
                 finalMomentActive,
                 targetTraits != null && targetTraits.isLastStandPending(),
                 targetTraits != null && targetTraits.isKillerInstinctHidden(),

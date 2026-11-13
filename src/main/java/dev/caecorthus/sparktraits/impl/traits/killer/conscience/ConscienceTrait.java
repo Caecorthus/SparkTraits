@@ -8,6 +8,7 @@ import dev.caecorthus.sparktraits.api.TraitSelectionContext;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitEligibility;
 
 /** Killer trait that flips the player's effective alignment to passengers.
  *  杀手天赋：将玩家的有效阵营翻转为乘客阵营。 */
@@ -36,7 +37,7 @@ public final class ConscienceTrait implements Trait {
 
     @Override
     public boolean canApply(TraitSelectionContext context) {
-        return EffectiveTraitService.canSelectConscience(context.role(), context.gameComponent(), context.selectedTraitIds());
+        return EffectiveTraitEligibility.canSelectConscience(context.role(), context.gameComponent(), context.selectedTraitIds());
     }
 
     /** Wathe hands every killer-faction role a walkie-talkie on RoleAssigned, which runs before traits are assigned;

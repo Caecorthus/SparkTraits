@@ -57,6 +57,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.UUID;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveInstinctService;
 
 /**
  * Runs the Last Stand final moment when the civilian side has only consumed Last Stand players left.
@@ -420,7 +421,7 @@ public final class LastStandFinalMomentService {
         // Effective killers keep the Impostor's blue clue instead of a plain killer color.
         // 有效杀手观察者仍看到内鬼蓝色，而不是普通杀手色。
         if (viewerIsEffectiveKiller && targetHasImpostor) {
-            return EffectiveTraitService.IMPOSTOR_INSTINCT_COLOR;
+            return EffectiveInstinctService.IMPOSTOR_INSTINCT_COLOR;
         }
         return null;
     }

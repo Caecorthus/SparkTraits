@@ -8,6 +8,7 @@ import net.minecraft.util.Identifier;
 
 import java.util.Set;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitEligibility;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
 
 /** Civilian trait that flips the player's effective alignment to killers.
@@ -42,6 +43,6 @@ public final class ImpostorTrait implements Trait {
 
     @Override
     public boolean canApply(TraitSelectionContext context) {
-        return EffectiveTraitService.canSelectImpostor(context.role(), context.gameComponent(), context.selectedTraitIds());
+        return EffectiveTraitEligibility.canSelectImpostor(context.role(), context.gameComponent(), context.selectedTraitIds());
     }
 }

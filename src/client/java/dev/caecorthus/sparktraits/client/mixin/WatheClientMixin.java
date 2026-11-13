@@ -13,6 +13,7 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoison
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerialKillerService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveInstinctService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
@@ -153,9 +154,9 @@ public abstract class WatheClientMixin {
         // Only effective-killer viewers receive the Conscience flag; others treat the target like any Phantom.
         // 幽灵隐身优先于 SparkTraits 的有效阵营本能高亮覆盖。
         // 只有有效杀手观察者能收到善良标记；其他观察者把目标当作普通幽灵处理。
-        if (EffectiveTraitService.shouldSkipInvisibleTargetFromEffectiveInstinct(
+        if (EffectiveInstinctService.shouldSkipInvisibleTargetFromEffectiveInstinct(
                 playerTarget.isInvisible(),
-                EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget),
+                EffectiveInstinctService.isConscienceVisibleToInstinct(playerTarget),
                 targetTraits.isLastStandPending(),
                 targetTraits.isKillerInstinctHidden()
         )) {
@@ -221,7 +222,7 @@ public abstract class WatheClientMixin {
             boolean poisonedTargetIgnoresRange = ConsciencePoisonerService.poisonStateIgnoresConscienceRange(normalPoisoned, bluePoisoned);
             // A projecting Spirit Walker's body stays visible within the normal Conscience range, so projection is not an input.
             // 灵界行者出窍时留下的肉身在善良的正常范围内仍可被透视，因此出窍状态不作为输入。
-            boolean shouldHighlight = EffectiveTraitService.shouldConscienceInstinctHighlightTarget(
+            boolean shouldHighlight = EffectiveInstinctService.shouldConscienceInstinctHighlightTarget(
                     context.instinctEnabled(),
                     GameFunctions.isPlayerPlayingAndAlive(playerTarget),
                     GameFunctions.isPlayerSpectatingOrCreative(playerTarget),
@@ -247,7 +248,7 @@ public abstract class WatheClientMixin {
 
         // Mirror NoellesRoles' Jester Moment skip before later always-on highlight events can expose the active Jester.
         // 在后续全局高亮事件暴露小丑前，同步 NoellesRoles 的小丑时刻跳过规则。
-        if (EffectiveTraitService.shouldSkipJesterMomentHighlight(
+        if (EffectiveInstinctService.shouldSkipJesterMomentHighlight(
                 context.role(),
                 game.getRole(playerTarget),
                 JesterPlayerComponent.KEY.get(playerTarget).inPsychoMode,
@@ -267,7 +268,7 @@ public abstract class WatheClientMixin {
         // killer (sparktraits$impostorAsksTheEventAsAKiller), so they are no longer mirrored here.
         // 生存大师等视线类隐藏现在经由事件作用于内鬼（内鬼以杀手身份询问事件，见 sparktraits$impostorAsksTheEventAsAKiller），
         // 因此这里不再逐个同步。
-        if (EffectiveTraitService.isHiddenFromKillerInstinct(playerTarget)) {
+        if (EffectiveInstinctService.isHiddenFromKillerInstinct(playerTarget)) {
             cir.setReturnValue(-1);
             return;
         }
@@ -276,10 +277,10 @@ public abstract class WatheClientMixin {
             cir.setReturnValue(morphlingColor);
             return;
         }
-        if (EffectiveTraitService.isImpostorVisibleToInstinct(playerTarget)) {
-            cir.setReturnValue(EffectiveTraitService.IMPOSTOR_INSTINCT_COLOR);
-        } else if (EffectiveTraitService.isConscienceVisibleToInstinct(playerTarget)) {
-            cir.setReturnValue(EffectiveTraitService.CIVILIAN_INSTINCT_COLOR);
+        if (EffectiveInstinctService.isImpostorVisibleToInstinct(playerTarget)) {
+            cir.setReturnValue(EffectiveInstinctService.IMPOSTOR_INSTINCT_COLOR);
+        } else if (EffectiveInstinctService.isConscienceVisibleToInstinct(playerTarget)) {
+            cir.setReturnValue(EffectiveInstinctService.CIVILIAN_INSTINCT_COLOR);
         } else {
             // Answering here skips SparkStrength's Coroner disguise event, so mirror it.
             // 这里提前返回会跳过 SparkStrength 的验尸官伪装事件，因此同步其判定。
@@ -328,8 +329,8 @@ public abstract class WatheClientMixin {
             MorphlingPlayerComponent morphling
     ) {
         UUID disguise = morphling.disguise;
-        if (!EffectiveTraitService.shouldUseConscienceMorphlingDisguiseInstinct(
-                EffectiveTraitService.isConscienceVisibleToInstinct(target),
+        if (!EffectiveInstinctService.shouldUseConscienceMorphlingDisguiseInstinct(
+                EffectiveInstinctService.isConscienceVisibleToInstinct(target),
                 game.isRole(target, Noellesroles.MORPHLING),
                 morphling.corpseMode,
                 morphling.getMorphTicks() > 0,
@@ -344,10 +345,10 @@ public abstract class WatheClientMixin {
         }
 
         PlayerEntity disguisePlayer = target.getWorld().getPlayerByUuid(disguise);
-        return EffectiveTraitService.effectiveKillerInstinctColor(
+        return EffectiveInstinctService.effectiveKillerInstinctColor(
                 disguiseRole,
-                disguisePlayer != null && EffectiveTraitService.isConscienceVisibleToInstinct(disguisePlayer),
-                disguisePlayer != null && EffectiveTraitService.isImpostorVisibleToInstinct(disguisePlayer)
+                disguisePlayer != null && EffectiveInstinctService.isConscienceVisibleToInstinct(disguisePlayer),
+                disguisePlayer != null && EffectiveInstinctService.isImpostorVisibleToInstinct(disguisePlayer)
         );
     }
 }

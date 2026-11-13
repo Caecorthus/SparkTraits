@@ -14,7 +14,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 
 import java.util.Collection;
-import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitEligibility;
 import dev.caecorthus.sparktraits.impl.selection.TraitRoleEligibility;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
@@ -83,7 +83,7 @@ public final class TraitLockValidationService {
         }
         // Same permanent exclusion as round assignment, so locks fail loudly instead of being dropped.
         // 与开局分配相同的永久互斥，让锁定直接报错而不是在开局时被静默丢弃。
-        if (trait.id().equals(ConscienceTrait.ID) && EffectiveTraitService.isConscienceBlockedRole(role)) {
+        if (trait.id().equals(ConscienceTrait.ID) && EffectiveTraitEligibility.isConscienceBlockedRole(role)) {
             return false;
         }
         // Settlement-excluded roles never hold Last Stand (process-lifetime SparkFactionAPI registration).
@@ -98,7 +98,7 @@ public final class TraitLockValidationService {
         // 开局抽取中依赖对局状态的条件（至少两名原始杀手、尚未选中背水一战或善良）在此处未知，不做校验。
         return !trait.id().equals(ImpostorTrait.ID)
                 || isUnknownRole(role)
-                || !EffectiveTraitService.isImpostorPermanentlyExcludedRole(role);
+                || !EffectiveTraitEligibility.isImpostorPermanentlyExcludedRole(role);
     }
 
     public static ServerPlayerEntity findOtherPendingUniqueTraitOwner(MinecraftServer server, ServerPlayerEntity target, Trait trait) {
