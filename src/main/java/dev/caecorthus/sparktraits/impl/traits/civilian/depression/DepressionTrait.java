@@ -43,7 +43,7 @@ public final class DepressionTrait implements Trait {
     public boolean canApply(TraitSelectionContext context) {
         return Trait.super.canApply(context)
                 && CivilianTraitService.canSelectCivilianTrait(context.role(), context.selectedTraitIds())
-                && DepressionTraitService.canSelectDepression(
+                && DepressionRules.canSelectDepression(
                         context.role(),
                         context.selectedTraitIds(),
                         context.startingPlayerCount(),
@@ -53,11 +53,11 @@ public final class DepressionTrait implements Trait {
 
     @Override
     public void onAssigned(ServerPlayerEntity player, TraitAssignmentReason reason) {
-        DepressionTraitService.applyDepressionStamina(player);
+        DepressionStaminaPenalty.applyDepressionStamina(player);
     }
 
     @Override
     public void onRemoved(ServerPlayerEntity player, TraitRemovalReason reason) {
-        DepressionTraitService.removeDepressionStamina(player);
+        DepressionStaminaPenalty.removeDepressionStamina(player);
     }
 }

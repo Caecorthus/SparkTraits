@@ -37,7 +37,7 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerial
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraits;
 import dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeService;
-import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionRules;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
@@ -668,7 +668,7 @@ public final class TraitAssignmentService {
      * 移除超出上限的随机抑郁天赋；管理员/待应用锁定永不移除，但计入上限。
      */
     static void enforceRandomDepressionCap(List<PlayerPlan> plans, int startingPlayerCount) {
-        int cap = DepressionTraitService.randomDepressionCap(startingPlayerCount);
+        int cap = DepressionRules.randomDepressionCap(startingPlayerCount);
         int keptDepressions = 0;
         for (PlayerPlan plan : plans) {
             if (plan.lockedTraits().contains(CivilianTraits.DEPRESSION)) {
