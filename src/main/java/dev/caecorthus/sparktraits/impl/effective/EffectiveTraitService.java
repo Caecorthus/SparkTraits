@@ -575,8 +575,9 @@ public final class EffectiveTraitService {
     public static boolean canSelectImpostor(Role role, int originalKillerCount, Collection<Identifier> selectedTraits) {
         return originalKillerCount >= 2
                 && isOriginalCivilian(role)
-                && !isUndercover(role)
-                && !isImpostorBlockedRole(role)
+                // Every role-only refusal lives in this one predicate, which admin lock validation asks too.
+                // 所有仅取决于身份的拒绝都在这一个谓词里，管理员锁定校验问的也是它。
+                && !isImpostorPermanentlyExcludedRole(role)
                 && !selectedTraits.contains(LastStandTrait.ID)
                 && !hasConscience(selectedTraits);
     }
@@ -611,21 +612,19 @@ public final class EffectiveTraitService {
     }
 
     /** Keeps high-agency innocent roles, including every police-category role, from being converted into Impostor.
-     *  Selection-only extras: Survival Master here and Undercover in {@link #canSelectImpostor}; admin lock validation
-     *  checks only {@link #isImpostorPermanentlyExcludedRole} and accepts both today.
+     *  Permanent Impostor role exclusions shared by round selection and admin lock validation: the one role-only
+     *  predicate both ask, Survival Master and Undercover included, so a lock selection would drop is refused when
+     *  it is made. Only {@link #canSelectImpostor}'s round-state conditions (original killer count, the traits
+     *  already selected) stay out of the command check.
      *  防止强机制无辜者角色（含所有警职类别身份）被转换成内鬼。
-     *  仅开局抽取额外排除：此处的生存大师与 {@link #canSelectImpostor} 中的卧底；管理员锁定校验只检查
-     *  {@link #isImpostorPermanentlyExcludedRole}，目前接受这两者。 */
-    private static boolean isImpostorBlockedRole(Role role) {
-        return isImpostorPermanentlyExcludedRole(role)
-                || (role != null && role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID));
-    }
-
-    /** Permanent Impostor role exclusions shared by round selection and admin lock validation.
-     *  开局抽取与管理员锁定校验共用的内鬼永久身份排除。 */
+     *  开局抽取与管理员锁定校验共用的内鬼永久身份排除：两者询问的唯一仅看身份的谓词，包含生存大师与卧底，
+     *  因此开局会被丢弃的锁定在下达时即被拒绝。只有 {@link #canSelectImpostor} 中依赖对局状态的条件
+     *  （原始杀手人数、已选天赋）不进入命令校验。 */
     public static boolean isImpostorPermanentlyExcludedRole(Role role) {
         return role != null
                 && (PoliceRoleCategory.isPolice(role)
+                || isUndercover(role)
+                || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
                 // Toxicologist owns SparkStrength's blue-poison kit, which must stay on the innocent side.
                 // 毒理学家持有 SparkStrength 的蓝毒道具，必须保持好人身份。
                 || role.identifier().equals(Noellesroles.TOXICOLOGIST_ID)
