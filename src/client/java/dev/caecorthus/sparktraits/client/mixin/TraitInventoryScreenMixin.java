@@ -1,6 +1,6 @@
 package dev.caecorthus.sparktraits.client.mixin;
 
-import dev.caecorthus.sparktraits.client.gui.InventoryInfoCard;
+import dev.caecorthus.sparkfactionapi.client.api.card.InventoryInfoCard;
 import dev.caecorthus.sparktraits.client.gui.OwnerInventoryClientAdapter;
 import dev.doctor4t.wathe.client.gui.screen.ingame.LimitedHandledScreen;
 import dev.doctor4t.wathe.client.gui.screen.ingame.LimitedInventoryScreen;
@@ -35,12 +35,13 @@ public abstract class TraitInventoryScreenMixin extends LimitedHandledScreen<Pla
         // connection and logged once. 失败不得抛出 Wathe 的渲染方法（会导致客户端崩溃）：本连接内停用卡片并只记录一次。
         try {
             var entries = OwnerInventoryClientAdapter.collect(player);
+            var card = OwnerInventoryClientAdapter.card();
             // With SparkWitch installed its fallback card anchors to this slot, so fill the slot to sit flush beside it.
             // 安装 SparkWitch 时其回退卡锚定在本列左侧，因此原生卡占满整列以紧贴排列。
-            var snapshot = InventoryInfoCard.prepareNative(this, textRenderer,
+            var snapshot = card.prepareNative(this, textRenderer,
                     List.of(new InventoryInfoCard.Section(Text.translatable("gui.sparktraits.traits"), entries)),
                     FabricLoader.getInstance().isModLoaded("sparkwitch"));
-            InventoryInfoCard.draw(context, textRenderer, snapshot, mouseX, mouseY, width, height);
+            card.draw(context, textRenderer, snapshot, mouseX, mouseY, width, height);
         } catch (RuntimeException | LinkageError failure) {
             OwnerInventoryClientAdapter.disableNativeCard(failure);
         }

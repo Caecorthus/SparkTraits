@@ -1,6 +1,9 @@
 package dev.caecorthus.sparktraits.client.gui;
 
+import dev.caecorthus.sparkfactionapi.client.api.card.GuideDecorBridge;
+import dev.caecorthus.sparkfactionapi.client.api.card.InventoryInfoCard;
 import dev.caecorthus.sparktraits.SparkTraits;
+import dev.caecorthus.sparktraits.client.compat.SparkStrengthHudBridge;
 import dev.caecorthus.sparktraits.client.text.TraitClientTexts;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.presentation.OwnerInventoryPresentation;
@@ -16,6 +19,19 @@ import java.util.function.BooleanSupplier;
 
 public final class OwnerInventoryClientAdapter implements OwnerInventoryPresentation.Adapter {
     private static final OwnerInventoryClientAdapter INSTANCE = new OwnerInventoryClientAdapter();
+    /**
+     * SparkTraits' own instance of SparkFactionAPI's shared info card: its caches, its "+N more" lang key, its
+     * SparkStrength HUD bridge and its SparkAssist decoration (own logger and failure latch). The traits card
+     * reserves no second inventory row. Never hand this instance to another mod. Created on first use, so a
+     * linkage failure still surfaces inside the mixin's guarded render and only disables the native card.
+     * SparkTraits 自己的共享信息卡实例（由 SparkFactionAPI 提供）：自己的缓存、“+N 项”语言键、SparkStrength HUD 桥接
+     * 与 SparkAssist 点缀（独立的日志名与失败锁存）。天赋卡不预留物品栏第二行。不要把该实例交给其他模组。
+     * 首次使用时才创建，因此链接失败仍发生在 mixin 受保护的渲染调用内，只会停用原生卡。
+     */
+    private static final class Card {
+        private static final InventoryInfoCard INSTANCE = new InventoryInfoCard("gui.sparktraits.inventory.more", () -> 0,
+                SparkStrengthHudBridge::topRightHudBottom, new GuideDecorBridge("SparkTraits/GuideDecor"));
+    }
     private static boolean nativeCardFailed;
     // Last visible trait ids and their detached entries (render thread). 上次的可见天赋 id 与其独立条目（渲染线程）。
     private static List<Identifier> cachedIds;
@@ -92,7 +108,12 @@ public final class OwnerInventoryClientAdapter implements OwnerInventoryPresenta
         nativeCardFailed = false;
         cachedIds = null;
         cachedEntries = List.of();
-        InventoryInfoCard.invalidateCaches();
+        Card.INSTANCE.invalidateCaches();
+    }
+
+    /** The traits card renderer (SparkTraits' own instance, see {@link Card}). 天赋卡渲染器（SparkTraits 自己的实例）。 */
+    public static InventoryInfoCard card() {
+        return Card.INSTANCE;
     }
 
     /** The native card's entries: the cached, immutable entries themselves (the card never mutates them). 原生卡条目。 */

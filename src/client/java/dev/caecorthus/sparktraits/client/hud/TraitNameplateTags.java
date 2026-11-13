@@ -1,6 +1,6 @@
 package dev.caecorthus.sparktraits.client.hud;
 
-import dev.caecorthus.sparktraits.client.gui.InventoryCardPaint;
+import dev.caecorthus.sparkfactionapi.client.api.card.InventoryCardPaint;
 import dev.caecorthus.sparktraits.client.text.TraitClientTexts;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
