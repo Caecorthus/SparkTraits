@@ -1,7 +1,7 @@
 package dev.caecorthus.sparktraits.impl.traits.civilian.police;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
-import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveConsequenceService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionFakeKillCooldowns;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.doctor4t.wathe.api.Role;
@@ -580,7 +580,7 @@ public final class VigilanteVeteranTraitService {
         ShouldPunishGunShooter.PunishResult eventResult = ShouldPunishGunShooter.EVENT.invoker()
                 .shouldPunish(shooter, target);
         NikoRepeatShotPunishment punishment = decideNikoRepeatShotPunishment(
-                EffectiveTraitService.shouldTreatGunVictimAsInnocent(
+                EffectiveConsequenceService.shouldTreatGunVictimAsInnocent(
                         game.getRole(target),
                         TraitPlayerComponent.KEY.get(target).getActiveTraitIds()
                 ),

@@ -1,6 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionStaminaPenalty;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerStaminaComponent;
@@ -40,6 +40,6 @@ public abstract class ExcellentPhysiqueStaminaMixin {
             return;
         }
         GlobalTraitService.recoverExcellentPhysiqueStamina(player, ((Entity) player).isSprinting());
-        DepressionTraitService.applyFiniteStaminaPenalty(player, sparktraits$previousSprintingTicks);
+        DepressionStaminaPenalty.applyFiniteStaminaPenalty(player, sparktraits$previousSprintingTicks);
     }
 }

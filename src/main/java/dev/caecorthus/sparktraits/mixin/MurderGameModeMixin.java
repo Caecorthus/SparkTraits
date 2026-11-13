@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveWinService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.impl.assignment.TraitAssignmentService;
@@ -100,7 +101,7 @@ public abstract class MurderGameModeMixin {
     ) {
         // Run after other win-condition hooks so neutral blockers can keep the round alive first.
         // 在其他胜利判定钩子之后运行，让中立阻塞者先正常阻止回合结束。
-        EffectiveTraitService.killUnsupportedImpostorsIfNoRealKillers(serverWorld, gameWorldComponent);
+        EffectiveWinService.killUnsupportedImpostorsIfNoRealKillers(serverWorld, gameWorldComponent);
     }
 
     @ModifyVariable(
@@ -193,7 +194,7 @@ public abstract class MurderGameModeMixin {
         // 在 wathe 宣布并写入胜利者前取消；事件顺序可能已经跳过了亡命徒阻止器。
         if (LastStandService.shouldCancelRoundEndFinalization(LastStandService.hasPendingInWorld(serverWorld))
                 || LastStandFinalMomentService.shouldCancelRoundEndFinalization(serverWorld, gameWorldComponent, winStatus)) {
-            EffectiveTraitService.killUnsupportedImpostorsIfNoRealKillers(serverWorld, gameWorldComponent);
+            EffectiveWinService.killUnsupportedImpostorsIfNoRealKillers(serverWorld, gameWorldComponent);
             ci.cancel();
         }
     }

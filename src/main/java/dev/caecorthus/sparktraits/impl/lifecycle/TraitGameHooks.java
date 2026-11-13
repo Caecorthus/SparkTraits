@@ -17,6 +17,7 @@ import java.util.UUID;
 import dev.caecorthus.sparktraits.impl.compatibility.noellesroles.SilencedKillerRestrictionService;
 import dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi.SparkFactionApiEffectiveFactionBridge;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveConsequenceService;
 import dev.caecorthus.sparktraits.impl.effective.death.EffectiveDeathConsequenceRules;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BluePoisonMarkerSync;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBombService;
@@ -101,7 +102,7 @@ public final class TraitGameHooks {
             if (terminal) LastStandService.clearPlayer(victim);
             boolean lastStandStarted = !terminal && LastStandService.tryStartAfterKill(victim, killer, deathReason);
             PigTraitService.playDeathSound(victim);
-            EffectiveTraitService.handleAfterKill(victim, killer, deathReason);
+            EffectiveConsequenceService.handleAfterKill(victim, killer, deathReason);
             DepressionTraitService.handleAfterKill(victim, killer, deathReason);
             if (lastStandStarted) {
                 syncPlayerTraitsToNewSpectators(victim);

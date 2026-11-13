@@ -2,7 +2,7 @@ package dev.caecorthus.sparktraits.client.instinct;
 
 import dev.caecorthus.sparktraits.client.compat.SparkStrengthPartyBalloonBridge;
 import dev.caecorthus.sparktraits.impl.compatibility.noellesroles.PartyAnimalInstinctRules;
-import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveInstinctService;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
@@ -52,7 +52,7 @@ public final class PartyAnimalInstinctClientHooks {
         if (GameFunctions.isPlayerSpectatingOrCreative(target)) {
             return -1;
         }
-        return EffectiveTraitService.effectiveKillerInstinctColor(
+        return EffectiveInstinctService.effectiveKillerInstinctColor(
                 context.game().canUseKillerFeatures(target),
                 false,
                 false

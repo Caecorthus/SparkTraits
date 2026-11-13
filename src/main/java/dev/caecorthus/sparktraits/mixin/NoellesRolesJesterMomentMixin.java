@@ -1,7 +1,7 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
-import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveConsequenceService;
 import dev.doctor4t.wathe.api.Role;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
@@ -31,7 +31,7 @@ public abstract class NoellesRolesJesterMomentMixin {
             ServerPlayerEntity killer,
             Identifier deathReason
     ) {
-        return EffectiveTraitService.shouldTriggerJesterMoment(
+        return EffectiveConsequenceService.shouldTriggerJesterMoment(
                 killerRole,
                 killer == null ? Set.of() : TraitPlayerComponent.KEY.get(killer).getActiveTraitIds()
         );

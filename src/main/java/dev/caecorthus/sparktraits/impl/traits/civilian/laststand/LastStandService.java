@@ -70,6 +70,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveInstinctService;
 
 /**
  * Runtime state machine for the Last Stand trait.
@@ -110,7 +111,7 @@ public final class LastStandService {
                 return null;
             }
             if (target instanceof PlayerEntity player) {
-                if (!EffectiveTraitService.isHiddenFromKillerInstinct(player)) {
+                if (!EffectiveInstinctService.isHiddenFromKillerInstinct(player)) {
                     return null;
                 }
                 return GetInstinctHighlight.HighlightResult.skip();

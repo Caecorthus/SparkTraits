@@ -1,6 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
-import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveConsequenceService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.PlayerPoisonComponentAccess;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
 import net.minecraft.entity.player.PlayerEntity;
@@ -28,6 +28,6 @@ public abstract class PlayerPoisonComponentMixin implements PlayerPoisonComponen
 
     @Inject(method = "setPoisonTicks(ILjava/util/UUID;Lnet/minecraft/util/Identifier;Lnet/minecraft/nbt/NbtCompound;)V", at = @At("TAIL"))
     private void sparktraits$rememberPoisonSource(int ticks, UUID poisoner, Identifier source, NbtCompound recordExtra, CallbackInfo ci) {
-        EffectiveTraitService.rememberPoisonSource(player, source);
+        EffectiveConsequenceService.rememberPoisonSource(player, source);
     }
 }

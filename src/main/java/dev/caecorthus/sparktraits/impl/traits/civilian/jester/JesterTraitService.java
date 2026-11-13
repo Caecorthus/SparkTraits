@@ -2,7 +2,7 @@ package dev.caecorthus.sparktraits.impl.traits.civilian.jester;
 
 import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
-import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveConsequenceService;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
@@ -80,7 +80,7 @@ public final class JesterTraitService {
         // Same shooter rule as the real Jester's moment: original innocents only, so Impostors and Conscience killers
         // never trigger it, before or after the conversion.
         // 与真正小丑的时刻使用同一开枪者规则：只有原始好人，内鬼和善良杀手在转化前后都不会触发。
-        if (!EffectiveTraitService.shouldTriggerJesterMoment(
+        if (!EffectiveConsequenceService.shouldTriggerJesterMoment(
                 game.getRole(killer),
                 TraitPlayerComponent.KEY.get(killer).getActiveTraitIds()
         )) {

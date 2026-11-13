@@ -30,6 +30,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitEligibility;
 import dev.caecorthus.sparktraits.impl.selection.TraitRoleEligibility;
 import dev.caecorthus.sparktraits.impl.selection.TraitRules;
 import dev.caecorthus.sparktraits.impl.selection.TraitSelector;
@@ -37,7 +38,7 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceSerial
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraits;
 import dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeService;
-import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionRules;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraits;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
@@ -152,7 +153,7 @@ public final class TraitAssignmentService {
             traitWorld.snapshotRoundTraits(plan.player().getUuid(), playerTraits.getActiveTraitIds());
         }
         ConscienceSerialKillerService.normalizeTargets(world, gameComponent, players);
-        return EffectiveTraitService.publicKillerCount(gameComponent, players);
+        return EffectiveTraitEligibility.publicKillerCount(gameComponent, players);
     }
 
     private static List<Identifier> applyPendingLocks(
@@ -230,7 +231,7 @@ public final class TraitAssignmentService {
         List<PlayerPlan> eligiblePlans = new ArrayList<>();
         for (PlayerPlan plan : plans) {
             Role role = gameComponent.getRole(plan.player());
-            if (!EffectiveTraitService.canSelectConscience(role, gameComponent, plan.traits())) {
+            if (!EffectiveTraitEligibility.canSelectConscience(role, gameComponent, plan.traits())) {
                 continue;
             }
             if (plan.canAcceptForcedRandomTrait(ConscienceTrait.ID)) {
@@ -262,9 +263,9 @@ public final class TraitAssignmentService {
             Collection<Identifier> randomUniqueTraitReservations,
             int lastEscapeCap
     ) {
-        int originalKillerCount = EffectiveTraitService.originalKillerCount(gameComponent);
+        int originalKillerCount = EffectiveTraitEligibility.originalKillerCount(gameComponent);
         int conscienceCount = countTrait(plans, ConscienceTrait.ID);
-        int extraKillers = EffectiveTraitService.requiredExtraKillersForConscience(publicKillerCount, originalKillerCount, conscienceCount);
+        int extraKillers = EffectiveTraitEligibility.requiredExtraKillersForConscience(publicKillerCount, originalKillerCount, conscienceCount);
         RoleSelectionContext selectionContext = createRoleSelectionContext(world, gameComponent, players);
         RoleHistoryComponent roleHistory = RoleHistoryComponent.KEY.get(world.getScoreboard());
 
@@ -668,7 +669,7 @@ public final class TraitAssignmentService {
      * 移除超出上限的随机抑郁天赋；管理员/待应用锁定永不移除，但计入上限。
      */
     static void enforceRandomDepressionCap(List<PlayerPlan> plans, int startingPlayerCount) {
-        int cap = DepressionTraitService.randomDepressionCap(startingPlayerCount);
+        int cap = DepressionRules.randomDepressionCap(startingPlayerCount);
         int keptDepressions = 0;
         for (PlayerPlan plan : plans) {
             if (plan.lockedTraits().contains(CivilianTraits.DEPRESSION)) {
