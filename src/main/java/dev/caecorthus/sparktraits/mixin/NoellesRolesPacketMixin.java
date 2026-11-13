@@ -3,6 +3,7 @@ package dev.caecorthus.sparktraits.mixin;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
+import dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeService;
 import dev.caecorthus.sparktraits.impl.compatibility.noellesroles.SilencedKillerRestrictionService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -187,6 +188,14 @@ public abstract class NoellesRolesPacketMixin {
     }
 
     private static boolean sparktraits$blockSilencedKillerAbility(ServerPlayerEntity player, CallbackInfo ci) {
+        // Last Escape locks role skills (SparkTraitsApi.isRoleSkillBlocked); the client only drains attack/use, so
+        // the ability packet still arrives. Rejected first and silently, like DemonHunterShootPacketMixin.
+        // 绝处逢生会锁定职业技能（SparkTraitsApi.isRoleSkillBlocked）；客户端只屏蔽攻击/使用键，技能包仍会发出。
+        // 与 DemonHunterShootPacketMixin 一致：最先拒绝且不提示。
+        if (LastEscapeService.isActive(player)) {
+            ci.cancel();
+            return true;
+        }
         if (!SilencedKillerRestrictionService.denyActiveAbilityIfRestricted(player)) {
             return false;
         }

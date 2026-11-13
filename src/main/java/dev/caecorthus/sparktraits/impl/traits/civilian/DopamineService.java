@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.impl.traits.civilian;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
 import dev.doctor4t.wathe.api.event.TaskComplete;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 
@@ -30,6 +31,9 @@ public final class DopamineService {
             }
             WINDOW_END.put(player.getUuid(), player.getWorld().getTime() + DopamineTrait.WINDOW_TICKS);
         });
+        // A singleplayer world can be reopened in the same JVM; the ends are absolute times of the stopped world.
+        // 单人存档可在同一 JVM 中重新打开；这些结束时间是已停止世界的绝对时间。
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> WINDOW_END.clear());
     }
 
     /** Whether the post-task window is open right now. 当前是否处于任务完成后的加成窗口内。 */

@@ -259,6 +259,21 @@ public abstract class PoisonGasCloudEntityMixin extends Entity implements Consci
                 }
             }
         }
+        // Mirrors NoellesRoles' isInGas (1.7.6): a sleeping player's box lies inside the bed block, which gas cannot
+        // enter, so the open cells around the bed (above and the four horizontal neighbours) count as well.
+        // 与 NoellesRoles 的 isInGas（1.7.6）保持一致：睡眠玩家的碰撞箱位于毒气无法进入的床方块内部，
+        // 因此床周围的开放方块（正上方与四个水平相邻方块）也算作暴露。
+        if (player.isSleeping()) {
+            BlockPos bedPos = player.getBlockPos();
+            if (gasBlocks.contains(bedPos.up())) {
+                return true;
+            }
+            for (Direction direction : Direction.Type.HORIZONTAL) {
+                if (gasBlocks.contains(bedPos.offset(direction))) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 

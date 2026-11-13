@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
+import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
 import dev.caecorthus.sparktraits.impl.resource.SparkTraitsSounds;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
@@ -113,7 +114,9 @@ public final class DepressionTraitService {
     private static final Text ATTACKER_ACTIONBAR = Text.literal("！！反击或逃跑！！").withColor(ATTACKER_HIGHLIGHT_COLOR);
     private static final Text ATTACKER_TITLE = Text.literal("跑").withColor(ATTACKER_HIGHLIGHT_COLOR);
     private static final Map<UUID, PendingState> pendingPlayers = new HashMap<>();
-    private static final Map<UUID, ActiveState> activePlayers = new HashMap<>();
+    // Concurrent: Simple Voice Chat asks shouldMuteVoice from its own packet threads; every write stays on the server thread.
+    // 并发表：Simple Voice Chat 会在自己的数据包线程上调用 shouldMuteVoice；所有写入仍只在服务端线程进行。
+    private static final Map<UUID, ActiveState> activePlayers = new java.util.concurrent.ConcurrentHashMap<>();
     private static final DepressionFakeBodyTracker fakeBodies = new DepressionFakeBodyTracker();
     private static final Set<UUID> forceMentalBreakdownDeaths = new java.util.HashSet<>();
 
@@ -483,6 +486,14 @@ public final class DepressionTraitService {
         if (!victimTraits.hasActiveTrait(CivilianTraits.DEPRESSION)) {
             return null;
         }
+        // Wathe ignores the BEFORE cancel for a forced kill and BEFORE does not expose the flag, so it is read from
+        // the kill-attempt scope: the victim really dies, and starting a fake death would add the half reward and
+        // the trigger cues on top of the real kill.
+        // Wathe 对强制击杀会无视 BEFORE 的取消，而 BEFORE 不提供该标记，因此从击杀尝试作用域读取：受害者会真实死亡，
+        // 此时启动假死只会在真实击杀之外多发一半奖励并播放触发提示。
+        if (KillerTraitService.isCurrentKillAttemptForced()) {
+            return null;
+        }
         GameWorldComponent game = GameWorldComponent.KEY.get(victim.getWorld());
         Role killerRole = game.getRole(killer);
         Collection<Identifier> killerTraits = TraitPlayerComponent.KEY.get(killer).getActiveTraitIds();
@@ -568,8 +579,14 @@ public final class DepressionTraitService {
             }
         }
         endActivePsychosTargeting(victim);
-        if (activePlayers.containsKey(victim.getUuid())) {
+        ActiveState victimState = activePlayers.get(victim.getUuid());
+        if (victimState != null) {
             playRangeSound(victim, SparkTraitsSounds.DEPRESSION_SHYGUY_KILLED);
+            // Wathe's death drop has just walked the live inventory, which startPsycho emptied into the stash; the
+            // stash is discarded below, so its drop-on-death items (the round's revolver) are dropped here instead.
+            // Wathe 的死亡掉落刚遍历过实时背包，而背包已在 startPsycho 时清空并存入暂存；暂存即将在下方丢弃，
+            // 因此在这里补掉其中“死亡时掉落”的物品（本局的左轮）。
+            victimState.inventory().dropDeathDrops(victim);
             endPsycho(victim, false, false);
         }
         clearPending(victim);
@@ -583,6 +600,21 @@ public final class DepressionTraitService {
         TraitPlayerComponent.KEY.get(player).setDepressionSuicideTicks(-1);
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(false, null);
         TraitPlayerComponent.KEY.get(player).setDepressionCounterTarget(null);
+    }
+
+    /**
+     * ResetPlayer variant: Wathe has already cleared this player's effects, inventory, psycho and stamina and moved
+     * them to spawn, so the fake-death and psycho exits only drop Depression's own state. They must not put the
+     * pre-fake-death effects or the pre-psycho Speed back, nor play the rage-to-docile cue at the lobby spawn. The
+     * rest is the normal cleanup, which then finds neither state left.
+     * ResetPlayer 专用：Wathe 已清空该玩家的效果、背包、疯魔与体力并将其传送到出生点，因此假死与疯魔的退出只清理抑郁自身的状态，
+     * 不能把假死前的效果或疯魔前的速度加回去，也不能在大厅出生点播放“由怒转静”的提示音。其余部分沿用常规清理，
+     * 届时这两种状态都已不存在。
+     */
+    public static void clearPlayerAfterReset(ServerPlayerEntity player) {
+        clearPending(player, false);
+        endPsycho(player, false, false, true);
+        clearPlayer(player);
     }
 
     /**
@@ -643,8 +675,32 @@ public final class DepressionTraitService {
     }
 
     private static void tickSuicideCountdown(ServerWorld world, GameWorldComponent game) {
-        for (UUID uuid : game.getAllPlayers()) {
-            if (!(world.getPlayerByUuid(uuid) instanceof ServerPlayerEntity player)) {
+        /*
+         * Almost nobody holds Depression, so the holders are picked out with one component lookup per world player
+         * instead of a role-list copy plus a getPlayerByUuid scan and five predicate inputs per role holder. A role
+         * holder without Depression still gets its countdown hidden, as shouldPauseSuicideCountdown(false, ...) did.
+         * The countdown itself runs on the collected holders, so a kill it triggers cannot disturb the player list.
+         * 几乎没有人持有抑郁，因此改为对世界内每名玩家做一次组件查询来挑出持有者，而不是复制身份列表、逐个 getPlayerByUuid
+         * 扫描并为每名有身份的玩家计算五个判定输入。没有抑郁但有身份的玩家仍会隐藏倒计时，
+         * 与 shouldPauseSuicideCountdown(false, ...) 的结果一致。倒计时本身在收集到的持有者上执行，其触发的击杀不会影响玩家列表的遍历。
+         */
+        List<ServerPlayerEntity> holders = null;
+        for (ServerPlayerEntity candidate : world.getPlayers()) {
+            TraitPlayerComponent candidateTraits = TraitPlayerComponent.KEY.get(candidate);
+            if (candidateTraits.hasActiveTrait(CivilianTraits.DEPRESSION)) {
+                if (holders == null) {
+                    holders = new java.util.ArrayList<>(2);
+                }
+                holders.add(candidate);
+            } else if (candidateTraits.getDepressionSuicideTicks() != -1 && game.hasAnyRole(candidate)) {
+                candidateTraits.setDepressionSuicideTicks(-1);
+            }
+        }
+        if (holders == null) {
+            return;
+        }
+        for (ServerPlayerEntity player : holders) {
+            if (!game.hasAnyRole(player)) {
                 continue;
             }
             TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
@@ -676,7 +732,14 @@ public final class DepressionTraitService {
             double roll = player.getRandom().nextDouble() * 100.0;
             if (roll < chance) {
                 forceMentalBreakdownDeaths.add(player.getUuid());
-                GameFunctions.killPlayer(player, true, null, GameConstants.DeathReasons.MENTAL_BREAKDOWN, true);
+                try {
+                    GameFunctions.killPlayer(player, true, null, GameConstants.DeathReasons.MENTAL_BREAKDOWN, true);
+                } finally {
+                    // beforeKill consumes the mark; if an earlier listener or a HEAD veto answered first it must
+                    // not wait for this player's next, unrelated kill.
+                    // 标记由 beforeKill 消费；若更早的监听或 HEAD 否决先行返回，它不能留到该玩家下一次无关的击杀。
+                    forceMentalBreakdownDeaths.remove(player.getUuid());
+                }
             } else {
                 traits.setDepressionSuicideTicks(SUICIDE_INTERVAL_TICKS);
             }
@@ -891,7 +954,7 @@ public final class DepressionTraitService {
         return true;
     }
 
-    private static void endPsycho(ServerPlayerEntity player, boolean restoreInventory, boolean restoreMoodIfSurvived) {
+    private static void endPsycho(ServerPlayerEntity player, boolean restoreInventory, boolean restoreMoodIfSurvived, boolean afterWatheReset) {
         ActiveState state = activePlayers.remove(player.getUuid());
         if (state == null) {
             return;
@@ -900,7 +963,9 @@ public final class DepressionTraitService {
         clearActivePsychoState(player, state);
         try {
             stopPairMusicSound(player, attacker, SparkTraitsSounds.DEPRESSION_BLIND_RAGE_CHASE_ID);
-            playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);
+            if (!afterWatheReset) {
+                playRangeSound(player, SparkTraitsSounds.DEPRESSION_RAGE_TO_DOCILE);
+            }
             PlayerPsychoComponent psycho = PlayerPsychoComponent.KEY.get(player);
             // Wathe's killPlayer (death, or a terminal attempt Last Escape saved) may have stopped psycho already,
             // resetting its type to PUBLIC; a second stop would take another player's count and silence Wathe's psycho music.
@@ -911,12 +976,18 @@ public final class DepressionTraitService {
             if (restoreInventory) {
                 state.inventory().restore(player);
             }
-            restorePrePsychoSpeed(player, state.prePsychoSpeed());
+            if (!afterWatheReset) {
+                restorePrePsychoSpeed(player, state.prePsychoSpeed());
+            }
             restorePostPsychoStamina(player);
             restorePostPsychoMood(player, restoreMoodIfSurvived);
         } finally {
             clearActivePsychoState(player, state);
         }
+    }
+
+    private static void endPsycho(ServerPlayerEntity player, boolean restoreInventory, boolean restoreMoodIfSurvived) {
+        endPsycho(player, restoreInventory, restoreMoodIfSurvived, false);
     }
 
     private static void endActivePsychosTargeting(ServerPlayerEntity victim) {
@@ -971,7 +1042,7 @@ public final class DepressionTraitService {
         stamina.sync();
     }
 
-    private static void clearPending(ServerPlayerEntity player) {
+    private static void clearPending(ServerPlayerEntity player, boolean restoreEffects) {
         TraitPlayerComponent.KEY.get(player).setTemporaryFakeDeathPending(false);
         PendingState state = pendingPlayers.remove(player.getUuid());
         if (state == null) {
@@ -983,12 +1054,18 @@ public final class DepressionTraitService {
         // 覆盖假死期间的死亡（强制击杀会无视假死取消）和重置；AFTER 时真尸已生成，只移除被追踪的假尸。
         discardFakeBodies(player);
         player.setInvulnerable(state.wasInvulnerable());
-        state.effects().restore(player);
+        if (restoreEffects) {
+            state.effects().restore(player);
+        }
         TraitPlayerComponent.KEY.get(player).setDepressionPsychoState(false, null);
         ServerPlayerEntity attacker = player.getServer().getPlayerManager().getPlayer(state.attackerUuid());
         if (attacker != null) {
             TraitPlayerComponent.KEY.get(attacker).setDepressionCounterTarget(null);
         }
+    }
+
+    private static void clearPending(ServerPlayerEntity player) {
+        clearPending(player, true);
     }
 
     private static void discardFakeBodies(ServerPlayerEntity player) {
@@ -1244,6 +1321,22 @@ public final class DepressionTraitService {
             restoreList(inventory.offHand, offHand);
             inventory.selectedSlot = selectedSlot;
             player.currentScreenHandler.sendContentUpdates();
+        }
+
+        /**
+         * Applies Wathe's own death-drop rule ({@code GameFunctions.shouldDropOnDeath}, i.e. the revolver and every
+         * ShouldDropOnDeath listener) to the stashed stacks, with the same drop call as Wathe's killPlayer loop.
+         * 对暂存的物品应用 Wathe 自身的死亡掉落规则（{@code GameFunctions.shouldDropOnDeath}：左轮以及所有
+         * ShouldDropOnDeath 监听），掉落方式与 Wathe killPlayer 中的循环一致。
+         */
+        void dropDeathDrops(ServerPlayerEntity victim) {
+            for (List<ItemStack> stacks : List.of(main, armor, offHand)) {
+                for (ItemStack stack : stacks) {
+                    if (GameFunctions.shouldDropOnDeath(stack, victim)) {
+                        victim.dropItem(stack.copy(), true, false);
+                    }
+                }
+            }
         }
 
         private static List<ItemStack> copy(DefaultedList<ItemStack> stacks) {

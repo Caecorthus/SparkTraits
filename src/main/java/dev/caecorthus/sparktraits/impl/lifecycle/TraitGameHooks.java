@@ -7,6 +7,8 @@ import dev.caecorthus.sparktraits.component.TraitWorldComponent;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.api.event.ResetPlayer;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 
@@ -41,6 +43,9 @@ import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.VigilanteVeteranTraitService;
 
 public final class TraitGameHooks {
+    // Set while a server runs; ON_GAME_START has no world to reach it through. 服务器运行期间有效；ON_GAME_START 不携带世界。
+    private static MinecraftServer runningServer;
+
     private TraitGameHooks() {
     }
 
@@ -72,7 +77,9 @@ public final class TraitGameHooks {
             ConscienceBombService.clearTimedBomb(player);
             ConscienceSerialKillerService.clearPlayer(player);
             LastStandService.clearPlayer(player);
-            DepressionTraitService.clearPlayer(player);
+            // Wathe has just reset this player; the reset variant drops state without replaying a "restore".
+            // Wathe 刚重置过该玩家；重置专用版本只清理状态，不再重放“恢复”。
+            DepressionTraitService.clearPlayerAfterReset(player);
             DopamineService.clear(player);
             if (shouldClearTraitsOnReset(wraithActive)) {
                 TraitPlayerComponent.KEY.get(player).clearActiveTraits(TraitRemovalReason.RESET);
@@ -113,6 +120,32 @@ public final class TraitGameHooks {
             syncPlayerTraitsToNewSpectators(victim);
         });
 
+        /*
+         * Round-scoped TraitWorldComponent state (Final Moment flag and loose ends, Last Stand triggers, round and
+         * death trait snapshots, unique-trait occupancy) was cleared only by Murder's role assignment, so a Loose Ends
+         * or Discovery round that followed a Murder round inherited it. ON_GAME_START precedes every mode's
+         * initialize, but carries no world, hence the server reference (as LastEscapeService does). Only worlds
+         * without a running round are cleared: the starting world is still STARTING here. Not done at finalize,
+         * because the finished round's state stays readable until the next round starts.
+         * 回合级的 TraitWorldComponent 状态（终局时刻标记与亡命徒、背水一战触发记录、本局与死亡天赋快照、唯一天赋占用）
+         * 此前只在谋杀模式分配身份时清理，因此紧随其后的 Loose Ends 或 Discovery 回合会继承这些状态。ON_GAME_START
+         * 早于所有模式的初始化，但不携带世界，所以与 LastEscapeService 一样保存服务器引用。只清理没有进行中回合的世界：
+         * 正在开始的世界此时仍处于 STARTING。不在结算时清理，因为已结束回合的状态需保留到下一回合开始前仍可读取。
+         */
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> runningServer = server);
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> runningServer = null);
+        dev.doctor4t.wathe.api.event.GameEvents.ON_GAME_START.register(mode -> {
+            MinecraftServer server = runningServer;
+            if (server == null) {
+                return;
+            }
+            for (ServerWorld serverWorld : server.getWorlds()) {
+                if (shouldClearRoundStateOnGameStart(GameWorldComponent.KEY.get(serverWorld).isRunning())) {
+                    TraitWorldComponent.KEY.get(serverWorld).clearRoundState();
+                }
+            }
+        });
+
         dev.doctor4t.wathe.api.event.GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
             if (!(world instanceof ServerWorld serverWorld)) {
                 return;
@@ -128,6 +161,14 @@ public final class TraitGameHooks {
             EffectiveDeathConsequenceRules.clearPoisonSources();
             clearActiveTraits(serverWorld, gameComponent);
         });
+    }
+
+    /**
+     * A world whose round is ACTIVE or STOPPING keeps its round state when another world's game starts.
+     * 其他世界开始对局时，回合处于 ACTIVE 或 STOPPING 的世界保留自己的回合状态。
+     */
+    static boolean shouldClearRoundStateOnGameStart(boolean roundRunning) {
+        return !roundRunning;
     }
 
     /**

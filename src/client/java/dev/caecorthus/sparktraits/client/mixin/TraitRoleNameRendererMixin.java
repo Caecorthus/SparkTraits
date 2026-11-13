@@ -29,12 +29,14 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.LightType;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,6 +47,14 @@ public abstract class TraitRoleNameRendererMixin {
     private static boolean sparktraits$playerCohortLine;
     private static List<Identifier> sparktraits$lastPlayerTraits = List.of();
     private static List<Identifier> sparktraits$lastBodyTraits = List.of();
+    /*
+     * The client world the fading tag contents above were captured in. A disconnect, proxy backend switch or
+     * dimension change replaces the world; the contents must not fade out over the next one. Weak, so the title
+     * screen does not keep the old world alive.
+     * 上述渐隐标签内容所属的客户端世界。断线、代理切换后端或切换维度都会替换世界；这些内容不能在下一个世界里继续渐隐。
+     * 使用弱引用，避免在标题界面保留旧世界。
+     */
+    private static WeakReference<World> sparktraits$tagWorld = new WeakReference<>(null);
 
     /*
      * Wathe's own body raycast (its second getCollision) with Wathe's range, captured for this renderHud call. Its
@@ -75,6 +85,17 @@ public abstract class TraitRoleNameRendererMixin {
         HitResult watheBodyHit = sparktraits$watheBodyHitCaptured ? sparktraits$watheBodyHit : null;
         sparktraits$watheBodyHit = null;
         sparktraits$watheBodyHitCaptured = false;
+        // Checked before every early return (unconfirmed server, darkness), which would otherwise skip the decay.
+        // 必须在所有提前返回（未确认服务端、黑暗）之前检查，否则这些返回会跳过衰减。
+        World world = player.getWorld();
+        if (sparktraits$tagWorld.get() != world) {
+            sparktraits$tagWorld = new WeakReference<>(world);
+            sparktraits$playerTraitAlpha = 0.0f;
+            sparktraits$bodyTraitAlpha = 0.0f;
+            sparktraits$playerCohortLine = false;
+            sparktraits$lastPlayerTraits = List.of();
+            sparktraits$lastBodyTraits = List.of();
+        }
         if (!SparkTraitsServerConnection.isConfirmedServer()) {
             return;
         }
@@ -107,7 +128,12 @@ public abstract class TraitRoleNameRendererMixin {
 
     private static void updatePlayerTraitLine(ClientPlayerEntity player, boolean canSeeTraitInformation, float range, float delta) {
         if (!canSeeTraitInformation) {
-            sparktraits$playerTraitAlpha = MathHelper.lerp(delta, sparktraits$playerTraitAlpha, 0.0f);
+            // Permission revoked (round reset, or a spectator becoming an active Wraith): drop the retained tags
+            // at once instead of fading out content this viewer may no longer see.
+            // 权限被撤销（回合重置，或旁观者成为激活的冤魂）：立即丢弃保留的标签，而不是让已无权查看的内容继续渐隐。
+            sparktraits$playerTraitAlpha = 0.0f;
+            sparktraits$playerCohortLine = false;
+            sparktraits$lastPlayerTraits = List.of();
             return;
         }
 

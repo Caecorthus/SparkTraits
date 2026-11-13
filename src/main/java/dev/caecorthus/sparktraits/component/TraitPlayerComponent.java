@@ -16,6 +16,7 @@ import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.selection.TraitRules;
 import dev.caecorthus.sparktraits.impl.effective.alignment.EffectiveAlignment;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceTraits;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTrait;
@@ -35,7 +36,6 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.agmas.noellesroles.Noellesroles;
-import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentProvider;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
@@ -78,8 +78,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Public blackout-only flag used by Going Dark's instinct suppression.
     // 仅供隐蔽行动在关灯期间压制指定本能的公开状态标记。
     private boolean goingDarkInstinctHidden;
-    // Public derived flag relays projection without exposing NoellesRoles' owner-only body coordinates.
-    // 公开派生标记仅转发出窍状态，不暴露 NoellesRoles 只同步给本人的本体坐标。
+    // Retired relay of NoellesRoles' owner-only projection state: nothing reads it, and relaying it told every client
+    // who the Spirit Walker is and when they are out of body. The server never sets it and always sends false in
+    // sync field 18; the client still reads that slot to keep the layout.
+    // 已停用的出窍状态转发（NoellesRoles 只同步给本人）：没有任何读取方，而转发会让所有客户端得知谁是灵界行者及其何时出窍。
+    // 服务端不再设置它，并在第 18 个同步字段始终发送 false；客户端仍读取该位置以保持协议布局。
     private boolean spiritProjectionInstinctHidden;
     // Public sound-only flag used to mute remote Cautious players without revealing trait text.
     // 仅用于声音静音的公开标记，让远端小心翼翼玩家静音但不暴露天赋文本。
@@ -603,7 +606,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     @Override
     public void serverTick() {
         resyncFilteredStateOnRecipientChange();
-        syncSpiritProjectionInstinctState();
         tickBlueSanityDrain();
         if (consciencePoisonTicks <= 0) {
             return;
@@ -708,7 +710,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                         spectatingOrCreative,
                         GameFunctions.isPlayerPlayingAndAlive(recipient),
                         gameComponent.isPlayerDead(recipient.getUuid()),
-                        SparkWitchWraithBridge.isWraithActive(recipient)
+                        SparkWitchWraithBridge.isWraithActive(recipient),
+                        // Approved-or-pending also covers syncs sent inside killPlayer before the pending state exists.
+                        // “已批准或待决”同时覆盖 killPlayer 内、待决状态建立之前发出的同步。
+                        LastStandService.isDeathIntercepted(recipient)
                 ),
                 // Mirrors the client instinct gate EffectiveTraitService.isEffectiveKiller(viewer, game).
                 // 与客户端本能入口 EffectiveTraitService.isEffectiveKiller(viewer, game) 保持一致。
@@ -726,16 +731,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         );
     }
 
-    private void syncSpiritProjectionInstinctState() {
-        boolean projecting = SpiritPlayerComponent.KEY.maybeGet(player)
-                .map(SpiritPlayerComponent::isProjecting)
-                .orElse(false);
-        if (spiritProjectionInstinctHidden != projecting) {
-            spiritProjectionInstinctHidden = projecting;
-            sync();
-        }
-    }
-
     @Override
     public void writeSyncPacket(RegistryByteBuf buf, ServerPlayerEntity recipient) {
         boolean owner = recipient == player;
@@ -745,7 +740,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         // Owners receive revealed traits, spectators receive full traits, regular players receive only flags.
         // 本人同步已揭示天赋，旁观者同步完整天赋，普通玩家只同步必要标记。
         writeIdentifierSet(buf, visibleActiveTraitsFor(owner, spectator));
-        writeIdentifierSet(buf, owner ? pendingTraits : Set.of());
+        // Field 2 (admin-locked traits for the next round) keeps its slot but is always empty: only server-side
+        // commands and assignment read locks, and sending them told the owner about hidden-from-owner locks.
+        // 第 2 个字段（管理员为下一局锁定的天赋）保留协议位置但始终为空：只有服务端命令与分配流程读取锁定，
+        // 而同步给本人会泄露“对本人隐藏”的锁定天赋。
+        writeIdentifierSet(buf, Set.<Identifier>of());
         writeIdentifierSet(
                 buf,
                 TraitSyncVisibility.revealedTraitsFor(owner, spectator, activeTraits, revealedTraits)
@@ -770,7 +769,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         // Field 17 is a protocol tombstone: keep writing false for older clients.
         // 第 17 个字段是协议墓碑：继续写入 false 以兼容旧客户端。
         buf.writeBoolean(false);
-        buf.writeBoolean(spiritProjectionInstinctHidden);
+        // Field 18 (spirit-projection relay) is a tombstone too: no reader in any Spark mod, and a real value (or a
+        // sync fired when it flips) reveals the Spirit Walker's out-of-body window to every tracking client.
+        // 第 18 个字段（出窍状态转发）同样是协议墓碑：所有 Spark 模组中都没有读取方，而真实值（或其变化触发的同步）
+        // 会向所有追踪客户端暴露灵界行者的出窍时段。
+        buf.writeBoolean(false);
         buf.writeBoolean(temporaryFakeDeathPending);
         buf.writeVarInt(owner && consciencePoisonTicks > 0 ? consciencePoisonInitialTicks : 0);
     }

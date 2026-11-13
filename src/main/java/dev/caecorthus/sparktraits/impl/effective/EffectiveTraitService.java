@@ -265,7 +265,9 @@ public final class EffectiveTraitService {
     }
 
     /** No longer feeds any instinct rule: the projecting body stays instinct-visible. Kept with field 18's relay until an approved cleanup.
-     *  已不再参与任何本能规则：出窍本体保持可被透视。在获批清理前与第 18 号同步字段的转发一同保留。 */
+     *  Field 18 is now always sent as false, so on a client this reads false; only the server branch is live.
+     *  已不再参与任何本能规则：出窍本体保持可被透视。在获批清理前与第 18 号同步字段的转发一同保留。
+     *  第 18 号字段现在始终发送 false，因此客户端读到的恒为 false；只有服务端分支仍然有效。 */
     public static boolean isSpiritProjecting(PlayerEntity player) {
         if (player == null) {
             return false;

@@ -56,6 +56,24 @@ final class TraitSyncVisibility {
         return !wraithActive && (markedDead || seesSpectatorInformation(spectatingOrCreative, playingAndAlive));
     }
 
+    /**
+     * Last Stand goes through Wathe's real killPlayer, so its 5-second pending player is marked dead and in spectator
+     * mode like a real spectator, then revives into the round. It must never get the spectator tier; every recipient
+     * that is not in a Last Stand interception keeps the rule above unchanged.
+     * 背水一战走的是 Wathe 真实的 killPlayer，因此其 5 秒待决玩家与真正的旁观者一样带有死亡标记并处于旁观模式，随后复活回到对局。
+     * 它绝不能获得旁观者视角；未处于背水一战拦截中的接收者仍按上面的规则判定，不受影响。
+     */
+    static boolean seesSpectatorInformation(
+            boolean spectatingOrCreative,
+            boolean playingAndAlive,
+            boolean markedDead,
+            boolean wraithActive,
+            boolean lastStandDeathIntercepted
+    ) {
+        return !lastStandDeathIntercepted
+                && seesSpectatorInformation(spectatingOrCreative, playingAndAlive, markedDead, wraithActive);
+    }
+
     static <T> Collection<T> revealedTraitsFor(
             boolean owner,
             boolean spectator,

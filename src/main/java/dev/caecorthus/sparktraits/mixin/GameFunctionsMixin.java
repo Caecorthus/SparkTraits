@@ -37,11 +37,19 @@ public abstract class GameFunctionsMixin {
         if (LastEscapeService.blocksDeath(victim, deathReason)) return;
         boolean trainEscape = LastEscapeService.isActive(victim) && LastEscapeService.isTrainDeath(deathReason);
         KillerTraitService.beginKillAttempt(victim, killer, force || trainEscape);
+        // An approval that already exists belongs to an enclosing attempt on the same victim; that attempt owns it.
+        // 已存在的批准属于同一受害者的外层尝试，由外层负责处理。
+        boolean lastStandApprovedByOuterAttempt = LastStandService.hasUnconsumedApproval(victim);
         boolean completed = false;
         try (var scope = new dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeKillScope()) {
             original.call(victim, spawnBody, killer, deathReason, force || trainEscape);
             completed = true;
         } finally {
+            // AFTER consumes a Last Stand approval. One made by this attempt and still present here means the kill was
+            // cancelled after the approval, so it is dropped before Second Strike may replay the kill.
+            // 背水一战的批准由 AFTER 消费。本次尝试作出的批准若此时仍在，说明击杀在批准之后被取消，
+            // 因此在二次打击可能重放击杀之前将其丢弃。
+            if (!lastStandApprovedByOuterAttempt) LastStandService.discardUnconsumedApproval(victim);
             if (completed) KillerTraitService.finishKillAttempt(victim, spawnBody, killer, deathReason, force || trainEscape);
             else KillerTraitService.abortKillAttempt();
         }
