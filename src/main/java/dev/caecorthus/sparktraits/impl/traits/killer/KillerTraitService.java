@@ -322,7 +322,23 @@ public final class KillerTraitService {
                 && !force
                 && !SECOND_STRIKE_REPLAYING.get()
                 && hasEligibleTrait(killer, KillerTraits.SECOND_STRIKE);
-        KILL_ATTEMPTS.get().push(new KillAttempt(eligible ? ShieldState.capture(victim) : null));
+        KILL_ATTEMPTS.get().push(new KillAttempt(eligible ? ShieldState.capture(victim) : null, force));
+    }
+
+    /**
+     * Whether the innermost killPlayer call on this thread runs with Wathe's force flag (Last Escape's train deaths
+     * included). KillPlayer.BEFORE does not expose it, and Wathe ignores a BEFORE cancel for forced kills, so a
+     * listener that would start a fake death asks here first. False outside a kill attempt.
+     * 当前线程最内层的 killPlayer 调用是否带有 Wathe 的强制标记（含绝处逢生的列车死亡）。KillPlayer.BEFORE 不提供该标记，
+     * 而 Wathe 会无视强制击杀的 BEFORE 取消，因此准备启动假死的监听需先在此查询。不在击杀尝试内时返回 false。
+     */
+    public static boolean isCurrentKillAttemptForced() {
+        KillAttempt attempt = KILL_ATTEMPTS.get().peek();
+        if (attempt == null) {
+            KILL_ATTEMPTS.remove();
+            return false;
+        }
+        return attempt.forced;
     }
 
     public static void terminateKillAttempt() {
@@ -564,10 +580,12 @@ public final class KillerTraitService {
     }
 
     private static final class KillAttempt {
-        private static final KillAttempt EMPTY = new KillAttempt(null);
+        private static final KillAttempt EMPTY = new KillAttempt(null, false);
         private final ShieldState before;
+        // Wathe's force flag for this attempt, as passed on to the wrapped killPlayer. 本次尝试传给 killPlayer 的强制标记。
+        private final boolean forced;
         private boolean terminated;
-        private KillAttempt(@Nullable ShieldState before) { this.before = before; }
+        private KillAttempt(@Nullable ShieldState before, boolean forced) { this.before = before; this.forced = forced; }
     }
 
     private record ShieldState(int psychoArmour, boolean psychoActive, boolean ironManBuff, int whiskeyLayers) {

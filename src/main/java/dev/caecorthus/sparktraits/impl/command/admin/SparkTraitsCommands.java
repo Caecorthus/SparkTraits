@@ -31,7 +31,6 @@ import dev.caecorthus.sparktraits.impl.selection.TraitSlotRollChance;
 
 public final class SparkTraitsCommands {
     private static final DynamicCommandExceptionType UNKNOWN_TRAIT = new DynamicCommandExceptionType(id -> Text.literal("Unknown trait: " + id));
-    private static final DynamicCommandExceptionType INVALID_TRAIT_ID = new DynamicCommandExceptionType(id -> Text.literal("Invalid trait id: " + id));
 
     private SparkTraitsCommands() {
     }
@@ -176,19 +175,12 @@ public final class SparkTraitsCommands {
 
     static Text formatPlayerTraitActionFeedback(Trait trait, PlayerTraitAction action, int changed, String singleChangedPlayerName) {
         MutableText message = Text.literal(action.feedbackVerb + " a pending trait ")
-                .append(Text.literal(formatTraitIdForCommand(trait.id())).withColor(trait.color()))
+                .append(Text.literal(TraitLockValidationService.formatTraitId(trait.id())).withColor(trait.color()))
                 .append(Text.literal(" " + action.targetPreposition + " "));
         if (changed == 1 && singleChangedPlayerName != null) {
             return message.append(Text.literal(singleChangedPlayerName + "."));
         }
         return message.append(Text.literal(changed + " player(s)."));
-    }
-
-    static String formatTraitIdForCommand(Identifier traitId) {
-        if (traitId.getNamespace().equals(SparkTraits.MOD_ID)) {
-            return traitId.getPath();
-        }
-        return traitId.toString();
     }
 
     static Text formatTraitSlotRollChanceFeedback(float chance) {
@@ -253,7 +245,7 @@ public final class SparkTraitsCommands {
 
     private static CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestTraits(CommandContext<ServerCommandSource> context, com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
         for (Trait trait : TraitRegistry.values()) {
-            builder.suggest(formatTraitIdForCommand(trait.id()));
+            builder.suggest(TraitLockValidationService.formatTraitId(trait.id()));
         }
         return builder.buildFuture();
     }

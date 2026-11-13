@@ -17,6 +17,7 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.caecorthus.sparkfactionapi.api.settlement.SettlementExclusions;
+import dev.doctor4t.wathe.api.Faction;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
 import dev.doctor4t.wathe.api.event.CheckWinCondition;
@@ -38,7 +39,6 @@ import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import org.agmas.noellesroles.morphling.MorphlingPlayerComponent;
 import org.agmas.noellesroles.shadowjester.ShadowJesterPlayerComponent;
-import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -211,11 +211,7 @@ public final class EffectiveTraitService {
     }
 
     public static boolean shouldHideFromKillerInstinct(boolean lastStandPending, boolean killerInstinctHidden) {
-        return shouldHideFromKillerInstinct(lastStandPending, killerInstinctHidden, false);
-    }
-
-    public static boolean shouldHideFromKillerInstinct(boolean lastStandPending, boolean killerInstinctHidden, boolean spiritProjecting) {
-        return lastStandPending || killerInstinctHidden || spiritProjecting;
+        return lastStandPending || killerInstinctHidden;
     }
 
     /** Final Moment overrides every SparkTraits-owned instinct suppression, matching Wathe's highlight priority.
@@ -224,14 +220,12 @@ public final class EffectiveTraitService {
             boolean finalMomentActive,
             boolean lastStandPending,
             boolean killerInstinctHidden,
-            boolean spiritProjecting,
             boolean goingDarkSuppressed
     ) {
         return !finalMomentActive
                 && (goingDarkSuppressed || shouldHideFromKillerInstinct(
                         lastStandPending,
-                        killerInstinctHidden,
-                        spiritProjecting
+                        killerInstinctHidden
                 ));
     }
 
@@ -264,50 +258,12 @@ public final class EffectiveTraitService {
                 && (viewerRole == null || !viewerRole.identifier().equals(Noellesroles.DEMON_HUNTER_ID));
     }
 
-    /** No longer feeds any instinct rule: the projecting body stays instinct-visible. Kept with field 18's relay until an approved cleanup.
-     *  已不再参与任何本能规则：出窍本体保持可被透视。在获批清理前与第 18 号同步字段的转发一同保留。 */
-    public static boolean isSpiritProjecting(PlayerEntity player) {
-        if (player == null) {
-            return false;
-        }
-        if (player.getWorld().isClient) {
-            return TraitPlayerComponent.KEY.maybeGet(player)
-                    .map(TraitPlayerComponent::isSpiritProjectionInstinctHidden)
-                    .orElse(false);
-        }
-        return SpiritPlayerComponent.KEY.maybeGet(player)
-                .map(SpiritPlayerComponent::isProjecting)
-                .orElse(false);
-    }
-
     public static boolean shouldDelegateConscienceInstinctToNative(PlayerEntity player) {
         return shouldDelegateConscienceInstinctToNative(SparkWitchWraithBridge.isWraithActive(player));
     }
 
     public static boolean shouldDelegateConscienceInstinctToNative(boolean activeWraith) {
         return activeWraith;
-    }
-
-    public static boolean shouldConscienceInstinctHighlightTarget(
-            boolean instinctEnabled,
-            boolean targetPlayingAndAlive,
-            boolean targetSpectatingOrCreative,
-            double targetDistanceSquared,
-            boolean lastStandPending,
-            boolean killerInstinctHidden,
-            boolean spiritProjecting
-    ) {
-        return shouldConscienceInstinctHighlightTarget(
-                instinctEnabled,
-                targetPlayingAndAlive,
-                targetSpectatingOrCreative,
-                false,
-                targetDistanceSquared,
-                lastStandPending,
-                killerInstinctHidden,
-                spiritProjecting,
-                false
-        );
     }
 
     /** Invisible targets (Phantom, Phantom backpack, Last Escape) never show, matching NoellesRoles' invisible skip.
@@ -320,13 +276,11 @@ public final class EffectiveTraitService {
             double targetDistanceSquared,
             boolean lastStandPending,
             boolean killerInstinctHidden,
-            boolean spiritProjecting,
             boolean ignoreRangeLimit
     ) {
         return instinctEnabled
                 && !targetSpectatingOrCreative
                 && !targetInvisible
-                && !spiritProjecting
                 && (ignoreRangeLimit || targetDistanceSquared <= CONSCIENCE_INSTINCT_RANGE_SQUARED)
                 && (targetPlayingAndAlive || lastStandPending || killerInstinctHidden);
     }
@@ -657,11 +611,21 @@ public final class EffectiveTraitService {
     }
 
     /** Keeps high-agency innocent roles, including every police-category role, from being converted into Impostor.
-     *  防止强机制无辜者角色（含所有警职类别身份）被转换成内鬼。 */
+     *  Selection-only extras: Survival Master here and Undercover in {@link #canSelectImpostor}; admin lock validation
+     *  checks only {@link #isImpostorPermanentlyExcludedRole} and accepts both today.
+     *  防止强机制无辜者角色（含所有警职类别身份）被转换成内鬼。
+     *  仅开局抽取额外排除：此处的生存大师与 {@link #canSelectImpostor} 中的卧底；管理员锁定校验只检查
+     *  {@link #isImpostorPermanentlyExcludedRole}，目前接受这两者。 */
     private static boolean isImpostorBlockedRole(Role role) {
+        return isImpostorPermanentlyExcludedRole(role)
+                || (role != null && role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID));
+    }
+
+    /** Permanent Impostor role exclusions shared by round selection and admin lock validation.
+     *  开局抽取与管理员锁定校验共用的内鬼永久身份排除。 */
+    public static boolean isImpostorPermanentlyExcludedRole(Role role) {
         return role != null
                 && (PoliceRoleCategory.isPolice(role)
-                || role.identifier().equals(Noellesroles.SURVIVAL_MASTER_ID)
                 // Toxicologist owns SparkStrength's blue-poison kit, which must stay on the innocent side.
                 // 毒理学家持有 SparkStrength 的蓝毒道具，必须保持好人身份。
                 || role.identifier().equals(Noellesroles.TOXICOLOGIST_ID)
@@ -814,6 +778,28 @@ public final class EffectiveTraitService {
 
     public static boolean isEffectiveCivilian(Role role, Collection<Identifier> traits) {
         return EffectiveAlignment.isEffectiveCivilian(role, traits);
+    }
+
+    /**
+     * Faction after SparkTraits alignment flips: an Impostor plays for the killers and a Conscience killer for the
+     * civilians; a missing or NONE role stays NONE, anything else keeps its role's faction. Deliberately not
+     * SparkFactionAPI's effective-faction resolver, which would also apply other mods' registered resolvers.
+     * Shared by Stands Firm and Sensitive.
+     * SparkTraits 阵营翻转后的阵营：内鬼属于杀手方、善良杀手属于好人方；身份缺失或为 NONE 时仍为 NONE，其余保留身份原始阵营。
+     * 有意不使用 SparkFactionAPI 的有效阵营解析器，以免引入其他模组注册的解析规则。供立场坚定与敏感共用。
+     */
+    public static Faction effectiveFaction(GameWorldComponent game, ServerPlayerEntity player) {
+        Role role = game.getRole(player);
+        if (role == null || role.getFaction() == Faction.NONE) {
+            return Faction.NONE;
+        }
+        if (isEffectiveKiller(player, game)) {
+            return Faction.KILLER;
+        }
+        if (isEffectiveCivilian(player, game)) {
+            return Faction.CIVILIAN;
+        }
+        return role.getFaction();
     }
 
     /** Resolves round-end winner membership through effective alignment.

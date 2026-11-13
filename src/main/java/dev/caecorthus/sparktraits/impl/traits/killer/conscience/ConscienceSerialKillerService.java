@@ -43,16 +43,6 @@ public final class ConscienceSerialKillerService {
         BuildShopEntries.EVENT.register(ConscienceSerialKillerService::replacePsychoModePrice);
     }
 
-    public static boolean canBeProtectedTarget(
-            Role role,
-            Collection<Identifier> traits,
-            boolean samePlayer,
-            boolean playingAndAlive,
-            boolean swallowed
-    ) {
-        return canBeSerialKillerTarget(role, traits, samePlayer, playingAndAlive, swallowed);
-    }
-
     /** Uses SparkTraits effective alignment for every Serial Killer target pool.
      *  所有连环杀手目标池都按 SparkTraits 的有效阵营判定，避免锁定内鬼好人。 */
     public static boolean canBeSerialKillerTarget(
@@ -101,10 +91,6 @@ public final class ConscienceSerialKillerService {
         return conscienceSerialKiller ? CONSCIENCE_SERIAL_KILLER_PSYCHO_PRICE : originalPrice;
     }
 
-    public static Identifier murdererRoleClue(Identifier murdererRoleId) {
-        return murdererRoleId;
-    }
-
     public static boolean isConscienceSerialKiller(PlayerEntity player, GameWorldComponent gameComponent) {
         return player != null
                 && gameComponent != null
@@ -119,23 +105,6 @@ public final class ConscienceSerialKillerService {
         ));
     }
 
-    public static boolean hasLivingProtectedTarget(GameWorldComponent gameComponent, PlayerEntity player) {
-        if (!(player.getWorld() instanceof ServerWorld serverWorld)) {
-            return false;
-        }
-        SerialKillerPlayerComponent serialKiller = SerialKillerPlayerComponent.KEY.get(player);
-        UUID targetUuid = serialKiller.getCurrentTarget();
-        if (targetUuid == null) {
-            return false;
-        }
-        PlayerEntity target = serverWorld.getPlayerByUuid(targetUuid);
-        return target != null && isProtectedTargetValid(player, target, gameComponent);
-    }
-
-    public static List<UUID> protectedTargets(ServerWorld world, GameWorldComponent gameComponent, PlayerEntity serialKiller) {
-        return serialKillerTargets(world, gameComponent, serialKiller);
-    }
-
     public static List<UUID> serialKillerTargets(ServerWorld world, GameWorldComponent gameComponent, PlayerEntity serialKiller) {
         List<UUID> eligibleTargets = new ArrayList<>();
         if (world == null || gameComponent == null || serialKiller == null) {
@@ -148,10 +117,6 @@ public final class ConscienceSerialKillerService {
             }
         }
         return eligibleTargets;
-    }
-
-    public static boolean isProtectedTargetValid(ServerWorld world, GameWorldComponent gameComponent, PlayerEntity serialKiller, UUID targetUuid) {
-        return isSerialKillerTargetValid(world, gameComponent, serialKiller, targetUuid);
     }
 
     public static boolean isSerialKillerTargetValid(ServerWorld world, GameWorldComponent gameComponent, PlayerEntity serialKiller, UUID targetUuid) {
@@ -273,7 +238,7 @@ public final class ConscienceSerialKillerService {
             targetMurderers.put(serialKiller.getUuid(), killer.getUuid());
             Role killerRole = gameComponent.getRole(killer);
             TraitPlayerComponent.KEY.get(serialKiller).setSerialKillerMurdererRole(
-                    killerRole == null ? null : murdererRoleClue(killerRole.identifier())
+                    killerRole == null ? null : killerRole.identifier()
             );
         }
     }
@@ -297,10 +262,6 @@ public final class ConscienceSerialKillerService {
         }
     }
 
-    private static boolean isProtectedTargetValid(PlayerEntity serialKiller, PlayerEntity target, GameWorldComponent gameComponent) {
-        return isSerialKillerTargetValid(serialKiller, target, gameComponent);
-    }
-
     private static boolean isSerialKillerTargetValid(PlayerEntity serialKiller, PlayerEntity target, GameWorldComponent gameComponent) {
         if (serialKiller == null || target == null || gameComponent == null) {
             return false;
@@ -315,7 +276,7 @@ public final class ConscienceSerialKillerService {
     }
 
     private static UUID chooseProtectedTarget(ServerWorld world, GameWorldComponent gameComponent, ServerPlayerEntity serialKiller) {
-        List<UUID> eligibleTargets = protectedTargets(world, gameComponent, serialKiller);
+        List<UUID> eligibleTargets = serialKillerTargets(world, gameComponent, serialKiller);
         if (eligibleTargets.isEmpty()) {
             return null;
         }

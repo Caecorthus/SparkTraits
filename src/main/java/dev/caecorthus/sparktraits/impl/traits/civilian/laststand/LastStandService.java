@@ -138,6 +138,10 @@ public final class LastStandService {
             if (state.deathWorldKey().equals(world.getRegistryKey())) {
                 if (world.getPlayerByUuid(state.playerUuid()) instanceof ServerPlayerEntity player) {
                     restorePendingControl(player);
+                    // holdPendingPlayer forces the saved invulnerable flag on every tick; without this a round that
+                    // is finalized mid-pending leaves the player invulnerable for good.
+                    // holdPendingPlayer 每 tick 都会强制写入会被保存的无敌标记；不在此恢复的话，待决期间结算的对局会让该玩家永久无敌。
+                    player.setInvulnerable(state.wasInvulnerable());
                     TraitPlayerComponent.KEY.get(player).setLastStandPending(false);
                 }
                 discardBody(world.getServer(), state);
@@ -168,6 +172,9 @@ public final class LastStandService {
         PendingState state = pendingPlayers.remove(uuid);
         if (state != null) {
             restorePendingControl(player);
+            // Same as revive/cancelPendingRevive: a reset or terminal death mid-pending must not keep the forced flag.
+            // 与 revive/cancelPendingRevive 一致：待决期间的重置或终结性死亡不能保留被强制写入的无敌标记。
+            player.setInvulnerable(state.wasInvulnerable());
         }
         returnPoints.remove(uuid);
         moodSamples.remove(uuid);
@@ -286,10 +293,6 @@ public final class LastStandService {
         return serverPending || syncedPending;
     }
 
-    static boolean shouldHideFromKillerInstinct(boolean lastStandPending, boolean killerInstinctHidden) {
-        return EffectiveTraitService.shouldHideFromKillerInstinct(lastStandPending, killerInstinctHidden);
-    }
-
     public static boolean shouldBlockRoundEnd(boolean pendingInWorld, GameFunctions.WinStatus winStatus) {
         return pendingInWorld && winStatus != GameFunctions.WinStatus.NONE;
     }
@@ -298,21 +301,6 @@ public final class LastStandService {
         // The mixin calls this only after Wathe has a real winner ready to announce.
         // Mixin 只会在 wathe 已经准备宣布真实胜利时调用这里。
         return pendingInWorld;
-    }
-
-    public static int pendingSpectatorHighlightColor(
-            boolean canSeeSpectatorInformation,
-            boolean instinctEnabled,
-            boolean lastStandPending,
-            @Nullable Role targetRole
-    ) {
-        return spectatorLastStandHighlightColor(
-                canSeeSpectatorInformation,
-                instinctEnabled,
-                lastStandPending,
-                false,
-                targetRole
-        );
     }
 
     public static int spectatorLastStandHighlightColor(
@@ -328,10 +316,6 @@ public final class LastStandService {
         return Objects.requireNonNullElse(targetRole, WatheRoles.CIVILIAN).color();
     }
 
-    static Identifier noCollisionEffectId() {
-        return NOELLES_NO_COLLISION;
-    }
-
     static boolean canTriggerFromKill(
             Role victimRole,
             Collection<Identifier> victimTraits,
@@ -343,6 +327,10 @@ public final class LastStandService {
         return EffectiveTraitService.isEffectiveCivilian(victimRole, victimTraits)
                 && killerRole != null
                 && !EffectiveTraitService.isEffectiveCivilian(killerRole, killerTraits);
+    }
+
+    static boolean canApproveInGameStatus(GameWorldComponent.GameStatus status) {
+        return status == GameWorldComponent.GameStatus.ACTIVE;
     }
 
     static boolean shouldBypassLastStandDeathReason(Identifier deathReason) {
@@ -370,6 +358,13 @@ public final class LastStandService {
         }
 
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
+        // Owner rule (2026-11): Last Stand triggers only while the round is ACTIVE. Wathe still runs kills during the
+        // STOPPING fade, which is shorter than the pending window, so a trigger there would be finalized mid-pending.
+        // 规则（2026-11）：背水一战只在对局处于 ACTIVE 时触发。Wathe 在 STOPPING 淡出期间仍会结算击杀，
+        // 而淡出短于待决时长，此时触发会在待决中途被结算。
+        if (!canApproveInGameStatus(game.getGameStatus())) {
+            return false;
+        }
         Role victimRole = game.getRole(victim);
         Collection<Identifier> victimTraits = playerTraits.getActiveTraitIds();
         Role killerRole = killer == null ? null : game.getRole(killer);
@@ -419,6 +414,24 @@ public final class LastStandService {
 
     public static boolean isPending(UUID uuid) {
         return pendingPlayers.containsKey(uuid);
+    }
+
+    /** True between a BEFORE approval and the AFTER that consumes it; null-safe. BEFORE 批准之后、AFTER 消费之前为 true；支持空值。 */
+    public static boolean hasUnconsumedApproval(@Nullable PlayerEntity player) {
+        return player != null && approvedLastStandDeaths.contains(player.getUuid());
+    }
+
+    /**
+     * Drops an approval whose kill never reached AFTER (a later BEFORE listener cancelled it, or psycho armour
+     * absorbed it). Left behind it would report a living player as death-intercepted and could start Last Stand on a
+     * later death without re-checking killer, population or reason.
+     * 丢弃击杀未走到 AFTER 的批准（被更晚的 BEFORE 监听取消，或被疯魔护盾吸收）。残留的批准会把存活玩家报告为“死亡已被拦截”，
+     * 并可能在之后的死亡中不重新校验击杀者、人数与死因就启动背水一战。
+     */
+    public static void discardUnconsumedApproval(@Nullable PlayerEntity player) {
+        if (player != null) {
+            approvedLastStandDeaths.remove(player.getUuid());
+        }
     }
 
     public static boolean isFakeDeathBody(PlayerBodyEntity body) {
@@ -524,10 +537,13 @@ public final class LastStandService {
 
     private static void sampleMood(ServerWorld world, GameWorldComponent game) {
         long time = world.getTime();
-        for (UUID uuid : game.getAllPlayers()) {
-            if (!(world.getPlayerByUuid(uuid) instanceof ServerPlayerEntity player)) {
-                continue;
-            }
+        // Same players as the role list filtered by this world, without copying that list and scanning the world's
+        // players once per role holder: the unique trait is tested first, and isPlayerPlayingAndAlive already
+        // requires a role.
+        // 与“身份列表中位于本世界的玩家”完全相同，但不再复制该列表并为每名有身份的玩家扫描一次世界玩家：
+        // 先判断这个每局唯一的天赋，而 isPlayerPlayingAndAlive 本身已要求玩家拥有身份。
+        for (ServerPlayerEntity player : world.getPlayers()) {
+            UUID uuid = player.getUuid();
             if (!TraitPlayerComponent.KEY.get(player).hasActiveTrait(LastStandTrait.ID)
                     || !GameFunctions.isPlayerPlayingAndAlive(player)) {
                 continue;
@@ -555,6 +571,13 @@ public final class LastStandService {
             }
             if (!(world.getPlayerByUuid(state.playerUuid()) instanceof ServerPlayerEntity player)) {
                 pendingPlayers.remove(state.playerUuid());
+                // Disconnects are restored by cancelPendingRevive; a player moved to another world is still online
+                // and must not keep the forced invulnerable flag once the pending state is dropped.
+                // 断线由 cancelPendingRevive 恢复；被移到其他世界的玩家仍在线，待决状态被丢弃后不能保留被强制写入的无敌标记。
+                ServerPlayerEntity elsewhere = world.getServer().getPlayerManager().getPlayer(state.playerUuid());
+                if (elsewhere != null) {
+                    elsewhere.setInvulnerable(state.wasInvulnerable());
+                }
                 continue;
             }
             holdPendingPlayer(player, state);
@@ -744,10 +767,6 @@ public final class LastStandService {
             }
         }
         return meetsCivilianPopulationThreshold(startingCivilians, aliveCiviliansAfterDeath);
-    }
-
-    static boolean meetsCivilianPopulationThresholdAfterDeath(int startingCivilians, int aliveCiviliansBeforeDeath) {
-        return meetsCivilianPopulationThreshold(startingCivilians, Math.max(0, aliveCiviliansBeforeDeath - 1));
     }
 
     static boolean meetsCivilianPopulationThreshold(int startingCivilians, int aliveCiviliansAfterDeath) {

@@ -20,8 +20,13 @@ import java.util.UUID;
  * Viewer-only facts read by the instinct HEAD hook. Wathe asks {@code getInstinctHighlight} for every visible entity,
  * twice per frame (outline check and team colour), so these are read once per drawn frame and shared by every target.
  * Outside a frame (see {@link ClientFrameClock}) each call reads them afresh.
+ * <p>The instinct key ({@code WatheClient.isInstinctEnabled()}) is deliberately NOT one of them: SparkWitch's USEC
+ * cloak and SparkStrength's blackout sight wrap that call for the target being evaluated, so it is a per-target
+ * answer and {@link #instinctEnabled()} asks Wathe every time.
  * 本能 HEAD 钩子读取的仅与观察者有关的事实。Wathe 每帧会为每个可见实体调用两次 {@code getInstinctHighlight}
  * （描边判定与队伍颜色），因此这些事实每个绘制帧只读取一次并由所有目标共享；帧外（见 {@link ClientFrameClock}）每次调用重新读取。
+ * <p>本能按键（{@code WatheClient.isInstinctEnabled()}）刻意不在其中：SparkWitch 的 USEC 隐匿与 SparkStrength 的停电视野
+ * 会针对当前被判定的目标包裹该调用，因此它是逐目标的结果，{@link #instinctEnabled()} 每次都向 Wathe 询问。
  */
 public final class InstinctViewerContext {
     private static @Nullable InstinctViewerContext cached;
@@ -36,7 +41,6 @@ public final class InstinctViewerContext {
     private final @Nullable UUID depressionCounterTarget;
     private final boolean finalMomentActive;
     private final boolean canSeeSpectatorInformation;
-    private final boolean instinctEnabled;
     private final boolean goingDarkSuppressesHiddenTargets;
     private final boolean serialKiller;
     private final SerialKillerPlayerComponent serialKillerTargets;
@@ -61,7 +65,6 @@ public final class InstinctViewerContext {
         this.depressionCounterTarget = traits.getDepressionCounterTarget();
         this.finalMomentActive = traitWorld.isFinalMomentActive();
         this.canSeeSpectatorInformation = WatheClient.canSeeSpectatorInformation();
-        this.instinctEnabled = WatheClient.isInstinctEnabled();
         this.goingDarkSuppressesHiddenTargets = GoingDarkInstinctClientHooks.viewerSuppressesHiddenTargets(
                 viewer, game, canSeeSpectatorInformation, finalMomentActive);
         this.serialKiller = game.isRole(viewer, Noellesroles.SERIAL_KILLER);
@@ -147,8 +150,12 @@ public final class InstinctViewerContext {
         return canSeeSpectatorInformation;
     }
 
+    /**
+     * Wathe's keyed instinct gate for the target being evaluated right now; never cached (see the class comment).
+     * Wathe 针对当前被判定目标的按键本能门禁；从不缓存（见类注释）。
+     */
     public boolean instinctEnabled() {
-        return instinctEnabled;
+        return WatheClient.isInstinctEnabled();
     }
 
     public boolean goingDarkSuppressesHiddenTargets() {

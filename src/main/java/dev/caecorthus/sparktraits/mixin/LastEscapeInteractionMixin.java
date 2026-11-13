@@ -67,6 +67,10 @@ public abstract class LastEscapeInteractionMixin {
         else original.call(packet);
     }
 
+    // The inventory lock covers vanilla slot, button and craft packets only. Shop purchases (Wathe's StoreBuyPayload)
+    // deliberately stay allowed during the escape (owner decision, 2026-11): do not add a ShopPurchase guard here.
+    // 背包锁只覆盖原版的槽位点击、按钮点击与合成请求包。脱险期间的商店购买（Wathe 的 StoreBuyPayload）按负责人决定
+    // （2026-11）保持允许：不要在这里补 ShopPurchase 拦截。
     @WrapMethod(method = "onClickSlot")
     private void sparktraits$inventory(ClickSlotC2SPacket packet, Operation<Void> original) {
         if (!sparktraits$blocked(packet)) original.call(packet);

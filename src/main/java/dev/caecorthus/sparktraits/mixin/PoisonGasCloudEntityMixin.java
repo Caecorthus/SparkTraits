@@ -1,7 +1,6 @@
 package dev.caecorthus.sparktraits.mixin;
 
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
-import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonGasCloud;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerStaminaComponent;
@@ -39,7 +38,7 @@ import java.util.UUID;
 /** Replaces only Conscience Poisoner gas clouds with blue-poison gas behavior.
  *  只把善良毒师创建的毒气云替换为蓝毒气逻辑。 */
 @Mixin(PoisonGasCloudEntity.class)
-public abstract class PoisonGasCloudEntityMixin extends Entity implements ConsciencePoisonGasCloud {
+public abstract class PoisonGasCloudEntityMixin extends Entity {
     @Unique
     private static final String CONSCIENCE_GAS_KEY = "sparktraitsConscienceGas";
     @Unique
@@ -83,16 +82,6 @@ public abstract class PoisonGasCloudEntityMixin extends Entity implements Consci
 
     protected PoisonGasCloudEntityMixin(EntityType<?> type, World world) {
         super(type, world);
-    }
-
-    @Override
-    public boolean sparktraits$isConscienceGas() {
-        return sparktraits$conscienceGas;
-    }
-
-    @Override
-    public void sparktraits$setConscienceGas(boolean conscienceGas) {
-        sparktraits$conscienceGas = conscienceGas;
     }
 
     @Shadow(remap = false)
@@ -256,6 +245,21 @@ public abstract class PoisonGasCloudEntityMixin extends Entity implements Consci
                     if (gasBlocks.contains(cell.set(x, y, z))) {
                         return true;
                     }
+                }
+            }
+        }
+        // Mirrors NoellesRoles' isInGas (1.7.6): a sleeping player's box lies inside the bed block, which gas cannot
+        // enter, so the open cells around the bed (above and the four horizontal neighbours) count as well.
+        // 与 NoellesRoles 的 isInGas（1.7.6）保持一致：睡眠玩家的碰撞箱位于毒气无法进入的床方块内部，
+        // 因此床周围的开放方块（正上方与四个水平相邻方块）也算作暴露。
+        if (player.isSleeping()) {
+            BlockPos bedPos = player.getBlockPos();
+            if (gasBlocks.contains(bedPos.up())) {
+                return true;
+            }
+            for (Direction direction : Direction.Type.HORIZONTAL) {
+                if (gasBlocks.contains(bedPos.offset(direction))) {
+                    return true;
                 }
             }
         }

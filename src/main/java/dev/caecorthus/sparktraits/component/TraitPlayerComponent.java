@@ -10,12 +10,14 @@ import dev.caecorthus.sparktraits.compat.SparkWitchKillAttributionBridge;
 import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BluePoisonInteropService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BluePoisonMarkerSync;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.selection.TraitRules;
 import dev.caecorthus.sparktraits.impl.effective.alignment.EffectiveAlignment;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
+import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceTraits;
 import dev.caecorthus.sparktraits.impl.traits.global.pig.PigTrait;
@@ -27,15 +29,12 @@ import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.agmas.noellesroles.Noellesroles;
-import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentProvider;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
@@ -48,6 +47,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.fromNbt;
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.readIdentifierSet;
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.toNbt;
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.writeIdentifierSet;
 
 /**
  * Stores per-player trait state.
@@ -78,9 +82,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     // Public blackout-only flag used by Going Dark's instinct suppression.
     // 仅供隐蔽行动在关灯期间压制指定本能的公开状态标记。
     private boolean goingDarkInstinctHidden;
-    // Public derived flag relays projection without exposing NoellesRoles' owner-only body coordinates.
-    // 公开派生标记仅转发出窍状态，不暴露 NoellesRoles 只同步给本人的本体坐标。
-    private boolean spiritProjectionInstinctHidden;
     // Public sound-only flag used to mute remote Cautious players without revealing trait text.
     // 仅用于声音静音的公开标记，让远端小心翼翼玩家静音但不暴露天赋文本。
     private boolean cautiousSoundSuppressed;
@@ -169,10 +170,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         return goingDarkInstinctHidden;
     }
 
-    public boolean isSpiritProjectionInstinctHidden() {
-        return spiritProjectionInstinctHidden;
-    }
-
     public boolean isConscienceInstinctVisible() {
         return activeTraits.contains(ConscienceTrait.ID) || conscienceInstinctVisible;
     }
@@ -209,10 +206,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 consciencePoisonInitialTicks = 0;
             }
         }
-    }
-
-    public UUID getConsciencePoisoner() {
-        return consciencePoisoner;
     }
 
     public int getBloodthirstyKillCount() {
@@ -325,10 +318,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             this.consciencePoisoner = normalizedTicks > 0 ? poisoner : null;
             sync();
         }
-    }
-
-    public void clearConsciencePoison() {
-        setConsciencePoisonTicks(-1, null);
     }
 
     public void extendBlueSanityDrain(int ticks) {
@@ -603,7 +592,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
     @Override
     public void serverTick() {
         resyncFilteredStateOnRecipientChange();
-        syncSpiritProjectionInstinctState();
         tickBlueSanityDrain();
         if (consciencePoisonTicks <= 0) {
             return;
@@ -694,6 +682,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             }
         }
         TraitWorldComponent.KEY.syncWith(self, (ComponentProvider) self.getServerWorld());
+        // Blue-poison markers are not component state: their private sender follows the same view change.
+        // 蓝毒标记不属于组件状态：其私有发送方跟随同一次视角变化。
+        BluePoisonMarkerSync.onRecipientViewChanged(self, view.bluePoisonViewer());
     }
 
     /**
@@ -708,7 +699,10 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                         spectatingOrCreative,
                         GameFunctions.isPlayerPlayingAndAlive(recipient),
                         gameComponent.isPlayerDead(recipient.getUuid()),
-                        SparkWitchWraithBridge.isWraithActive(recipient)
+                        SparkWitchWraithBridge.isWraithActive(recipient),
+                        // Approved-or-pending also covers syncs sent inside killPlayer before the pending state exists.
+                        // “已批准或待决”同时覆盖 killPlayer 内、待决状态建立之前发出的同步。
+                        LastStandService.isDeathIntercepted(recipient)
                 ),
                 // Mirrors the client instinct gate EffectiveTraitService.isEffectiveKiller(viewer, game).
                 // 与客户端本能入口 EffectiveTraitService.isEffectiveKiller(viewer, game) 保持一致。
@@ -716,24 +710,36 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 // NoellesRoles' Coroner is the only CanSeeBodyRole grant; its sanity gate stays client-side.
                 // NoellesRoles 验尸官是唯一的 CanSeeBodyRole 放行来源；理智门槛仍由客户端判断。
                 gameComponent.isRole(recipient, Noellesroles.CORONER),
-                // Keeps the broad spectator-or-creative input because the client particle gate uses it too.
-                // 保留宽泛的旁观或创造判断，因为客户端蓝毒粒子判定同样使用它。
-                ConsciencePoisonerService.shouldShowHiddenBluePoisonParticles(
-                        ConsciencePoisonerService.isConsciencePoisoner(recipient, gameComponent),
-                        gameComponent.isRole(recipient, Noellesroles.TOXICOLOGIST),
-                        spectatingOrCreative
-                )
+                bluePoisonViewer(recipient, gameComponent, spectatingOrCreative)
         );
     }
 
-    private void syncSpiritProjectionInstinctState() {
-        boolean projecting = SpiritPlayerComponent.KEY.maybeGet(player)
-                .map(SpiritPlayerComponent::isProjecting)
-                .orElse(false);
-        if (spiritProjectionInstinctHidden != projecting) {
-            spiritProjectionInstinctHidden = projecting;
-            sync();
-        }
+    /**
+     * The recipient's "may see hidden blue poison" input on its own, for senders that are not component syncs
+     * (BluePoisonMarkerSync). Always the same answer as {@code syncRecipient(recipient).bluePoisonViewer()}.
+     * 单独给出接收者“可看到隐藏蓝毒”的判定，供组件同步以外的发送方（BluePoisonMarkerSync）使用。
+     * 结果始终与 {@code syncRecipient(recipient).bluePoisonViewer()} 相同。
+     */
+    public static boolean isBluePoisonViewer(ServerPlayerEntity recipient) {
+        return bluePoisonViewer(
+                recipient,
+                GameWorldComponent.KEY.get(recipient.getWorld()),
+                GameFunctions.isPlayerSpectatingOrCreative(recipient)
+        );
+    }
+
+    private static boolean bluePoisonViewer(
+            ServerPlayerEntity recipient,
+            GameWorldComponent gameComponent,
+            boolean spectatingOrCreative
+    ) {
+        // Keeps the broad spectator-or-creative input because the client particle gate uses it too.
+        // 保留宽泛的旁观或创造判断，因为客户端蓝毒粒子判定同样使用它。
+        return ConsciencePoisonerService.shouldShowHiddenBluePoisonParticles(
+                ConsciencePoisonerService.isConsciencePoisoner(recipient, gameComponent),
+                gameComponent.isRole(recipient, Noellesroles.TOXICOLOGIST),
+                spectatingOrCreative
+        );
     }
 
     @Override
@@ -745,7 +751,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         // Owners receive revealed traits, spectators receive full traits, regular players receive only flags.
         // 本人同步已揭示天赋，旁观者同步完整天赋，普通玩家只同步必要标记。
         writeIdentifierSet(buf, visibleActiveTraitsFor(owner, spectator));
-        writeIdentifierSet(buf, owner ? pendingTraits : Set.of());
+        // Field 2 (admin-locked traits for the next round) keeps its slot but is always empty: only server-side
+        // commands and assignment read locks, and sending them told the owner about hidden-from-owner locks.
+        // 第 2 个字段（管理员为下一局锁定的天赋）保留协议位置但始终为空：只有服务端命令与分配流程读取锁定，
+        // 而同步给本人会泄露“对本人隐藏”的锁定天赋。
+        writeIdentifierSet(buf, Set.<Identifier>of());
         writeIdentifierSet(
                 buf,
                 TraitSyncVisibility.revealedTraitsFor(owner, spectator, activeTraits, revealedTraits)
@@ -770,7 +780,11 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         // Field 17 is a protocol tombstone: keep writing false for older clients.
         // 第 17 个字段是协议墓碑：继续写入 false 以兼容旧客户端。
         buf.writeBoolean(false);
-        buf.writeBoolean(spiritProjectionInstinctHidden);
+        // Field 18 (spirit-projection relay) is a tombstone too: no reader in any Spark mod, and a real value (or a
+        // sync fired when it flips) reveals the Spirit Walker's out-of-body window to every tracking client.
+        // 第 18 个字段（出窍状态转发）同样是协议墓碑：所有 Spark 模组中都没有读取方，而真实值（或其变化触发的同步）
+        // 会向所有追踪客户端暴露灵界行者的出窍时段。
+        buf.writeBoolean(false);
         buf.writeBoolean(temporaryFakeDeathPending);
         buf.writeVarInt(owner && consciencePoisonTicks > 0 ? consciencePoisonInitialTicks : 0);
     }
@@ -808,7 +822,14 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         if (buf.readableBytes() > 0) {
             buf.readBoolean();
         }
-        spiritProjectionInstinctHidden = buf.readableBytes() > 0 && buf.readBoolean();
+        // Field 18 is the retired relay of NoellesRoles' owner-only projection state: relaying it told every client who
+        // the Spirit Walker is and when they are out of body. The server always sends false; read and discard it to
+        // keep the layout.
+        // 第 18 个字段是已停用的出窍状态转发（NoellesRoles 只同步给本人）：转发会让所有客户端得知谁是灵界行者及其何时出窍。
+        // 服务端始终发送 false；此处读取并丢弃以保持协议布局。
+        if (buf.readableBytes() > 0) {
+            buf.readBoolean();
+        }
         temporaryFakeDeathPending = buf.readableBytes() > 0 && buf.readBoolean();
         consciencePoisonInitialTicks = buf.readableBytes() > 0 ? buf.readVarInt() : Math.max(0, consciencePoisonTicks);
         if (wasPigActive != isPigActive()) {
@@ -851,7 +872,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
         lastStandPending = false;
         temporaryFakeDeathPending = false;
         goingDarkInstinctHidden = false;
-        spiritProjectionInstinctHidden = false;
         cautiousSoundSuppressed = false;
         consciencePoisonTicks = -1;
         consciencePoisonInitialTicks = 0;
@@ -887,23 +907,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 && tag.getBoolean("CorneredLastKillerRewardPaid");
     }
 
-    private static NbtList toNbt(Collection<Identifier> ids) {
-        NbtList list = new NbtList();
-        for (Identifier id : ids) {
-            list.add(NbtString.of(id.toString()));
-        }
-        return list;
-    }
-
-    private static void fromNbt(NbtList list, Set<Identifier> ids) {
-        for (int i = 0; i < list.size(); i++) {
-            Identifier id = Identifier.tryParse(list.getString(i));
-            if (id != null && !RetiredTraitIds.isRetired(id)) {
-                ids.add(id);
-            }
-        }
-    }
-
     private List<Identifier> visibleOwnerTraits() {
         return activeTraits.stream().filter(this::isVisibleToOwner).toList();
     }
@@ -923,24 +926,6 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             return consciencePoisonTicks;
         }
         return view.bluePoisonViewer() ? consciencePoisonTicks : -1;
-    }
-
-    private static void writeIdentifierSet(RegistryByteBuf buf, Collection<Identifier> ids) {
-        buf.writeVarInt(ids.size());
-        for (Identifier id : ids) {
-            buf.writeString(id.toString());
-        }
-    }
-
-    private static void readIdentifierSet(RegistryByteBuf buf, Set<Identifier> ids) {
-        ids.clear();
-        int size = buf.readVarInt();
-        for (int i = 0; i < size; i++) {
-            Identifier id = Identifier.tryParse(buf.readString());
-            if (id != null && !RetiredTraitIds.isRetired(id)) {
-                ids.add(id);
-            }
-        }
     }
 
     private static void writeOptionalIdentifier(RegistryByteBuf buf, Identifier id) {

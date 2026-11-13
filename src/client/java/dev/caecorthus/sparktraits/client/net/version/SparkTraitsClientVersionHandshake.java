@@ -69,7 +69,13 @@ public final class SparkTraitsClientVersionHandshake {
     }
 
     private static void confirmSparkTraitsServer(String serverVersion, String clientVersion, String stage) {
-        SparkTraitsServerConnection.confirmServer();
+        if ("login".equals(stage)) {
+            // A login confirmation belongs to the connection being established and must survive its JOIN reset.
+            // 登录阶段的确认属于正在建立的连接，必须保留到其 JOIN 重置之后。
+            SparkTraitsServerConnection.confirmServerAtLogin();
+        } else {
+            SparkTraitsServerConnection.confirmServer();
+        }
         SparkTraits.LOGGER.info(
                 "Confirmed SparkTraits server through {} channel: server={}, client={}.",
                 stage,

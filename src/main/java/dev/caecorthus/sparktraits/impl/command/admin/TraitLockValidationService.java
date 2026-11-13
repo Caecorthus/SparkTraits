@@ -12,14 +12,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
-import org.agmas.noellesroles.Noellesroles;
 
 import java.util.Collection;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.selection.TraitRoleEligibility;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandTrait;
-import dev.caecorthus.sparktraits.impl.traits.civilian.police.PoliceRoleCategory;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 
 /**
@@ -27,16 +25,6 @@ import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
  * 下局天赋与身份锁定的命令期共用校验入口。
  */
 public final class TraitLockValidationService {
-    private static final Identifier SPARKWITCH_PIG_GOD_ID = Identifier.of("sparkwitch", "pig_god");
-    private static final Identifier SPARKWITCH_SAINT_ID = Identifier.of("sparkwitch", "saint");
-    private static final Identifier SPARKWITCH_BLIND_ID = Identifier.of("sparkwitch", "blind");
-    // Owner 2026-11-04: Noa never holds Impostor (fake mood breaks her painting), same as round assignment.
-    // 所有者 2026-11-04：城崎诺亚永不获得内鬼（虚假心情会破坏作画），与开局分配一致。
-    private static final Identifier SPARKWITCH_NOA_ID = Identifier.of("sparkwitch", "noa");
-    // PR SparkWitch #206: Sherry (passenger detective) never holds Impostor, same as round assignment.
-    // PR SparkWitch #206：橘雪莉（乘客侦探）永不获得内鬼，与开局分配一致。
-    private static final Identifier SPARKWITCH_SHERRY_ID = Identifier.of("sparkwitch", "sherry");
-
     private TraitLockValidationService() {
     }
 
@@ -103,17 +91,12 @@ public final class TraitLockValidationService {
         if (trait.id().equals(LastStandTrait.ID) && LastStandTrait.isSettlementExcludedRole(role)) {
             return false;
         }
-        // Police-category roles mirror round assignment's Impostor block.
-        // 警职类别身份与开局分配的内鬼排除保持一致。
+        // Police-category and other permanently excluded roles share round assignment's Impostor block. Selection also
+        // excludes Survival Master and Undercover; locks deliberately keep accepting both (unchanged behaviour).
+        // 警职类别及其他永久排除身份与开局分配共用内鬼排除。开局抽取还排除生存大师与卧底；锁定校验目前仍有意接受这两者（行为不变）。
         return !trait.id().equals(ImpostorTrait.ID)
                 || isUnknownRole(role)
-                || (!role.identifier().equals(SPARKWITCH_PIG_GOD_ID)
-                && !role.identifier().equals(Noellesroles.TOXICOLOGIST_ID)
-                && !role.identifier().equals(SPARKWITCH_SAINT_ID)
-                && !role.identifier().equals(SPARKWITCH_BLIND_ID)
-                && !role.identifier().equals(SPARKWITCH_NOA_ID)
-                && !role.identifier().equals(SPARKWITCH_SHERRY_ID)
-                && !PoliceRoleCategory.isPolice(role));
+                || !EffectiveTraitService.isImpostorPermanentlyExcludedRole(role);
     }
 
     public static ServerPlayerEntity findOtherPendingUniqueTraitOwner(MinecraftServer server, ServerPlayerEntity target, Trait trait) {
@@ -145,6 +128,9 @@ public final class TraitLockValidationService {
                 + formatRoleId(conflict.role()) + " 冲突。";
     }
 
+    /** Command-facing trait id shared by lock messages, command feedback and suggestions: SparkTraits ids drop the
+     *  namespace, foreign ids stay fully qualified.
+     *  锁定提示、命令反馈与补全共用的命令侧天赋 id：SparkTraits 的 id 省略命名空间，外部 id 保留完整形式。 */
     static String formatTraitId(Identifier traitId) {
         if (traitId.getNamespace().equals(SparkTraits.MOD_ID)) {
             return traitId.getPath();

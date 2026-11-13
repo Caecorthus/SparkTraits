@@ -4,8 +4,6 @@ import dev.caecorthus.sparktraits.SparkTraits;
 import dev.caecorthus.sparktraits.impl.selection.TraitSlotRollChance;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -25,13 +23,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.fromNbt;
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.readIdentifierSet;
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.toNbt;
+import static dev.caecorthus.sparktraits.component.TraitIdCodec.writeIdentifierSet;
+
 /**
  * Stores world-level trait state.
  * 保存世界级天赋状态：长期禁用列表、每局唯一占用、死亡时快照。
  */
 public class TraitWorldComponent implements AutoSyncedComponent {
     public static final ComponentKey<TraitWorldComponent> KEY = ComponentRegistry.getOrCreate(SparkTraits.id("world"), TraitWorldComponent.class);
-    public static final float DEFAULT_TRAIT_SLOT_ROLL_CHANCE = TraitSlotRollChance.DEFAULT;
 
     private final World world;
     private final dev.caecorthus.sparktraits.impl.traits.killer.escape.LastEscapeRoundState lastEscape =
@@ -113,10 +115,6 @@ public class TraitWorldComponent implements AutoSyncedComponent {
             disabledTraits.add(traitId);
         }
         sync();
-    }
-
-    public Set<Identifier> getDisabledTraitIds() {
-        return Set.copyOf(disabledTraits);
     }
 
     public float getTraitSlotRollChance() {
@@ -294,41 +292,6 @@ public class TraitWorldComponent implements AutoSyncedComponent {
                 : TraitSlotRollChance.DEFAULT;
         finalMomentActive = false;
         finalMomentLooseEnds.clear();
-    }
-
-    private static NbtList toNbt(Collection<Identifier> ids) {
-        NbtList list = new NbtList();
-        for (Identifier id : ids) {
-            list.add(NbtString.of(id.toString()));
-        }
-        return list;
-    }
-
-    private static void fromNbt(NbtList list, Set<Identifier> ids) {
-        for (int i = 0; i < list.size(); i++) {
-            Identifier id = Identifier.tryParse(list.getString(i));
-            if (id != null && !RetiredTraitIds.isRetired(id)) {
-                ids.add(id);
-            }
-        }
-    }
-
-    private static void writeIdentifierSet(RegistryByteBuf buf, Collection<Identifier> ids) {
-        buf.writeVarInt(ids.size());
-        for (Identifier id : ids) {
-            buf.writeString(id.toString());
-        }
-    }
-
-    private static void readIdentifierSet(RegistryByteBuf buf, Set<Identifier> ids) {
-        ids.clear();
-        int size = buf.readVarInt();
-        for (int i = 0; i < size; i++) {
-            Identifier id = Identifier.tryParse(buf.readString());
-            if (id != null && !RetiredTraitIds.isRetired(id)) {
-                ids.add(id);
-            }
-        }
     }
 
     private static void writeUuidSet(RegistryByteBuf buf, Collection<UUID> uuids) {

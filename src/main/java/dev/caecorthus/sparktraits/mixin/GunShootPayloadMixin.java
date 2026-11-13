@@ -107,7 +107,7 @@ public abstract class GunShootPayloadMixin {
             Identifier deathReason
     ) {
         FakeDeathDerringerService.replenishAfterHit(shooter, victim);
-        VigilanteVeteranTraitService.killPlayerWithPoliceGunTraits(victim, spawnBody, shooter, deathReason);
+        VigilanteVeteranTraitService.killPlayerWithHeavyArtillery(victim, spawnBody, shooter, deathReason);
     }
 
     /** Skips only the ordinary civilian-role revolver-hit mood penalty.

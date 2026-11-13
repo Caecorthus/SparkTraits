@@ -31,7 +31,6 @@ public final class NewKillerTraitsClient {
         ClientPlayNetworking.registerGlobalReceiver(ForcedMeleeCooldownPayload.ID,
                 (payload, context) -> ForcedMeleeCooldownService.acceptClientSnapshot(context.player(), payload));
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> ForcedMeleeCooldownService.clearClient());
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ForcedMeleeCooldownService.clearClient());
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
             if (client.world == null || client.player == null) {
                 DepressionScreenEffects.close();
@@ -39,7 +38,14 @@ public final class NewKillerTraitsClient {
                 LastEscapeInput.suppress(client);
             }
         });
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> DepressionScreenEffects.close());
+        // DISCONNECT can fire on the Netty thread: the cooldown map belongs to the client thread and closing the
+        // post-effect processor asserts the render thread, so both are marshalled, in their original order.
+        // DISCONNECT 可能在 Netty 线程触发：冷却表属于客户端线程，关闭后处理器会断言渲染线程，因此两者按原顺序转交客户端线程执行。
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+                dev.caecorthus.sparktraits.client.SparkTraitsClient.runSessionCleanup(client, handler, () -> {
+                    ForcedMeleeCooldownService.clearClient();
+                    DepressionScreenEffects.close();
+                }));
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> DepressionScreenEffects.close());
         ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(
                 new SimpleSynchronousResourceReloadListener() {
