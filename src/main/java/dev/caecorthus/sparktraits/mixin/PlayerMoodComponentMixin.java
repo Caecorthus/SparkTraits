@@ -2,6 +2,7 @@ package dev.caecorthus.sparktraits.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import dev.caecorthus.sparktraits.component.TraitPlayerComponent;
+import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionRules;
 import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTraitService;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
@@ -88,7 +89,7 @@ public abstract class PlayerMoodComponentMixin {
         adjustedMood = VigilanteVeteranTraitService.wellTrainedAdjustedMood(this.mood, adjustedMood, this.player);
         adjustedMood = CivilianTraitService.socialMoodAdjustedMood(this.mood, adjustedMood, this.player);
         adjustedMood = DopamineService.adjustedMood(this.mood, adjustedMood, this.player);
-        return DepressionTraitService.depressionAdjustedMood(
+        return DepressionRules.depressionAdjustedMood(
                 this.mood,
                 adjustedMood,
                 TraitPlayerComponent.KEY.get(this.player).getActiveTraitIds(),
@@ -137,7 +138,7 @@ public abstract class PlayerMoodComponentMixin {
         // Wathe psycho does not block mental breakdown, so Depression handles only its own psycho window here.
         // wathe 疯魔不会自动阻止精神崩溃；这里仅保护抑郁自己的疯魔窗口。
         if (DepressionTraitService.shouldSuppressMentalBreakdown(player, deathReason)) {
-            setMood(DepressionTraitService.depressionPsychoMoodFloor(this.mood));
+            setMood(DepressionRules.depressionPsychoMoodFloor(this.mood));
             return;
         }
         GameFunctions.killPlayer(player, spawnBody, killer, deathReason, handleBefore);
@@ -149,7 +150,7 @@ public abstract class PlayerMoodComponentMixin {
                 this.player,
                 dev.doctor4t.wathe.game.GameConstants.DeathReasons.MENTAL_BREAKDOWN
         )) {
-            setMood(DepressionTraitService.depressionPsychoMoodFloor(this.mood));
+            setMood(DepressionRules.depressionPsychoMoodFloor(this.mood));
         }
     }
 
