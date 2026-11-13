@@ -27,6 +27,7 @@
     "BomberPlayerComponentMixin",
     "BeveragePlateBlockEntityMixin",
     "BloodthirstyCooldownMixin",
+    "BluePoisonChunkSendMixin",
     "CautiousEntitySoundMixin",
     "CautiousLivingEntitySoundMixin",
     "CautiousPlayerConsumptionSoundMixin",

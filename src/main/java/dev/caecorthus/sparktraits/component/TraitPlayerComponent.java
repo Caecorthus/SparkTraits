@@ -10,6 +10,7 @@ import dev.caecorthus.sparktraits.compat.SparkWitchKillAttributionBridge;
 import dev.caecorthus.sparktraits.compat.SparkWitchWraithBridge;
 import dev.caecorthus.sparktraits.impl.traits.global.CautiousTrait;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BluePoisonInteropService;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BluePoisonMarkerSync;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceTrait;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
@@ -696,6 +697,9 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
             }
         }
         TraitWorldComponent.KEY.syncWith(self, (ComponentProvider) self.getServerWorld());
+        // Blue-poison markers are not component state: their private sender follows the same view change.
+        // 蓝毒标记不属于组件状态：其私有发送方跟随同一次视角变化。
+        BluePoisonMarkerSync.onRecipientViewChanged(self, view.bluePoisonViewer());
     }
 
     /**
@@ -721,13 +725,35 @@ public class TraitPlayerComponent implements AutoSyncedComponent, ServerTickingC
                 // NoellesRoles' Coroner is the only CanSeeBodyRole grant; its sanity gate stays client-side.
                 // NoellesRoles 验尸官是唯一的 CanSeeBodyRole 放行来源；理智门槛仍由客户端判断。
                 gameComponent.isRole(recipient, Noellesroles.CORONER),
-                // Keeps the broad spectator-or-creative input because the client particle gate uses it too.
-                // 保留宽泛的旁观或创造判断，因为客户端蓝毒粒子判定同样使用它。
-                ConsciencePoisonerService.shouldShowHiddenBluePoisonParticles(
-                        ConsciencePoisonerService.isConsciencePoisoner(recipient, gameComponent),
-                        gameComponent.isRole(recipient, Noellesroles.TOXICOLOGIST),
-                        spectatingOrCreative
-                )
+                bluePoisonViewer(recipient, gameComponent, spectatingOrCreative)
+        );
+    }
+
+    /**
+     * The recipient's "may see hidden blue poison" input on its own, for senders that are not component syncs
+     * (BluePoisonMarkerSync). Always the same answer as {@code syncRecipient(recipient).bluePoisonViewer()}.
+     * 单独给出接收者“可看到隐藏蓝毒”的判定，供组件同步以外的发送方（BluePoisonMarkerSync）使用。
+     * 结果始终与 {@code syncRecipient(recipient).bluePoisonViewer()} 相同。
+     */
+    public static boolean isBluePoisonViewer(ServerPlayerEntity recipient) {
+        return bluePoisonViewer(
+                recipient,
+                GameWorldComponent.KEY.get(recipient.getWorld()),
+                GameFunctions.isPlayerSpectatingOrCreative(recipient)
+        );
+    }
+
+    private static boolean bluePoisonViewer(
+            ServerPlayerEntity recipient,
+            GameWorldComponent gameComponent,
+            boolean spectatingOrCreative
+    ) {
+        // Keeps the broad spectator-or-creative input because the client particle gate uses it too.
+        // 保留宽泛的旁观或创造判断，因为客户端蓝毒粒子判定同样使用它。
+        return ConsciencePoisonerService.shouldShowHiddenBluePoisonParticles(
+                ConsciencePoisonerService.isConsciencePoisoner(recipient, gameComponent),
+                gameComponent.isRole(recipient, Noellesroles.TOXICOLOGIST),
+                spectatingOrCreative
         );
     }
 

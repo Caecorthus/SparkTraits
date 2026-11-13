@@ -352,6 +352,10 @@ public final class LastStandService {
                 && !EffectiveTraitService.isEffectiveCivilian(killerRole, killerTraits);
     }
 
+    static boolean canApproveInGameStatus(GameWorldComponent.GameStatus status) {
+        return status == GameWorldComponent.GameStatus.ACTIVE;
+    }
+
     static boolean shouldBypassLastStandDeathReason(Identifier deathReason) {
         return GameConstants.DeathReasons.MENTAL_BREAKDOWN.equals(deathReason)
                 || GameConstants.DeathReasons.FELL_OUT_OF_TRAIN.equals(deathReason)
@@ -377,6 +381,13 @@ public final class LastStandService {
         }
 
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
+        // Owner rule (2026-11): Last Stand triggers only while the round is ACTIVE. Wathe still runs kills during the
+        // STOPPING fade, which is shorter than the pending window, so a trigger there would be finalized mid-pending.
+        // 规则（2026-11）：背水一战只在对局处于 ACTIVE 时触发。Wathe 在 STOPPING 淡出期间仍会结算击杀，
+        // 而淡出短于待决时长，此时触发会在待决中途被结算。
+        if (!canApproveInGameStatus(game.getGameStatus())) {
+            return false;
+        }
         Role victimRole = game.getRole(victim);
         Collection<Identifier> victimTraits = playerTraits.getActiveTraitIds();
         Role killerRole = killer == null ? null : game.getRole(killer);

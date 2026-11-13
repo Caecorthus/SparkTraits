@@ -18,6 +18,7 @@ import dev.caecorthus.sparktraits.impl.compatibility.noellesroles.SilencedKiller
 import dev.caecorthus.sparktraits.impl.compatibility.sparkfactionapi.SparkFactionApiEffectiveFactionBridge;
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.effective.death.EffectiveDeathConsequenceRules;
+import dev.caecorthus.sparktraits.impl.traits.killer.conscience.BluePoisonMarkerSync;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceBombService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConscienceEconomyService;
 import dev.caecorthus.sparktraits.impl.traits.killer.conscience.ConsciencePoisonerService;
@@ -62,6 +63,7 @@ public final class TraitGameHooks {
         ImpostorRevolverService.register();
         ConscienceSerialKillerService.register();
         ConsciencePoisonerService.register();
+        BluePoisonMarkerSync.register();
         ConscienceWalkieTalkieService.register();
         SilencedKillerRestrictionService.register();
         DepressionTraitService.register();

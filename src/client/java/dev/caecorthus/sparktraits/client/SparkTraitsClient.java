@@ -7,10 +7,12 @@ import dev.caecorthus.sparktraits.client.audio.FinalMomentMusicController;
 import dev.caecorthus.sparktraits.client.hud.DepressionHud;
 import dev.caecorthus.sparktraits.client.instinct.InstinctViewerContext;
 import dev.caecorthus.sparktraits.client.jester.JesterMomentClientHooks;
+import dev.caecorthus.sparktraits.client.killer.BluePoisonMarkerClientStore;
 import dev.caecorthus.sparktraits.client.killer.NewKillerTraitsClient;
 import dev.caecorthus.sparktraits.client.net.version.SparkTraitsClientVersionHandshake;
 import dev.caecorthus.sparktraits.impl.traits.civilian.laststand.LastStandFinalMomentService;
 import dev.caecorthus.sparktraits.impl.resource.SparkTraitsParticles;
+import dev.caecorthus.sparktraits.net.conscience.BluePoisonMarkersPayload;
 import dev.caecorthus.sparktraits.net.version.SparkTraitsServerConnection;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -19,6 +21,7 @@ import dev.doctor4t.wathe.client.particle.PoisonParticle;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientLoginConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
 import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.client.MinecraftClient;
@@ -33,6 +36,11 @@ public class SparkTraitsClient implements ClientModInitializer {
         SparkTraitsClientVersionHandshake.registerClient();
         NewKillerTraitsClient.initialize();
         ParticleFactoryRegistry.getInstance().register(SparkTraitsParticles.BLUE_POISON, PoisonParticle.Factory::new);
+        // Private blue-poison markers: the server sends this only to viewers that may see blue poison. Play payload
+        // handlers run on the client thread, which owns the store.
+        // 私有蓝毒标记：服务端只发给可以看到蓝毒的观察者。play 数据包处理器在客户端线程执行，存储也归该线程所有。
+        ClientPlayNetworking.registerGlobalReceiver(BluePoisonMarkersPayload.ID,
+                (payload, context) -> BluePoisonMarkerClientStore.accept(context.client().world, payload));
         // A new connection starts unconfirmed, even if the previous one never reached its play session.
         // 新连接从未确认状态开始，即使上一个连接没有进入 play 会话。
         ClientLoginConnectionEvents.INIT.register((handler, client) -> SparkTraitsServerConnection.reset());
@@ -44,6 +52,7 @@ public class SparkTraitsClient implements ClientModInitializer {
          * JOIN 在客户端线程执行。强制近战冷却快照由 NewKillerTraitsClient 自己的 JOIN 监听清理。
          */
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            BluePoisonMarkerClientStore.clear();
             FinalMomentMusicController.reset(client);
             SparkTraitsServerConnection.beginPlaySession();
             dev.caecorthus.sparktraits.client.gui.OwnerInventoryClientAdapter.resetNativeCard();
@@ -54,6 +63,7 @@ public class SparkTraitsClient implements ClientModInitializer {
             // volatile 标记可以在网络线程上直接清除；依赖它的功能随即停用。
             SparkTraitsServerConnection.reset();
             runSessionCleanup(client, handler, () -> {
+                BluePoisonMarkerClientStore.clear();
                 FinalMomentMusicController.reset(client);
                 dev.caecorthus.sparktraits.client.gui.OwnerInventoryClientAdapter.resetNativeCard();
                 InstinctViewerContext.clear();
