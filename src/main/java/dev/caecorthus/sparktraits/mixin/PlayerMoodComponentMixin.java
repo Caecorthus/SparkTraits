@@ -7,6 +7,8 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTrai
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.DopamineService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.MinimalismService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.MinimalismTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.TaskPacing;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
@@ -172,5 +174,34 @@ public abstract class PlayerMoodComponentMixin {
         if (DepressionTraitService.shouldAllowLowMoodSprint(this.player)) {
             cir.setReturnValue(false);
         }
+    }
+    /**
+     * 极简主义: a holder who has not completed anything for 90 seconds gets one task refreshed.
+     * Runs at TAIL so it sees the vanilla tick already applied; the cap still comes from {@link TaskPacing}.
+     * 极简主义：连续 90 秒没有完成任务时补刷 1 个任务。放在 TAIL，原版 tick 已执行完毕；上限仍由 {@link TaskPacing} 把关。
+     */
+    @Inject(method = "serverTick", at = @At("TAIL"))
+    private void sparktraits$refreshMinimalismTask(CallbackInfo ci) {
+        if (!(this.player instanceof ServerPlayerEntity serverPlayer)) {
+            return;
+        }
+        if (!TraitPlayerComponent.KEY.get(serverPlayer).hasActiveTrait(MinimalismTrait.ID)) {
+            return;
+        }
+        long now = serverPlayer.getWorld().getTime();
+        if (now - MinimalismService.lastCompletion(serverPlayer, now) < MinimalismTrait.IDLE_REFRESH_TICKS) {
+            return;
+        }
+        if (!TaskPacing.atTaskCap(serverPlayer, this.tasks.size())) {
+            PlayerMoodComponent.TrainTask generated =
+                    ((PlayerMoodComponentInvoker) (Object) this).sparktraits$generateTask();
+            if (generated != null) {
+                this.tasks.put(generated.getType(), generated);
+                // Wathe only syncs when its own dirty flag is set, and that block runs before TAIL.
+                // 原版只在 dirty 时同步，而那段代码在 TAIL 之前就执行完了，这里必须自己同步一次。
+                ((PlayerMoodComponent) (Object) this).sync();
+            }
+        }
+        MinimalismService.mark(serverPlayer, now);
     }
 }
