@@ -11,9 +11,11 @@ import net.minecraft.util.Identifier;
 import java.util.Set;
 
 /**
- * 多巴胺 / dopamine: for ten seconds after completing a task, mood drain is 30% slower and tasks refresh 30% faster.
- * At most one holder per round, and incompatible with 极简主义 (Minimalism).
- * 多巴胺：完成任务后 10 秒内，理智流失速度降低 30%，任务刷新速度提升 30%。每局最多一人，与极简主义冲突。
+ * 多巴胺 / dopamine: for ten seconds after completing a task, mood drain slows by 30%-60% and the holder gets
+ * Speed I for 2-5 seconds. Both scale with how many tasks the holder has finished this round: the fewer tasks, the
+ * weaker the effect. At most one holder per round, incompatible with 极简主义 and 焦虑症.
+ * 多巴胺：完成任务后 10 秒内，理智流失速度降低 30%~60%，并获得 2~5 秒速度 I。
+ * 两者都随本局已完成任务数提升：任务越少，数值越低。每局最多一人，与极简主义、焦虑症冲突。
  */
 public final class DopamineTrait implements Trait {
     public static final Identifier ID = SparkTraits.id("dopamine");
@@ -26,10 +28,16 @@ public final class DopamineTrait implements Trait {
 
     /** Duration of the post-task window. 完成后效果持续时间。 */
     public static final int WINDOW_TICKS = 200;
-    /** Mood drain multiplier inside the window (-30%). 窗口内理智流失倍率（降低 30%）。 */
-    public static final float MOOD_DRAIN_MULTIPLIER = 0.7F;
-    /** Task refresh multiplier inside the window (+30% faster). 窗口内任务刷新倍率（提速 30%）。 */
-    public static final float TASK_REFRESH_MULTIPLIER = 1.3F;
+    /** Drain reduction right after the first task. 首个任务后的理智减速比例。 */
+    public static final float MIN_DRAIN_REDUCTION = 0.30F;
+    /** Drain reduction once the bonus is fully grown. 加成成长满后的理智减速比例。 */
+    public static final float MAX_DRAIN_REDUCTION = 0.60F;
+    /** Speed duration right after the first task. 首个任务后的速度持续 tick 数。 */
+    public static final int MIN_SPEED_TICKS = 40;
+    /** Speed duration once the bonus is fully grown. 加成成长满后的速度持续 tick 数。 */
+    public static final int MAX_SPEED_TICKS = 100;
+    /** Completed tasks needed to reach the maximum. 达到上限所需的已完成任务数。 */
+    public static final int FULL_BONUS_TASKS = 6;
 
     @Override
     public Identifier id() {
@@ -54,7 +62,31 @@ public final class DopamineTrait implements Trait {
 
     @Override
     public Set<Identifier> incompatibleTraits() {
-        return Set.of(MINIMALISM_ID, ImpostorTrait.ID);
+        return Set.of(MINIMALISM_ID, ImpostorTrait.ID, AnxietyTrait.ID);
+    }
+
+    /**
+     * How far the effect has grown, from 0 (after the first task) to 1 (after {@link #FULL_BONUS_TASKS}).
+     * 加成成长度：第一个任务后为 0，达到 {@link #FULL_BONUS_TASKS} 个任务后为 1。
+     */
+    static float growth(int completedTasks) {
+        int grown = Math.max(0, completedTasks - 1);
+        return Math.min(1.0F, grown / (float) (FULL_BONUS_TASKS - 1));
+    }
+
+    /** Mood-drain reduction inside the window for a holder who has completed this many tasks. 窗口内理智减速比例。 */
+    public static float drainReduction(int completedTasks) {
+        return MIN_DRAIN_REDUCTION + (MAX_DRAIN_REDUCTION - MIN_DRAIN_REDUCTION) * growth(completedTasks);
+    }
+
+    /** Multiplier applied to a mood drop. 理智下降所乘的倍率。 */
+    public static float drainMultiplier(int completedTasks) {
+        return 1.0F - drainReduction(completedTasks);
+    }
+
+    /** Speed I duration granted on task completion. 完成任务时给予的速度 I 持续 tick 数。 */
+    public static int speedTicks(int completedTasks) {
+        return Math.round(MIN_SPEED_TICKS + (MAX_SPEED_TICKS - MIN_SPEED_TICKS) * growth(completedTasks));
     }
 
     /**
