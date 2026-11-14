@@ -29,6 +29,7 @@
   "custom": {
     "cardinal-components": [
       "sparktraits:traits",
+      "sparktraits:preparefull",
       "sparktraits:world"
     ]
   },

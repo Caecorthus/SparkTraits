@@ -124,5 +124,8 @@
   "replay.sparktraits.tooltip.traits": "词条：",
   "replay.sparktraits.tooltip.none": "无",
   "replay.sparktraits.tooltip.hidden_at_start": "（开局隐藏）",
-  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": "（终局时刻）"
+  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": "（终局时刻）",
+  "trait.sparktraits.preparefull.name": "养精蓄锐",
+  "trait.sparktraits.preparefull.description": "静止 10 秒完成蓄力，下次移动时获得 3 秒速度 III。",
+  "hud.sparktraits.preparefull": "蓄力 %s%%"
 }

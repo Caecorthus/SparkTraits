@@ -124,5 +124,8 @@
   "replay.sparktraits.tooltip.traits": "Traits:",
   "replay.sparktraits.tooltip.none": " None",
   "replay.sparktraits.tooltip.hidden_at_start": " (hidden at start)",
-  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": " (final moment)"
+  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": " (final moment)",
+  "trait.sparktraits.preparefull.name": "Preparefully",
+  "trait.sparktraits.preparefull.description": "Stand still for 10 seconds to charge; your next movement grants Speed III for 3 seconds.",
+  "hud.sparktraits.preparefull": "Charge %s%%"
 }
