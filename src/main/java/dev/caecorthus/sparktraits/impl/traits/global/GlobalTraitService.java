@@ -45,6 +45,8 @@ public final class GlobalTraitService {
     public static final int SNOWBALL_MILESTONE = 100;
     public static final int SNOWBALL_REWARD = 15;
     public static final int WELL_SUPPLIED_STARTING_MONEY_PERCENT = 120;
+    /** Handed to roles whose opening balance is zero, where a percentage of nothing would stay nothing. 初始零金币角色的补贴。 */
+    public static final int WELL_SUPPLIED_ZERO_MONEY_BONUS = 25;
     public static final int TASK_MASTER_MONEY_REWARD = 25;
     public static final float TASK_MASTER_MOOD_GAIN_MULTIPLIER = 0.20f;
     public static final float EXCELLENT_PHYSIQUE_RECOVERY_BONUS = 0.25f;
@@ -188,7 +190,9 @@ public final class GlobalTraitService {
 
     static int wellSuppliedStartingMoney(int startingMoney) {
         if (startingMoney <= 0) {
-            return startingMoney;
+            // Roles that open with no money at all: 120% of zero is still zero, so they get a flat subsidy instead.
+            // 初始零金币的角色：1.2 倍乘在 0 上仍然是 0，改为固定发放一笔补贴。
+            return WELL_SUPPLIED_ZERO_MONEY_BONUS;
         }
         return (int) Math.min(Integer.MAX_VALUE, (long) startingMoney * WELL_SUPPLIED_STARTING_MONEY_PERCENT / 100);
     }
