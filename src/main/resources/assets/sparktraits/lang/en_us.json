@@ -40,7 +40,7 @@
   "trait.sparktraits.economy.name": "Economy",
   "trait.sparktraits.economy.description": "Purchases above 100 money refund 10% of the price you paid.",
   "trait.sparktraits.sensitive.name": "Sensitive",
-  "trait.sparktraits.sensitive.description": "You can always see the time left in the round. On the killer side, killing a civilian adds 60 seconds and killing a neutral adds 30 seconds.",
+  "trait.sparktraits.sensitive.description": "You can always see the remaining round time.\n· Rolls at a quarter of the normal rate, and never on a role that already sees the timer.",
   "trait.sparktraits.stands_firm.name": "Stands Firm",
   "trait.sparktraits.stands_firm.description": "Players of your own faction cannot kill you.",
   "trait.sparktraits.extroverted.name": "Extroverted",
