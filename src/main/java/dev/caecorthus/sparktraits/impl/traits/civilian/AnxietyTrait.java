@@ -11,15 +11,17 @@ import net.minecraft.util.Identifier;
 import java.util.Set;
 
 /**
- * 焦虑症 / Anxiety disorder: tasks refresh 150% faster, but finishing one restores the entire mood bar.
- * Passenger-only.
- * 焦虑症：任务刷新频率提升 150%，但完成一个任务会直接回满理智。乘客阵营专属。
+ * 焦虑症 / Anxiety disorder: tasks refresh 80% faster, and finishing one restores a quarter of the mood bar.
+ * Passenger-only, incompatible with 多巴胺 (both ride the same task loop).
+ * 焦虑症：任务刷新频率提升 80%，每完成一个任务恢复 25% 理智。乘客阵营专属，与多巴胺冲突（两者都改任务节奏）。
  */
 public final class AnxietyTrait implements Trait {
     public static final Identifier ID = SparkTraits.id("anxiety");
     public static final int COLOR = 0xB07BE8;
-    /** Refresh interval is divided by this factor (+150% frequency). 刷新间隔除以该系数（提升 150%）。 */
-    public static final float REFRESH_MULTIPLIER = 2.5F;
+    /** Refresh interval is multiplied by this factor (+80% frequency). 刷新倍率（提升 80%）。 */
+    public static final float REFRESH_MULTIPLIER = 1.8F;
+    /** Mood restored per completed task, as a fraction of the holder's own ceiling. 每完成一个任务恢复的理智比例。 */
+    public static final float TASK_MOOD_GAIN = 0.25F;
 
     @Override
     public Identifier id() {
@@ -38,7 +40,7 @@ public final class AnxietyTrait implements Trait {
 
     @Override
     public Set<Identifier> incompatibleTraits() {
-        return Set.of(ImpostorTrait.ID);
+        return Set.of(ImpostorTrait.ID, DopamineTrait.ID);
     }
 
     /**
