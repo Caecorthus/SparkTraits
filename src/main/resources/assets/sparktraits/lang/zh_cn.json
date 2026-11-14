@@ -124,5 +124,7 @@
   "replay.sparktraits.tooltip.traits": "词条：",
   "replay.sparktraits.tooltip.none": "无",
   "replay.sparktraits.tooltip.hidden_at_start": "（开局隐藏）",
-  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": "（终局时刻）"
+  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": "（终局时刻）",
+  "trait.sparktraits.self_esteem.name": "自尊心",
+  "trait.sparktraits.self_esteem.description": "你不会因为精神崩溃而死亡。刷新概率是其他词条的八分之一，每局最多一人。"
 }

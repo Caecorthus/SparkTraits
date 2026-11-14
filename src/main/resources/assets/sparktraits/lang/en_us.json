@@ -124,5 +124,7 @@
   "replay.sparktraits.tooltip.traits": "Traits:",
   "replay.sparktraits.tooltip.none": " None",
   "replay.sparktraits.tooltip.hidden_at_start": " (hidden at start)",
-  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": " (final moment)"
+  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": " (final moment)",
+  "trait.sparktraits.self_esteem.name": "Self-esteem",
+  "trait.sparktraits.self_esteem.description": "You never die of a mental breakdown. Rolls at an eighth of the normal rate, at most one holder per round."
 }
