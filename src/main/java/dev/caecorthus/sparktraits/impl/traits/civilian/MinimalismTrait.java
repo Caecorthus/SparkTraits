@@ -22,6 +22,9 @@ public final class MinimalismTrait implements Trait {
     /** Maximum simultaneous tasks while this trait is held. 持有期间的同时任务上限。 */
     public static final int TASK_CAP = 2;
 
+    /** Idle time after which one replacement task is handed out. 超过这么久没完成任务就补刷 1 个。 */
+    public static final int IDLE_REFRESH_TICKS = 90 * 20;
+
     @Override
     public Identifier id() {
         return ID;

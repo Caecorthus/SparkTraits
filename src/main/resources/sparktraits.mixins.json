@@ -73,6 +73,7 @@
     "PigPlayerSoundMixin",
     "PlayerShopComponentMixin",
     "PlayerMoodComponentMixin",
+    "PlayerMoodComponentInvoker",
     "PlayerPoisonComponentMixin",
     "PlayerEntityMixin",
     "RaycastShapeScopeMixin",
