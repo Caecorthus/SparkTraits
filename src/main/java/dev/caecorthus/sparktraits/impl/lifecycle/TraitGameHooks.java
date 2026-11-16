@@ -31,6 +31,7 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.AnxietyService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.DopamineService;
 import dev.caecorthus.sparktraits.impl.traits.global.EconomyService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.MinimalismService;
 import dev.caecorthus.sparktraits.impl.traits.global.StandsFirmService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorBodyguardService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorRevolverService;
@@ -70,6 +71,7 @@ public final class TraitGameHooks {
         EconomyService.register();
         AnxietyService.register();
         DopamineService.register();
+        MinimalismService.register();
         // Ahead of the Last Stand and Depression kill listeners below: a blocked same-faction kill must not spend them.
         // 必须排在下方背水一战与抑郁的击杀监听之前：被拦下的同阵营击杀不应消耗它们。
         StandsFirmService.register();
@@ -157,6 +159,7 @@ public final class TraitGameHooks {
             LastStandService.clearRoundState(serverWorld);
             DepressionTraitService.clearRoundState(serverWorld);
             DopamineService.clearAll();
+            MinimalismService.clearAll();
             // Attributions for victims who never died this round must not reach a death in the next one.
             // 本局未死亡受害者的毒源归因不能带到下一局的死亡判定。
             EffectiveDeathConsequenceRules.clearPoisonSources();

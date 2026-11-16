@@ -7,6 +7,8 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTrai
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.DopamineService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.MinimalismService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.MinimalismTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.SelfEsteemTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.TaskPacing;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
@@ -45,6 +47,10 @@ public abstract class PlayerMoodComponentMixin {
     @Shadow
     @Final
     public Map<PlayerMoodComponent.Task, PlayerMoodComponent.TrainTask> tasks;
+
+    @Shadow
+    @Final
+    public Map<PlayerMoodComponent.Task, Integer> timesGotten;
 
     @Shadow
     public abstract void setMood(float mood);
@@ -190,5 +196,40 @@ public abstract class PlayerMoodComponentMixin {
         if (DepressionTraitService.shouldAllowLowMoodSprint(this.player)) {
             cir.setReturnValue(false);
         }
+    }
+
+    /**
+     * 极简主义: a holder who has not completed anything for 90 seconds gets one task refreshed.
+     * Runs at TAIL so it sees the vanilla tick already applied; the cap still comes from {@link TaskPacing}.
+     * 极简主义：连续 90 秒没有完成任务时补刷 1 个任务。放在 TAIL，原版 tick 已执行完毕；上限仍由 {@link TaskPacing} 把关。
+     */
+    @Inject(method = "serverTick", at = @At("TAIL"))
+    private void sparktraits$refreshMinimalismTask(CallbackInfo ci) {
+        if (!(this.player instanceof ServerPlayerEntity serverPlayer)) {
+            return;
+        }
+        if (!TraitPlayerComponent.KEY.get(serverPlayer).hasActiveTrait(MinimalismTrait.ID)) {
+            return;
+        }
+        long now = serverPlayer.getWorld().getTime();
+        if (!MinimalismService.idleLongEnough(now, MinimalismService.lastCompletion(serverPlayer, now))) {
+            return;
+        }
+        if (!TaskPacing.atTaskCap(serverPlayer, this.tasks.size())) {
+            PlayerMoodComponent.TrainTask generated =
+                    ((PlayerMoodComponentInvoker) (Object) this).sparktraits$generateTask();
+            if (generated != null) {
+                // Same bookkeeping as Wathe's own countdown hand-out (seed 1, then +1), since generateTask weighs tasks
+                // by timesGotten. 与 Wathe 自身倒计时发放任务时的记账一致（先置 1 再加 1）：generateTask 按 timesGotten 降低重复任务的权重。
+                PlayerMoodComponent.Task type = generated.getType();
+                this.tasks.put(type, generated);
+                this.timesGotten.putIfAbsent(type, 1);
+                this.timesGotten.put(type, this.timesGotten.get(type) + 1);
+                // Wathe only syncs when its own dirty flag is set, and that block runs before TAIL.
+                // 原版只在 dirty 时同步，而那段代码在 TAIL 之前就执行完了，这里必须自己同步一次。
+                ((PlayerMoodComponent) (Object) this).sync();
+            }
+        }
+        MinimalismService.mark(serverPlayer, now);
     }
 }
