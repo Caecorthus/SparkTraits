@@ -28,6 +28,9 @@ public final class EffectiveTraitEligibility {
     // PR SparkWitch #206：SparkWitch 橘雪莉是乘客阵营的侦探（真实理智、推演凶手），不能被抽成内鬼。
     private static final Identifier SPARKWITCH_SHERRY_ID = Identifier.of("sparkwitch", "sherry");
     private static final Identifier SPARKWITCH_BELL_RINGER_ID = Identifier.of("sparkwitch", "bell_ringer");
+    // Owner report 2026-11-14: the Specter owns otherworld roaming and karma, which Conscience would flip to passengers.
+    // 所有者 2026-11-14 反馈：幽魂的异界游走与业障机制会被善良翻成乘客阵营，因此幽魂永不获得善良。
+    private static final Identifier SPARKWITCH_SPECTER_ID = Identifier.of("sparkwitch", "specter");
 
     private EffectiveTraitEligibility() {
     }
@@ -58,10 +61,12 @@ public final class EffectiveTraitEligibility {
                 && !EffectiveTraitService.hasImpostor(selectedTraits);
     }
 
-    /** Owner rule: SparkWitch's Bell Ringer never receives Conscience; other killer traits stay eligible.
-     *  所有者规则：SparkWitch 的敲钟人永不获得善良；其他杀手词条不受影响。 */
+    /** Owner rule: SparkWitch's Bell Ringer and Specter never receive Conscience; other killer traits stay eligible.
+     *  所有者规则：SparkWitch 的敲钟人与幽魂永不获得善良；其他杀手词条不受影响。 */
     public static boolean isConscienceBlockedRole(Role role) {
-        return role != null && role.identifier().equals(SPARKWITCH_BELL_RINGER_ID);
+        return role != null
+                && (role.identifier().equals(SPARKWITCH_BELL_RINGER_ID)
+                || role.identifier().equals(SPARKWITCH_SPECTER_ID));
     }
 
     public static boolean canSelectImpostor(Role role, GameWorldComponent gameComponent, Collection<Identifier> selectedTraits) {
