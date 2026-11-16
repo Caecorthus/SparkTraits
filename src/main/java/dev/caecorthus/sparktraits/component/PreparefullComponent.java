@@ -38,11 +38,14 @@ public class PreparefullComponent implements AutoSyncedComponent {
             return;
         }
         int before = percent();
+        boolean wasCharged = isCharged();
         this.progress = clamped;
         // The bar grows one tick at a time; syncing every tick would be 200 packets per charge. 5% steps are visually
-        // identical, and a reset to zero is always sent so the HUD clears at once.
+        // identical, and a reset to zero is always sent so the HUD clears at once. Reaching full charge is sent too:
+        // 99.5% already rounds into the last 5% step, so without it the client never sees the "ready" colour.
         // 进度每 tick 涨一点；逐 tick 同步等于每次蓄力 200 个包。5% 一档视觉上无差别，归零时总是同步，保证 HUD 立刻清空。
-        if (clamped == 0.0F || percent() / 5 != before / 5) {
+        // 蓄满的那一刻也同步：99.5% 已四舍五入进最后一档，不单独同步的话客户端永远看不到“就绪”颜色。
+        if (clamped == 0.0F || percent() / 5 != before / 5 || isCharged() != wasCharged) {
             KEY.sync(this.player);
         }
     }

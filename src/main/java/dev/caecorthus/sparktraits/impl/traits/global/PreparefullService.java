@@ -76,8 +76,4 @@ public final class PreparefullService {
         }
         component.setProgress(0.0F);
     }
-
-    public static void clearAll() {
-        LAST_POSITION.clear();
-    }
 }

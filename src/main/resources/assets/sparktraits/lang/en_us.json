@@ -43,6 +43,9 @@
   "trait.sparktraits.sensitive.description": "You can always see the time left in the round. Rolls at a quarter of the normal rate, and never on a role that already sees the timer.",
   "trait.sparktraits.stands_firm.name": "Stands Firm",
   "trait.sparktraits.stands_firm.description": "Players of your own faction cannot kill you.",
+  "trait.sparktraits.preparefull.name": "Preparefully",
+  "trait.sparktraits.preparefull.description": "Stand still for 10 seconds to charge; your next movement grants Speed III for 3 seconds.",
+  "hud.sparktraits.preparefull": "Charge %s%%",
   "trait.sparktraits.extroverted.name": "Extroverted",
   "trait.sparktraits.extroverted.description": "Your sanity does not drain while at least two other living players are within eight blocks.",
   "trait.sparktraits.introverted.name": "Introverted",
@@ -126,8 +129,5 @@
   "replay.sparktraits.tooltip.traits": "Traits:",
   "replay.sparktraits.tooltip.none": " None",
   "replay.sparktraits.tooltip.hidden_at_start": " (hidden at start)",
-  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": " (final moment)",
-  "trait.sparktraits.preparefull.name": "Preparefully",
-  "trait.sparktraits.preparefull.description": "Stand still for 10 seconds to charge; your next movement grants Speed III for 3 seconds.",
-  "hud.sparktraits.preparefull": "Charge %s%%"
+  "replay.sparkfactionapi.role_changed.cause.sparktraits.loose_end_conversion": " (final moment)"
 }
