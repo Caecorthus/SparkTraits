@@ -7,6 +7,7 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.depression.DepressionTrai
 import dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.DopamineService;
+import dev.caecorthus.sparktraits.impl.traits.civilian.SelfEsteemTrait;
 import dev.caecorthus.sparktraits.impl.traits.civilian.TaskPacing;
 import dev.caecorthus.sparktraits.impl.traits.global.GlobalTraitService;
 import dev.caecorthus.sparktraits.impl.traits.killer.KillerTraitService;
@@ -128,13 +129,19 @@ public abstract class PlayerMoodComponentMixin {
             method = "serverTick",
             at = @At(value = "INVOKE", target = "Ldev/doctor4t/wathe/game/GameFunctions;killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Z)V")
     )
-    private void sparktraits$suppressDepressionPsychoMentalBreakdown(
+    private void sparktraits$suppressMentalBreakdown(
             ServerPlayerEntity player,
             boolean spawnBody,
             ServerPlayerEntity killer,
             Identifier deathReason,
             boolean handleBefore
     ) {
+        // 自尊心 never dies of a breakdown: the mood is pinned just above Wathe's -1 collapse line instead.
+        // 自尊心不会因精神崩溃死亡：理智被卡在 Wathe 的 -1 崩溃线之上。
+        if (SelfEsteemTrait.protects(player, deathReason)) {
+            setMood(SelfEsteemTrait.MOOD_FLOOR);
+            return;
+        }
         // Wathe psycho does not block mental breakdown, so Depression handles only its own psycho window here.
         // wathe 疯魔不会自动阻止精神崩溃；这里仅保护抑郁自己的疯魔窗口。
         if (DepressionTraitService.shouldSuppressMentalBreakdown(player, deathReason)) {
@@ -142,6 +149,17 @@ public abstract class PlayerMoodComponentMixin {
             return;
         }
         GameFunctions.killPlayer(player, spawnBody, killer, deathReason, handleBefore);
+    }
+
+    @Inject(method = "serverTick", at = @At("TAIL"))
+    private void sparktraits$holdSelfEsteemMood(CallbackInfo ci) {
+        // The drain runs before the kill check every tick, so without this the mood would re-cross -1 at once and
+        // retry the breakdown each tick. 每 tick 先扣理智再判崩溃；没有这段，理智会立刻再次越过 -1，每 tick 重试崩溃。
+        if (this.player instanceof ServerPlayerEntity serverPlayer
+                && this.mood <= SelfEsteemTrait.MOOD_FLOOR
+                && TraitPlayerComponent.KEY.get(serverPlayer).hasActiveTrait(SelfEsteemTrait.ID)) {
+            setMood(SelfEsteemTrait.MOOD_FLOOR);
+        }
     }
 
     @Inject(method = "serverTick", at = @At("TAIL"))

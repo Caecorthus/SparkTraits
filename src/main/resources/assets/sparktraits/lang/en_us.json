@@ -59,6 +59,8 @@
   "trait.sparktraits.minimalism.description": "You never have more than 2 tasks at a time.",
   "trait.sparktraits.dopamine.name": "Dopamine",
   "trait.sparktraits.dopamine.description": "For 10 seconds after completing a task, your sanity drains 30%-60% slower and you get Speed I for 2-5 seconds. The fewer tasks you have finished, the weaker both are. Incompatible with Minimalism and Anxiety.",
+  "trait.sparktraits.self_esteem.name": "Self-esteem",
+  "trait.sparktraits.self_esteem.description": "You never die of a mental breakdown. Rolls at an eighth of the normal rate, at most one holder per round. Incompatible with Depression.",
   "trait.sparktraits.marksman.name": "Marksman",
   "trait.sparktraits.marksman.description": "Your revolver, derringer, and supported police weapons (such as the Taser) reach thirty percent farther.",
   "trait.sparktraits.fast_reload.name": "Fast Reload",
