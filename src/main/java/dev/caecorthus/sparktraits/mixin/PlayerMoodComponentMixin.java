@@ -219,10 +219,12 @@ public abstract class PlayerMoodComponentMixin {
             PlayerMoodComponent.TrainTask generated =
                     ((PlayerMoodComponentInvoker) (Object) this).sparktraits$generateTask();
             if (generated != null) {
-                // Same bookkeeping as Wathe's own countdown hand-out: generateTask weighs tasks by timesGotten.
-                // 与 Wathe 自身倒计时发放任务时的记账一致：generateTask 按 timesGotten 降低重复任务的权重。
-                this.tasks.put(generated.getType(), generated);
-                this.timesGotten.merge(generated.getType(), 1, Integer::sum);
+                // Same bookkeeping as Wathe's own countdown hand-out (seed 1, then +1), since generateTask weighs tasks
+                // by timesGotten. 与 Wathe 自身倒计时发放任务时的记账一致（先置 1 再加 1）：generateTask 按 timesGotten 降低重复任务的权重。
+                PlayerMoodComponent.Task type = generated.getType();
+                this.tasks.put(type, generated);
+                this.timesGotten.putIfAbsent(type, 1);
+                this.timesGotten.put(type, this.timesGotten.get(type) + 1);
                 // Wathe only syncs when its own dirty flag is set, and that block runs before TAIL.
                 // 原版只在 dirty 时同步，而那段代码在 TAIL 之前就执行完了，这里必须自己同步一次。
                 ((PlayerMoodComponent) (Object) this).sync();
