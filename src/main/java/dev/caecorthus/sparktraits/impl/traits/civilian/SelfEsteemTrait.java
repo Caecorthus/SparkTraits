@@ -64,9 +64,14 @@ public final class SelfEsteemTrait implements Trait {
         return true;
     }
 
+    /**
+     * 抑郁's own suicide countdown kills with the same mental-breakdown reason outside Wathe's mood tick, so a holder of
+     * both would still die of a "breakdown"; the two never roll together.
+     * 抑郁的自毁倒计时在 Wathe 理智 tick 之外以同一个精神崩溃死因击杀，同时持有时仍会“精神崩溃”死亡，因此两者互斥。
+     */
     @Override
     public Set<Identifier> incompatibleTraits() {
-        return Set.of(ImpostorTrait.ID);
+        return Set.of(ImpostorTrait.ID, CivilianTraits.DEPRESSION);
     }
 
     /**

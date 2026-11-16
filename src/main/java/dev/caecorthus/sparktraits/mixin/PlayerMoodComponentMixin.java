@@ -129,22 +129,13 @@ public abstract class PlayerMoodComponentMixin {
             method = "serverTick",
             at = @At(value = "INVOKE", target = "Ldev/doctor4t/wathe/game/GameFunctions;killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Z)V")
     )
-    private void sparktraits$suppressDepressionPsychoMentalBreakdown(
+    private void sparktraits$suppressMentalBreakdown(
             ServerPlayerEntity player,
             boolean spawnBody,
             ServerPlayerEntity killer,
             Identifier deathReason,
             boolean handleBefore
     ) {
-        // Wathe psycho does not block mental breakdown, so Depression handles only its own psycho window here.
-        // wathe 疯魔不会自动阻止精神崩溃；这里仅保护抑郁自己的疯魔窗口。
-        if (DepressionTraitService.shouldSuppressMentalBreakdown(player, deathReason)) {
-            setMood(DepressionRules.depressionPsychoMoodFloor(this.mood));
-            return;
-        }
-        GameFunctions.killPlayer(player, spawnBody, killer, deathReason, handleBefore);
-    }
-
         // 自尊心 never dies of a breakdown: the mood is pinned just above Wathe's -1 collapse line instead.
         // 自尊心不会因精神崩溃死亡：理智被卡在 Wathe 的 -1 崩溃线之上。
         if (SelfEsteemTrait.protects(player, deathReason)) {
