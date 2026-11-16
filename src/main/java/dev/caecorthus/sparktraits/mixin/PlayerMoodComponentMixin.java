@@ -49,6 +49,10 @@ public abstract class PlayerMoodComponentMixin {
     public Map<PlayerMoodComponent.Task, PlayerMoodComponent.TrainTask> tasks;
 
     @Shadow
+    @Final
+    public Map<PlayerMoodComponent.Task, Integer> timesGotten;
+
+    @Shadow
     public abstract void setMood(float mood);
 
     @Redirect(
@@ -193,6 +197,7 @@ public abstract class PlayerMoodComponentMixin {
             cir.setReturnValue(false);
         }
     }
+
     /**
      * 极简主义: a holder who has not completed anything for 90 seconds gets one task refreshed.
      * Runs at TAIL so it sees the vanilla tick already applied; the cap still comes from {@link TaskPacing}.
@@ -207,14 +212,17 @@ public abstract class PlayerMoodComponentMixin {
             return;
         }
         long now = serverPlayer.getWorld().getTime();
-        if (now - MinimalismService.lastCompletion(serverPlayer, now) < MinimalismTrait.IDLE_REFRESH_TICKS) {
+        if (!MinimalismService.idleLongEnough(now, MinimalismService.lastCompletion(serverPlayer, now))) {
             return;
         }
         if (!TaskPacing.atTaskCap(serverPlayer, this.tasks.size())) {
             PlayerMoodComponent.TrainTask generated =
                     ((PlayerMoodComponentInvoker) (Object) this).sparktraits$generateTask();
             if (generated != null) {
+                // Same bookkeeping as Wathe's own countdown hand-out: generateTask weighs tasks by timesGotten.
+                // 与 Wathe 自身倒计时发放任务时的记账一致：generateTask 按 timesGotten 降低重复任务的权重。
                 this.tasks.put(generated.getType(), generated);
+                this.timesGotten.merge(generated.getType(), 1, Integer::sum);
                 // Wathe only syncs when its own dirty flag is set, and that block runs before TAIL.
                 // 原版只在 dirty 时同步，而那段代码在 TAIL 之前就执行完了，这里必须自己同步一次。
                 ((PlayerMoodComponent) (Object) this).sync();

@@ -56,7 +56,7 @@
   "trait.sparktraits.anxiety.name": "Anxiety",
   "trait.sparktraits.anxiety.description": "Tasks appear 80% faster, and each completed task restores 25% of your sanity. Incompatible with Dopamine.",
   "trait.sparktraits.minimalism.name": "Minimalism",
-  "trait.sparktraits.minimalism.description": "You never have more than 2 tasks at a time.\n· Refreshes one task for you after 90 seconds without completing one",
+  "trait.sparktraits.minimalism.description": "You never have more than 2 tasks at a time; after 90 seconds without completing one, a new task is handed to you.",
   "trait.sparktraits.dopamine.name": "Dopamine",
   "trait.sparktraits.dopamine.description": "For 10 seconds after completing a task, your sanity drains 30%-60% slower and you get Speed I for 2-5 seconds. The fewer tasks you have finished, the weaker both are. Incompatible with Minimalism and Anxiety.",
   "trait.sparktraits.self_esteem.name": "Self-esteem",

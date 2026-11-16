@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
  * Exposes Wathe's private task generator so 极简主义 can hand out a replacement task.
  * Wathe 的任务生成器是 private，这里开一个调用口，供“极简主义”补发任务用。
  */
-@Mixin(PlayerMoodComponent.class)
+@Mixin(value = PlayerMoodComponent.class, remap = false)
 public interface PlayerMoodComponentInvoker {
 
     @Invoker("generateTask")

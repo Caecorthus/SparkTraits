@@ -159,6 +159,7 @@ public final class TraitGameHooks {
             LastStandService.clearRoundState(serverWorld);
             DepressionTraitService.clearRoundState(serverWorld);
             DopamineService.clearAll();
+            MinimalismService.clearAll();
             // Attributions for victims who never died this round must not reach a death in the next one.
             // 本局未死亡受害者的毒源归因不能带到下一局的死亡判定。
             EffectiveDeathConsequenceRules.clearPoisonSources();
