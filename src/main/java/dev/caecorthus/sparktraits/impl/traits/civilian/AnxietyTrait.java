@@ -18,7 +18,7 @@ import java.util.Set;
 public final class AnxietyTrait implements Trait {
     public static final Identifier ID = SparkTraits.id("anxiety");
     public static final int COLOR = 0xB07BE8;
-    /** Refresh interval is multiplied by this factor (+80% frequency). 刷新倍率（提升 80%）。 */
+    /** The next-task countdown runs this many times faster (+80% frequency). 下一个任务倒计时的加速倍率（频率提升 80%）。 */
     public static final float REFRESH_MULTIPLIER = 1.8F;
     /** Mood restored per completed task, as a fraction of the holder's own ceiling. 每完成一个任务恢复的理智比例。 */
     public static final float TASK_MOOD_GAIN = 0.25F;
