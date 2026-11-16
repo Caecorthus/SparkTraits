@@ -16,10 +16,10 @@ import java.util.UUID;
  * Tracks the ten-second window opened whenever a 多巴胺 holder completes a task, plus how many tasks that holder has
  * completed this round — the window's strength grows with it.
  * <p>Server-side authority only: both maps are touched from the server thread alone, so every reader must pass a
- * server player. The mood mixin goes through {@link #adjustedMood}; {@link TaskPacing} only reads the 焦虑症 side.
+ * server player. Only the mood mixin reads it, through {@link #adjustedMood}; the task countdown no longer does.
  * 追踪“多巴胺”持有者完成任务后开启的 10 秒窗口，以及其本局已完成任务数——窗口强度随该数字成长。
  * 仅服务端权威：两张表只在服务端线程读写，调用方必须传入服务端玩家。
- * 理智混入通过 {@link #adjustedMood} 读取；{@link TaskPacing} 只读取焦虑症一侧。
+ * 只有理智混入通过 {@link #adjustedMood} 读取；任务倒计时不再读取它。
  */
 public final class DopamineService {
 
