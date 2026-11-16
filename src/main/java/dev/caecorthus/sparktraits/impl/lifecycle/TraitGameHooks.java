@@ -32,6 +32,7 @@ import dev.caecorthus.sparktraits.impl.traits.civilian.CivilianTraitService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.DopamineService;
 import dev.caecorthus.sparktraits.impl.traits.global.EconomyService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.MinimalismService;
+import dev.caecorthus.sparktraits.impl.traits.global.PreparefullService;
 import dev.caecorthus.sparktraits.impl.traits.global.StandsFirmService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorBodyguardService;
 import dev.caecorthus.sparktraits.impl.traits.civilian.impostor.ImpostorRevolverService;
@@ -72,6 +73,7 @@ public final class TraitGameHooks {
         AnxietyService.register();
         DopamineService.register();
         MinimalismService.register();
+        PreparefullService.register();
         // Ahead of the Last Stand and Depression kill listeners below: a blocked same-faction kill must not spend them.
         // 必须排在下方背水一战与抑郁的击杀监听之前：被拦下的同阵营击杀不应消耗它们。
         StandsFirmService.register();

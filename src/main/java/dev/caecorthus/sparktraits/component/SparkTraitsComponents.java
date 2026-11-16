@@ -14,6 +14,9 @@ public class SparkTraitsComponents implements EntityComponentInitializer, WorldC
         registry.beginRegistration(PlayerEntity.class, TraitPlayerComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(TraitPlayerComponent::new);
+        registry.beginRegistration(PlayerEntity.class, PreparefullComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(PreparefullComponent::new);
     }
 
     @Override

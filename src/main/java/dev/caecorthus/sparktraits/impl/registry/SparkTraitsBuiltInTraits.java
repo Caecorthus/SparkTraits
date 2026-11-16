@@ -11,6 +11,7 @@ import dev.caecorthus.sparktraits.impl.traits.global.FastHandsTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.SensitiveTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.SnowballTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.StandsFirmTrait;
+import dev.caecorthus.sparktraits.impl.traits.global.PreparefullTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.SteadyTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.SpiritSleuthTrait;
 import dev.caecorthus.sparktraits.impl.traits.global.TaskMasterTrait;
@@ -49,6 +50,7 @@ public final class SparkTraitsBuiltInTraits {
         TraitRegistry.register(new EconomyTrait());
         TraitRegistry.register(new SensitiveTrait());
         TraitRegistry.register(new StandsFirmTrait());
+        TraitRegistry.register(new PreparefullTrait());
         CivilianTraits.register();
         PoliceTraits.register();
         KillerTraits.register();

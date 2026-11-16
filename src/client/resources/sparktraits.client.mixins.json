@@ -22,6 +22,7 @@
     "DepressionGameRendererMixin",
     "DepressionPsychoArmSkinMixin",
     "DepressionInGameHudMixin",
+    "PreparefullInGameHudMixin",
     "DepressionPsychoSkinMixin",
     "GameWorldComponentImpostorKillerViewMixin",
     "JesterInventoryLockMixin",
