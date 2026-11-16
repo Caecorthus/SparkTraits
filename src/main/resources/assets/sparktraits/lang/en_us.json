@@ -36,7 +36,7 @@
   "trait.sparktraits.snowball.name": "Snowball",
   "trait.sparktraits.snowball.description": "Gain 15 money each time your money reaches a multiple of 100.",
   "trait.sparktraits.well_supplied.name": "Well Supplied",
-  "trait.sparktraits.well_supplied.description": "Start the game with 1.2 times your starting money. Does not take a trait slot.",
+  "trait.sparktraits.well_supplied.description": "Start the game with 1.2 times your starting money; roles that start with zero instead receive 25 coins. Does not take a trait slot.",
   "trait.sparktraits.economy.name": "Economy",
   "trait.sparktraits.economy.description": "Purchases above 100 money refund 10% of the price you paid.",
   "trait.sparktraits.sensitive.name": "Sensitive",
