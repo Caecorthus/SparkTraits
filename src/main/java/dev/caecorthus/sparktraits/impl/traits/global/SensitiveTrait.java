@@ -7,10 +7,11 @@ import dev.caecorthus.sparktraits.api.TraitSelectionContext;
 import net.minecraft.util.Identifier;
 
 /**
- * 敏感 / Sensitive: the holder can always see the round timer, and their kills against innocents and neutrals
- * extend it. Universal trait, rolled at a quarter of the normal rate and never offered to a role that already sees
- * the timer. 敏感：持有者始终能看到本场剩余时间；其击杀好人 / 中立会延长时间。通用词条，
- * 刷新概率为其他词条的四分之一，且不会出现在本来就能看到时间的身份上。
+ * 敏感 / Sensitive: the holder can always see the round timer (drawn by the client time-renderer mixin). Universal
+ * trait, rolled at a quarter of the normal rate and never offered to a role that already sees the timer. Kills no
+ * longer extend the round.
+ * 敏感：持有者始终能看到本场剩余时间（由客户端计时器混入绘制）。通用词条，刷新概率为其他词条的四分之一，
+ * 且不会出现在本来就能看到时间的身份上。击杀不再延长时间。
  */
 public final class SensitiveTrait implements Trait {
     public static final Identifier ID = SparkTraits.id("sensitive");
@@ -19,11 +20,6 @@ public final class SensitiveTrait implements Trait {
     /** Weight of every ordinary trait; this trait rolls at a quarter of it. 普通词条的权重；本词条取其四分之一。 */
     public static final int NORMAL_WEIGHT = 100;
     public static final int WEIGHT = NORMAL_WEIGHT / 4;
-
-    /** Time gained per innocent kill. 击杀好人延长的时间（1 分钟）。 */
-    public static final int INNOCENT_KILL_SECONDS = 60;
-    /** Time gained per neutral kill. 击杀中立延长的时间（30 秒）。 */
-    public static final int NEUTRAL_KILL_SECONDS = 30;
 
     @Override
     public Identifier id() {
