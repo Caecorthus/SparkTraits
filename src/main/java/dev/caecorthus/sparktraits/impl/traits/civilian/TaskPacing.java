@@ -5,9 +5,10 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 
 /**
- * Task pacing for the civilian task traits: 焦虑症 and 多巴胺 speed up Wathe's next-task countdown, 极简主义 caps how
- * many tasks can be open at once.
- * 平民任务类词条的任务节奏：焦虑症与多巴胺加快 Wathe 的下一个任务倒计时，极简主义限制同时存在的任务数量。
+ * Task pacing for the civilian task traits: 焦虑症 speeds up Wathe's next-task countdown, 极简主义 caps how many
+ * tasks can be open at once. 多巴胺 no longer touches the countdown — it only slows mood drain and grants Speed.
+ * 平民任务类词条的任务节奏：焦虑症加快 Wathe 的下一个任务倒计时，极简主义限制同时存在的任务数量。
+ * 多巴胺不再影响倒计时——它只减缓理智流失并给予速度。
  */
 public final class TaskPacing {
 
@@ -22,31 +23,16 @@ public final class TaskPacing {
         if (!(player instanceof ServerPlayerEntity)) {
             return 0;
         }
-        TraitPlayerComponent traits = TraitPlayerComponent.KEY.get(player);
-        boolean anxiety = traits.hasActiveTrait(AnxietyTrait.ID);
-        boolean dopamineWindow = traits.hasActiveTrait(DopamineTrait.ID) && DopamineService.isActive(player);
-        if (!anxiety && !dopamineWindow) {
+        if (!TraitPlayerComponent.KEY.get(player).hasActiveTrait(AnxietyTrait.ID)) {
             return 0;
         }
-        return extraTimerTicks(speedMultiplier(anxiety, dopamineWindow), player.getWorld().getTime());
-    }
-
-    static float speedMultiplier(boolean anxiety, boolean dopamineWindow) {
-        float multiplier = 1.0F;
-        if (anxiety) {
-            multiplier *= AnxietyTrait.REFRESH_MULTIPLIER;
-        }
-        if (dopamineWindow) {
-            multiplier *= DopamineTrait.TASK_REFRESH_MULTIPLIER;
-        }
-        return multiplier;
+        return extraTimerTicks(AnxietyTrait.REFRESH_MULTIPLIER, player.getWorld().getTime());
     }
 
     /**
      * Spreads the fractional part of the speed-up evenly over world time, so no per-player remainder is stored:
-     * x2.5 alternates 1 and 2 extra ticks, x1.3 gives 3 extra ticks in every 10.
-     * 把加速倍率的小数部分按世界时间均匀摊开，不需要为每个玩家保存余数：
-     * 2.5 倍时额外扣除量在 1 与 2 之间交替，1.3 倍时每 10 tick 额外扣 3 tick。
+     * x1.8 gives 8 extra ticks in every 10.
+     * 把加速倍率的小数部分按世界时间均匀摊开，不需要为每个玩家保存余数：1.8 倍时每 10 tick 额外扣 8 tick。
      */
     static int extraTimerTicks(float multiplier, long worldTime) {
         double extraPerTick = multiplier - 1.0;
