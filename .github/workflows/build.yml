@@ -26,16 +26,16 @@ jobs:
     steps:
       # Depth 2 so the whitespace check can diff against the first parent (the base tip on a PR merge ref).
       # 深度 2，使空白检查能与第一父提交比较（PR 合并引用上即基础分支末端）。
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 2
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Build and verify
         run: ./gradlew --no-daemon --console=plain build verifyAssassinScreenSelector verifyInventoryScreenSelector verifyModJarVersion verifyArchitecture
@@ -43,7 +43,7 @@ jobs:
       - name: Whitespace check
         run: git diff --check HEAD^1 HEAD
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sparktraits-${{ github.sha }}
           path: build/libs/*.jar
