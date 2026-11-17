@@ -1,0 +1,50 @@
+# Fresh-clone checks for every PR and every push to main.
+# `check` has no dependencies in this build, so `build` runs none of the verify tasks; each is named explicitly.
+# The local test suite (src/test) is gitignored, so `test` has no sources here; run it locally.
+# 每个 PR 与每次推送 main 时的全新克隆检查。
+# 本构建的 `check` 不依赖任何任务，`build` 不会运行校验任务，因此需逐个显式列出。
+# 本地测试（src/test）不进 git，这里的 `test` 没有源码；完整测试仍在本地运行。
+name: build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Depth 2 so the whitespace check can diff against the first parent (the base tip on a PR merge ref).
+      # 深度 2，使空白检查能与第一父提交比较（PR 合并引用上即基础分支末端）。
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build and verify
+        run: ./gradlew --no-daemon --console=plain build verifyAssassinScreenSelector verifyInventoryScreenSelector verifyModJarVersion verifyArchitecture
+
+      - name: Whitespace check
+        run: git diff --check HEAD^1 HEAD
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sparktraits-${{ github.sha }}
+          path: build/libs/*.jar
+          retention-days: 14

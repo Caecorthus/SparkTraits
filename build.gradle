@@ -347,13 +347,19 @@ tasks.test {
 def publicFacade = "src/main/java/dev/caecorthus/sparktraits/api/SparkTraitsApi.java"
 def publicFacadeContractTest = "src/test/java/dev/caecorthus/sparktraits/api/SparkTraitsApiContractTest.java"
 def syncVisibilityContractTest = "src/test/java/dev/caecorthus/sparktraits/component/TraitSyncVisibilityTest.java"
+// src/test/ is gitignored and local-only, so the two contract tests are required only in a checkout that has the
+// local test tree; a fresh clone (CI) skips them.
+// src/test/ 已被 gitignore 且仅存于本地，因此只在拥有本地测试树的检出中要求这两个契约测试；全新克隆（CI）会跳过。
+def localTestTree = file("src/test")
+def localContractTests = [publicFacadeContractTest, syncVisibilityContractTest]
 
 tasks.register("verifyArchitecture") {
     group = "verification"
     description = "Verifies architecture governance, public facade, and local dependency metadata."
     inputs.file(publicFacade)
-    inputs.file(publicFacadeContractTest)
-    inputs.file(syncVisibilityContractTest)
+    if (localTestTree.isDirectory()) {
+        localContractTests.each { inputs.file(it) }
+    }
     inputs.file(watheJarName)
     inputs.file(noellesRolesJarName)
     inputs.file(sparkFactionApiJarName)
@@ -363,7 +369,12 @@ tasks.register("verifyArchitecture") {
     inputs.file("gradle.properties")
 
     doLast {
-        def requiredPaths = [publicFacade, publicFacadeContractTest, syncVisibilityContractTest]
+        def requiredPaths = [publicFacade]
+        if (localTestTree.isDirectory()) {
+            requiredPaths += localContractTests
+        } else {
+            logger.lifecycle("No local src/test tree: skipped ${localContractTests.size()} local-only architecture contract tests.")
+        }
         def missingPaths = requiredPaths.findAll { !file(it).isFile() }
         if (!missingPaths.isEmpty()) {
             throw new GradleException("Missing architecture contract files: ${missingPaths.join(', ')}")

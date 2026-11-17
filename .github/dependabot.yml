@@ -1,0 +1,12 @@
+# Keeps the GitHub Actions used by the workflows current. Gradle dependencies are pinned to the pack's
+# Minecraft and Wathe versions and are updated by hand.
+# 保持工作流所用的 GitHub Actions 为最新。Gradle 依赖固定在整合包的 Minecraft 与 Wathe 版本上，手动更新。
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
