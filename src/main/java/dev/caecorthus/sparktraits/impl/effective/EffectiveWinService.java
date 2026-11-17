@@ -38,6 +38,9 @@ public final class EffectiveWinService {
     // SparkWitch's Insider shares the Corrupt Cop's team and keeps its win rule after the Corrupt Cop dies.
     // SparkWitch 内应与黑警同属一个阵营，黑警死后由内应继续承担该阵营的胜利规则。
     private static final Identifier SPARKWITCH_INSIDER_ID = Identifier.of("sparkwitch", "insider");
+    // SparkWitch's 狮身豪 (Sphinx Hao) is a second Team Jiahao member and blocks team wins exactly like the Insider.
+    // SparkWitch 狮身豪是嘉豪阵营的第二名成员，与内应完全一样阻止队伍胜利。
+    private static final Identifier SPARKWITCH_SPHINX_HAO_ID = Identifier.of("sparkwitch", "sphinx_hao");
     private static final Identifier NOELLES_SHADOW_JESTER_ID = Identifier.of("noellesroles", "shadow_jester");
 
     private EffectiveWinService() {
@@ -110,6 +113,7 @@ public final class EffectiveWinService {
                 || SPARKWITCH_MURDEROUS_WITCH_ID.equals(role.identifier())
                 || Noellesroles.CORRUPT_COP_ID.equals(role.identifier())
                 || SPARKWITCH_INSIDER_ID.equals(role.identifier())
+                || SPARKWITCH_SPHINX_HAO_ID.equals(role.identifier())
                 || Noellesroles.TAOTIE_ID.equals(role.identifier()));
     }
 

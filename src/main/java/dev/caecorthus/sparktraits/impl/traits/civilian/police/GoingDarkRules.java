@@ -23,7 +23,9 @@ public final class GoingDarkRules {
             // SparkWitch's Bewitched (魔化使) is an accomplice before promotion. / SparkWitch 魔化使是晋升前的共犯。
             Identifier.of("sparkwitch", "bewitched"),
             Identifier.of("noellesroles", "corrupt_cop"),
-            Identifier.of("sparkwitch", "insider")
+            Identifier.of("sparkwitch", "insider"),
+            // SparkWitch's 狮身豪 (Sphinx Hao) has the Insider's Team Jiahao instinct. / SparkWitch 狮身豪拥有与内应相同的嘉豪本能。
+            Identifier.of("sparkwitch", "sphinx_hao")
     );
 
     private GoingDarkRules() {
