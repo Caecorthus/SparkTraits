@@ -34,13 +34,13 @@ public final class EconomyTrait implements Trait {
     }
 
     /**
-     * Same gate as the other money-only traits (Snowball, Well Supplied): a role with no shop balance could never
-     * trigger the refund, so the trait would only waste one of its slots.
-     * 与其他纯金钱词条（滚雪球、物资充沛）同一门槛：没有商店余额的身份永远触发不了返还，拿到只会白占一个词条位。
+     * Same money gate as Snowball and Well Supplied, plus a shop that actually sells something above the threshold:
+     * otherwise the refund can never fire and the trait only wastes one of its slots.
+     * 与滚雪球、物资充沛同一金钱门槛，另外商店里必须真有高于门槛的商品：否则返还永远不会触发，拿到只会白占一个词条位。
      */
     @Override
     public boolean canApply(TraitSelectionContext context) {
-        return GlobalTraitService.allowsEconomy(context.role())
-                && GlobalTraitService.usesMoneySystem(context.player(), context.gameComponent(), context.role());
+        return GlobalTraitService.usesMoneySystem(context.player(), context.gameComponent(), context.role())
+                && EconomyService.hasRefundableShopEntry(context.player(), context.role(), context.selectedTraitIds());
     }
 }
