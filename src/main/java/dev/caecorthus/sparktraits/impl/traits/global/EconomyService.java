@@ -47,11 +47,13 @@ public final class EconomyService {
      * Whether this player's Wathe shop sells anything the refund can fire on. The shop is read the same way the
      * Paranoid gate reads it, so every role whose own or inherited shop (Wathe's killer shop, NoellesRoles, SparkWitch,
      * SparkStrength) has an entry above the threshold qualifies, and shops capped at the threshold, non-coin shops and
-     * skills that deduct the balance directly never do. The Impostor revolver is counted from the traits being chosen,
-     * because those traits are not active yet while the round's traits are planned.
+     * skills that deduct the balance directly never do. The shop is read through {@link PlanningRoundView}, so shops
+     * built only for a running round count at round-start planning too. The Impostor revolver is counted from the traits
+     * being chosen, because those traits are not active yet while the round's traits are planned.
      * 该玩家的 Wathe 商店里是否有能触发返还的商品。读取方式与偏执的抽取门槛相同：凡是本职业商店（含 Wathe 杀手商店、
      * NoellesRoles、SparkWitch、SparkStrength）有高于门槛条目的都符合；商店封顶在门槛、非金币商店、技能直接扣余额的
-     * 都不符合。规划本局天赋时这些天赋尚未生效，因此内鬼左轮按正在选择的天赋计入。
+     * 都不符合。商店经 {@link PlanningRoundView} 读取，因此仅在对局进行中才构建的商店在开局规划时同样计入。
+     * 规划本局天赋时这些天赋尚未生效，因此内鬼左轮按正在选择的天赋计入。
      */
     public static boolean hasRefundableShopEntry(PlayerEntity player, Role role, Collection<Identifier> selectedTraits) {
         if (player == null) {
@@ -64,7 +66,9 @@ public final class EconomyService {
                 && isRefundablePrice(ImpostorRevolverService.REVOLVER_PRICE)) {
             return true;
         }
-        for (ShopEntry entry : ShopUtils.getShopEntriesForPlayer(player)) {
+        // Read the shop as the round will build it: Hanna's (umbrella 150) only exists once the round is running.
+        // 按对局开始后的情况读取商店：汉娜的商店（雨伞 150）只在对局进行中才构建。
+        for (ShopEntry entry : PlanningRoundView.evaluate(player, () -> ShopUtils.getShopEntriesForPlayer(player))) {
             if (isRefundablePrice(entry.price())) {
                 return true;
             }
