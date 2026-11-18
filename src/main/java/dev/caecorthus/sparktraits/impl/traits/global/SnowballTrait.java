@@ -24,6 +24,7 @@ public final class SnowballTrait implements Trait {
 
     @Override
     public boolean canApply(TraitSelectionContext context) {
-        return GlobalTraitService.usesMoneySystem(context.player(), context.gameComponent(), context.role());
+        return !GlobalTraitService.blocksMoneyTraits(context.role())
+                && GlobalTraitService.usesMoneySystem(context.player(), context.gameComponent(), context.role());
     }
 }

@@ -54,6 +54,8 @@ public final class GlobalTraitService {
     public static final float STEADY_MOOD_MAX = 1.25f;
     public static final float MOOD_MIN = -1.0f;
     public static final Identifier CHILDISH_SCALE_MODIFIER_ID = SparkTraits.id("childish_scale");
+    /** SparkWitch's Sniper, a literal id on purpose (reading SparkWitch statics would load its entrypoint). */
+    private static final Identifier SPARKWITCH_SNIPER_ID = Identifier.of("sparkwitch", "sniper");
     public static final double CHILDISH_SCALE_MODIFIER_VALUE = -0.25;
     public static final Identifier EXCELLENT_PHYSIQUE_STAMINA_MODIFIER_ID = SparkTraits.id("excellent_physique_stamina");
     public static final double EXCELLENT_PHYSIQUE_STAMINA_MODIFIER_VALUE = 1.0;
@@ -126,6 +128,17 @@ public final class GlobalTraitService {
         return player != null
                 && game != null
                 && (canSeeMoneyForTrait(player, game, role) || EffectiveConsequenceService.hasNativeTaskMoneyReward(role));
+    }
+
+    /**
+     * Owner rule 2026-11-18: SparkWitch's Sniper earns money (task pay) and has a shop, so the money gate alone would
+     * hand it Economy, Snowball and Well Supplied. Its shop is a fixed kit (rounds and a crowbar), none of which pay
+     * off those traits, so the Sniper is never offered any money trait.
+     * 所有者规则 2026-11-18：SparkWitch 的狙击手有任务收入和商店，单靠金币门槛会拿到经济、滚雪球和物资充沛；但它的商店
+     * 只卖固定的小件（子弹与撬棍），这些词条在它身上没有收益，因此狙击手永远不获得任何金钱词条。
+     */
+    public static boolean blocksMoneyTraits(Role role) {
+        return role != null && SPARKWITCH_SNIPER_ID.equals(role.identifier());
     }
 
     static boolean canSeeMoneyForTrait(boolean eventAllowsMoney, boolean mirrorsNoellesRecallerMoney) {
