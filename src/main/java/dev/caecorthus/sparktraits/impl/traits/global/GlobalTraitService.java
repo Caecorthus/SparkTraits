@@ -111,11 +111,16 @@ public final class GlobalTraitService {
         return EffectiveTraitService.effectiveMoodType(role, traits) == Role.MoodType.REAL;
     }
 
+    /**
+     * Whether the player sees money in the round. Asked at round-start planning too, where the round is not running
+     * yet; {@link PlanningRoundView} makes that check answer as the round will.
+     * 玩家在对局中是否能看到金币。开局规划时同样会问，此时对局尚未进行；{@link PlanningRoundView} 让这一判定按对局开始后的情况作答。
+     */
     public static boolean canSeeMoneyForTrait(PlayerEntity player, GameWorldComponent game, Role role) {
-        return canSeeMoneyForTrait(
+        return PlanningRoundView.evaluate(player, () -> canSeeMoneyForTrait(
                 CanSeeMoney.EVENT.invoker().canSee(player) == CanSeeMoney.Result.ALLOW,
                 mirrorsNoellesRecallerMoney(game, player, role)
-        );
+        ));
     }
 
     /**
