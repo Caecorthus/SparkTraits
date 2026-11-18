@@ -54,8 +54,6 @@ public final class GlobalTraitService {
     public static final float STEADY_MOOD_MAX = 1.25f;
     public static final float MOOD_MIN = -1.0f;
     public static final Identifier CHILDISH_SCALE_MODIFIER_ID = SparkTraits.id("childish_scale");
-    /** SparkWitch's Sniper, a literal id on purpose (reading SparkWitch statics would load its entrypoint). */
-    private static final Identifier SPARKWITCH_SNIPER_ID = Identifier.of("sparkwitch", "sniper");
     public static final double CHILDISH_SCALE_MODIFIER_VALUE = -0.25;
     public static final Identifier EXCELLENT_PHYSIQUE_STAMINA_MODIFIER_ID = SparkTraits.id("excellent_physique_stamina");
     public static final double EXCELLENT_PHYSIQUE_STAMINA_MODIFIER_VALUE = 1.0;
@@ -131,14 +129,33 @@ public final class GlobalTraitService {
     }
 
     /**
-     * Owner rule 2026-11-18: SparkWitch's Sniper earns money (task pay) and has a shop, so the money gate alone would
-     * hand it Economy, Snowball and Well Supplied. Its shop is a fixed kit (rounds and a crowbar), none of which pay
-     * off those traits, so the Sniper is never offered any money trait.
-     * 所有者规则 2026-11-18：SparkWitch 的狙击手有任务收入和商店，单靠金币门槛会拿到经济、滚雪球和物资充沛；但它的商店
-     * 只卖固定的小件（子弹与撬棍），这些词条在它身上没有收益，因此狙击手永远不获得任何金钱词条。
+     * Owner rule 2026-11-18: Economy refunds 10% of a purchase above 100 coins, so it is only worth a slot for the
+     * roles whose shop actually sells something above that price. Everyone else (every shop capped at 100, roles with
+     * no shop, and roles whose skills charge the balance directly instead of through a shop purchase) is never offered
+     * it. Skills that pay by {@code addToBalance(-x)} never reach the purchase event and do not count here.
+     * 所有者规则 2026-11-18：经济只对单笔消费超过 100 返 10%，只有商店里真有超过该价格商品的职业才值得占一个词条位。
+     * 其他身份（商店最高就是 100、没有商店、以及技能直接扣余额而不是走商店购买的）永远不会被提供该词条。技能用
+     * {@code addToBalance(-x)} 直接扣款，不经过购买事件，因此不计入。
      */
-    public static boolean blocksMoneyTraits(Role role) {
-        return role != null && SPARKWITCH_SNIPER_ID.equals(role.identifier());
+    private static final java.util.Set<Identifier> ECONOMY_ROLES = java.util.Set.of(
+            Identifier.of("noellesroles", "professor"),
+            Identifier.of("noellesroles", "engineer"),
+            Identifier.of("noellesroles", "bodyguard"),
+            Identifier.of("noellesroles", "undercover"),
+            Identifier.of("noellesroles", "recaller"),
+            Identifier.of("wathe", "veteran"),
+            Identifier.of("sparkwitch", "control_expert"),
+            Identifier.of("sparkwitch", "hanna"),
+            Identifier.of("sparkwitch", "tarot_reader"),
+            Identifier.of("sparkwitch", "usec"),
+            Identifier.of("sparkwitch", "charon"),
+            Identifier.of("sparkwitch", "fiend"),
+            Identifier.of("sparkwitch", "insider")
+    );
+
+    /** Whether this role's shop can ever pay for the Economy trait. / 该职业的商店是否可能触发经济词条。 */
+    public static boolean allowsEconomy(Role role) {
+        return role != null && ECONOMY_ROLES.contains(role.identifier());
     }
 
     static boolean canSeeMoneyForTrait(boolean eventAllowsMoney, boolean mirrorsNoellesRecallerMoney) {
