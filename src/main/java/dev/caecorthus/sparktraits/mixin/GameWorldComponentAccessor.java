@@ -15,4 +15,8 @@ public interface GameWorldComponentAccessor {
 
     @Accessor("world")
     World sparktraits$getWorld();
+
+    /** Raw write without {@code setGameStatus}'s sync; only {@code PlanningRoundView} uses it. 不经同步的原始写入，仅供 PlanningRoundView 使用。 */
+    @Accessor("gameStatus")
+    void sparktraits$setGameStatusField(GameWorldComponent.GameStatus status);
 }
