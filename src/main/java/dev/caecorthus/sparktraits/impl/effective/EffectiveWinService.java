@@ -41,6 +41,9 @@ public final class EffectiveWinService {
     // SparkWitch's 狮身豪 (Sphinx Hao) is a second Team Jiahao member and blocks team wins exactly like the Insider.
     // SparkWitch 狮身豪是嘉豪阵营的第二名成员，与内应完全一样阻止队伍胜利。
     private static final Identifier SPARKWITCH_SPHINX_HAO_ID = Identifier.of("sparkwitch", "sphinx_hao");
+    // SparkWitch's Sniper (狙击手, PR #245) is a further Team Jiahao member and blocks team wins exactly like the Insider.
+    // SparkWitch 狙击手（PR #245）是嘉豪阵营的又一名成员，与内应完全一样阻止队伍胜利。
+    private static final Identifier SPARKWITCH_SNIPER_ID = Identifier.of("sparkwitch", "sniper");
     private static final Identifier NOELLES_SHADOW_JESTER_ID = Identifier.of("noellesroles", "shadow_jester");
 
     private EffectiveWinService() {
@@ -114,6 +117,7 @@ public final class EffectiveWinService {
                 || Noellesroles.CORRUPT_COP_ID.equals(role.identifier())
                 || SPARKWITCH_INSIDER_ID.equals(role.identifier())
                 || SPARKWITCH_SPHINX_HAO_ID.equals(role.identifier())
+                || SPARKWITCH_SNIPER_ID.equals(role.identifier())
                 || Noellesroles.TAOTIE_ID.equals(role.identifier()));
     }
 

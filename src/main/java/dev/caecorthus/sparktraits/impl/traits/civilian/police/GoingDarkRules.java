@@ -25,7 +25,9 @@ public final class GoingDarkRules {
             Identifier.of("noellesroles", "corrupt_cop"),
             Identifier.of("sparkwitch", "insider"),
             // SparkWitch's 狮身豪 (Sphinx Hao) has the Insider's Team Jiahao instinct. / SparkWitch 狮身豪拥有与内应相同的嘉豪本能。
-            Identifier.of("sparkwitch", "sphinx_hao")
+            Identifier.of("sparkwitch", "sphinx_hao"),
+            // SparkWitch's Sniper (狙击手, PR #245) has the Insider's Team Jiahao instinct. / SparkWitch 狙击手拥有与内应相同的嘉豪本能。
+            Identifier.of("sparkwitch", "sniper")
     );
 
     private GoingDarkRules() {
